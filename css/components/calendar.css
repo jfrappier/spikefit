@@ -1,0 +1,33 @@
+/* css/components/calendar.css - Grids, progress bars, tracking components */
+
+/* Calendar Elements */
+.month-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2em; }
+.month-header button { 
+    background: var(--bg-panel); border: solid 1px var(--border); padding: 0.75em 1.5em; cursor: pointer; 
+    border-radius: var(--radius-sm); font-family: 'Source Sans 3', sans-serif; font-weight: 700; 
+    text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.8em; color: var(--text-main); 
+    transition: all 0.2s ease; box-shadow: var(--shadow-sm);
+}
+.month-header button:hover { border-color: var(--accent); color: var(--accent); }
+.month-header button:disabled { opacity: 0.4; cursor: not-allowed; border-color: var(--border); color: var(--text-muted); box-shadow: none;}
+
+.month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5em; text-align: center; }
+.month-day-header { font-weight: 700; font-size: 0.8em; color: var(--text-muted); text-transform: uppercase; padding-bottom: 0.5em; letter-spacing: 0.1em;}
+.month-date { border: solid 1px var(--border); padding: 1.5em 0; border-radius: var(--radius-md); background: var(--bg-panel); font-size: 1.1em; font-weight: 600; color: var(--text-main); }
+.month-date.completed { background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%); color: #ffffff; border-color: transparent; box-shadow: var(--shadow-md); }
+.month-date.empty { background: transparent; border: none; }
+
+/* Workout Progress Bar */
+.progress-container {
+    width: 100%; background-color: var(--border); border-radius: 20px; height: 8px;
+    margin: 1.5em 0 2.5em 0; overflow: hidden; display: none;
+}
+.progress-bar {
+    height: 100%; background: linear-gradient(90deg, var(--accent), #ff66ba); width: 0%;
+    border-radius: 20px; transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media screen and (max-width: 480px) {
+    .month-grid { gap: 0.25em; }
+    .month-date { padding: 1em 0; font-size: 0.9em; }
+}

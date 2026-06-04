@@ -1,0 +1,73 @@
+/* css/components/cards.css - Reusable card patterns */
+
+/* Auth & Centered Content Cards */
+.card {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md); padding: 3em 2.5em; width: 100%; max-width: 400px; text-align: center;
+}
+
+/* Exercise Action Cards */
+.exercise-card {
+    background: var(--bg-panel); border: solid 1px var(--border); border-radius: var(--radius-md);
+    padding: 1.75em; margin-bottom: 1em; display: flex; align-items: flex-start;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: var(--shadow-sm);
+    cursor: pointer; position: relative; overflow: hidden;
+}
+.exercise-card:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.exercise-card.disabled { cursor: not-allowed; }
+
+.exercise-card.completed {
+    background-color: #f8fafc; opacity: 0.7; border-color: transparent; transform: none; box-shadow: none;
+}
+.exercise-card.completed::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background-color: #4CAF50;
+}
+.exercise-card.completed .title { text-decoration: line-through; color: var(--text-muted); }
+
+.exercise-info { flex: 1; }
+.title { color: var(--text-main); font-weight: 700; font-size: 1.25em; display: block; margin-bottom: 0.25em; letter-spacing: 0.02em;}
+.reps { font-size: 0.8em; font-weight: 700; color: var(--accent); margin-bottom: 1em; display: inline-block; text-transform: uppercase; letter-spacing: 0.1em; background: var(--accent-light); padding: 0.3em 0.8em; border-radius: var(--radius-sm);}
+.notes { font-size: 1em; margin-bottom: 1em; color: var(--text-muted); }
+
+/* Schedule Calendar Day Card */
+.calendar-day {
+    background: var(--bg-panel); border: solid 1px var(--border); border-left: solid 4px var(--border);
+    padding: 1.5em 2em; border-radius: var(--radius-md); cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow-sm);
+}
+.calendar-day:hover { border-left-color: var(--accent); transform: translateX(4px); box-shadow: var(--shadow-md); }
+.calendar-day.today { border-left-color: var(--accent); background: #ffffff; box-shadow: var(--shadow-hover); }
+
+/* Success State Icons (from Auth) */
+.success-icon {
+    width: 64px; height: 64px; background: var(--accent-light); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5em; font-size: 1.8em;
+}
+
+@media screen and (max-width: 480px) {
+    .card { padding: 2em 1.5em; }
+    .exercise-card { flex-direction: column; position: relative; padding: 1.5em; }
+    .checkbox-container { position: absolute; top: 1.5em; right: 1.25em; margin: 0; }
+    .title { padding-right: 2.5em; font-size: 1.1em;}
+}
+
+/* --- Landing Page Cards --- */
+.hero-preview {
+    margin-top: 4rem; width: 100%; max-width: 900px; background: var(--bg-panel);
+    border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem;
+    box-shadow: var(--shadow-lg); position: relative;
+}
+.hero-preview img { width: 100%; border-radius: var(--radius-md); border: 1px solid var(--border); }
+
+.bento-card {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 2.5rem; box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: relative; overflow: hidden;
+}
+.bento-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); border-color: var(--accent-light); }
+.bento-card h3 { color: var(--text-main); font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; text-transform: none; letter-spacing: normal;}
+
+.icon-wrapper {
+    width: 48px; height: 48px; background: var(--accent-light); color: var(--accent);
+    border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;
+}
+.icon-wrapper svg { width: 24px; height: 24px; }

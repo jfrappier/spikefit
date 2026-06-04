@@ -8,10 +8,20 @@ const STATIC_FILES = new Set([
   '/logo.png',
   '/favicon.png',
   '/favicon.ico',
+  '/fonts/fonts.css',
   '/fonts/source-sans-3-v19-latin-300.woff2',
   '/fonts/source-sans-3-v19-latin-regular.woff2',
   '/fonts/source-sans-3-v19-latin-600.woff2',
   '/fonts/source-sans-3-v19-latin-700.woff2',
+  '/css/base.css',
+  '/css/layout.css',
+  '/css/components/buttons.css',
+  '/css/components/calendar.css',
+  '/css/components/cards.css',
+  '/css/components/forms.css',
+  '/css/components/modals.css',
+  '/css/components/nav.css',
+  '/css/components/splash.css'
 ]);
 
 export default {
