@@ -1,0 +1,41 @@
+/* css/components/forms.css - Inputs, checkboxes, and labels */
+
+label {
+    display: block; text-align: left; font-size: 0.8em; font-weight: 700;
+    letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+}
+
+input[type="text"], input[type="email"] {
+    width: 100%; background: var(--bg-body); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-main); font-family: 'Source Sans 3', Helvetica, sans-serif;
+    font-size: 1em; padding: 0.85em 1em; outline: none; transition: border-color 0.2s, box-shadow 0.2s; -webkit-appearance: none;
+}
+input[type="text"]:focus, input[type="email"]:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: var(--bg-panel);
+}
+input::placeholder { color: #cbd5e0; }
+
+input#otp-input { font-size: 2em; font-weight: 700; letter-spacing: 0.35em; text-align: center; color: var(--text-main); padding: 0.6em 0.5em; }
+
+.error { margin-top: 0.75em; font-size: 0.875em; color: #e53e3e; min-height: 1.2em; text-align: left; }
+
+/* Custom Checkbox */
+.checkbox-container { margin-right: 1.5em; padding-top: 0.1em; }
+        
+input[type="checkbox"] {
+    appearance: none; width: 1.75em; height: 1.75em; border: 2px solid #cbd5e0;
+    border-radius: 6px; outline: none; cursor: pointer; position: relative; transition: all 0.2s ease; background: #ffffff;
+}
+input[type="checkbox"]:hover:not(:disabled) { border-color: var(--accent); }
+input[type="checkbox"]:checked { background-color: var(--accent); border-color: var(--accent); animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+input[type="checkbox"]:disabled { background-color: #f0f4f8; border-color: #cbd5e0; cursor: not-allowed; opacity: 0.6; }
+
+@keyframes popIn {
+    0% { transform: scale(0.8); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+input[type="checkbox"]:checked::after {
+    content: '✔'; color: white; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1em;
+}

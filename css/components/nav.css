@@ -1,0 +1,35 @@
+/* css/components/nav.css - Sidebar and bottom mobile navigation */
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+}
+
+.nav button {
+    appearance: none; background: transparent; border: solid 2px transparent;
+    border-radius: var(--radius-sm); color: var(--text-muted); cursor: pointer;
+    font-family: 'Source Sans 3', sans-serif; font-size: 0.85em; font-weight: 700;
+    letter-spacing: 0.2em; padding: 1.25em 2em; text-align: center; text-decoration: none;
+    text-transform: uppercase; transition: all 0.2s ease-in-out; width: 100%;
+    display: flex; align-items: center; justify-content: flex-start; gap: 1em;
+}
+
+.nav button svg { width: 20px; height: 20px; flex-shrink: 0; }
+.nav button:hover { background: var(--bg-body); color: var(--text-main); }
+.nav button.active { background: var(--bg-panel); border-color: var(--accent); color: var(--accent); box-shadow: var(--shadow-sm); }
+
+@media screen and (max-width: 980px) {
+    .nav { 
+        flex-direction: row; position: fixed; bottom: 0; left: 0; width: 100%;
+        background: var(--bg-panel); border-top: 1px solid var(--border); box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
+        z-index: 1000; gap: 0; padding-bottom: env(safe-area-inset-bottom); justify-content: space-around;
+    }
+    .nav button { 
+        width: 25%; padding: 0.8em 0.2em calc(0.8em + env(safe-area-inset-bottom)); border-radius: 0;
+        border: none; border-top: 3px solid transparent; font-size: 0.65em; height: auto;
+        flex-direction: column; align-items: center; justify-content: center; gap: 0.4em;
+    }
+    .nav button svg { width: 22px; height: 22px; stroke-width: 2px; }
+    .nav button.active { background: transparent; border-top-color: var(--accent); color: var(--accent); box-shadow: none; }
+}
