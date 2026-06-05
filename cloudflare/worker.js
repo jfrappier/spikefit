@@ -21,7 +21,8 @@ const STATIC_FILES = new Set([
   '/css/components/forms.css',
   '/css/components/modals.css',
   '/css/components/nav.css',
-  '/css/components/splash.css'
+  '/css/components/splash.css',
+  '/js/auth.js'
 ]);
 
 export default {
