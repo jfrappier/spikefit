@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="css/components/modals.css">
   <link rel="stylesheet" href="css/components/calendar.css">
   <link rel="stylesheet" href="css/components/splash.css">
+  <script src="js/app.js" defer></script>
 </head>
 <body>
 
@@ -32,21 +33,21 @@
         <header id="header">
             <h1><img src="logo.png" alt="SpikeFit" class="header-logo" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png'"></h1>
             <p id="current-workout-title">30-Min Power Program</p>
-            
+
             <div class="nav" id="main-nav">
-                <button class="active" onclick="switchTab('daily')">
+                <button class="active" data-tab="daily">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     <span>Today</span>
                 </button>
-                <button onclick="switchTab('schedule')">
+                <button data-tab="schedule">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                     <span>Schedule</span>
                 </button>
-                <button onclick="switchTab('history')">
+                <button data-tab="history">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                     <span>Calendar</span>
                 </button>
-                <button onclick="openPrivacyModal()">
+                <button id="btn-nav-privacy">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     <span>Privacy</span>
                 </button>
@@ -56,23 +57,23 @@
         <main id="main">
             <div id="daily" class="container active">
                 <div id="workout-controls" style="margin-bottom: 1.5em; text-align: center;">
-                    <button id="btn-start-workout" class="btn-reset btn-start" onclick="startWorkout()">Start Workout</button>
+                    <button id="btn-start-workout" class="btn-reset btn-start">Start Workout</button>
                 </div>
                 <div class="progress-container" id="progress-container">
                     <div class="progress-bar" id="progress-bar"></div>
                 </div>
                 <div id="workout-content"></div>
-                <button class="btn-reset btn-complete" onclick="markWorkoutComplete()">Mark Workout Complete</button>
-                <button class="btn-reset" style="margin-top: 0; color: var(--text-muted);" onclick="resetDay()">Reset Today's Progress</button>
+                <button id="btn-mark-complete" class="btn-reset btn-complete">Mark Workout Complete</button>
+                <button id="btn-reset-day" class="btn-reset" style="margin-top: 0; color: var(--text-muted);">Reset Today's Progress</button>
             </div>
 
             <div id="schedule" class="container">
                 <h2 style="font-size: 1.5em; border:none; margin-bottom: 0.5em; color: var(--text-main);">Rotating Schedule</h2>
                 <p style="margin-bottom: 2em; color: var(--text-muted);">Select a day below to set it as your current active workout.</p>
                 <div class="level-toggle">
-                    <button id="btn-level-beginner" class="active" onclick="setLevel('beginner')">Beginner</button>
-                    <button id="btn-level-intermediate" onclick="setLevel('intermediate')">Intermediate</button>
-                    <button id="btn-level-advanced" onclick="setLevel('advanced')">Advanced</button>
+                    <button id="btn-level-beginner" class="active">Beginner</button>
+                    <button id="btn-level-intermediate">Intermediate</button>
+                    <button id="btn-level-advanced">Advanced</button>
                 </div>
                 <div id="schedule-content" style="display: grid; gap: 1em;"></div>
             </div>
@@ -81,18 +82,18 @@
                 <h2 style="font-size: 1.5em; border:none; margin-bottom: 0.5em; color: var(--text-main);">Workout History</h2>
                 <p style="margin-bottom: 2em; color: var(--text-muted);">Track your completed workouts.</p>
                 <div class="month-header">
-                    <button onclick="changeMonth(-1)" id="btn-prev-month">&lt; Prev</button>
+                    <button id="btn-prev-month">&lt; Prev</button>
                     <h3 id="month-year-display" style="margin:0; border:none; padding:0; letter-spacing: 0.1em; text-transform: uppercase;"></h3>
-                    <button onclick="changeMonth(1)" id="btn-next-month">Next &gt;</button>
+                    <button id="btn-next-month">Next &gt;</button>
                 </div>
                 <div class="month-grid" id="month-grid-content"></div>
             </div>
 
             <footer id="site-footer">
                 <div class="footer-links">
-                    <a href="#" onclick="event.preventDefault(); openPrivacyModal();">Data Privacy</a>
+                    <a href="#" id="link-footer-privacy">Data Privacy</a>
                     <span class="separator">|</span>
-                    <a href="#" onclick="event.preventDefault(); openDisclaimerModal();">Terms & Disclaimer</a>
+                    <a href="#" id="link-footer-disclaimer">Terms &amp; Disclaimer</a>
                 </div>
             </footer>
         </main>
@@ -102,21 +103,17 @@
     <div id="badge-modal" class="modal-overlay">
         <div class="modal-content">
             <h2 style="margin-bottom: 1em;">Workout Complete!</h2>
-            
-            <!-- Generated Image Preview -->
             <div id="badge-loader" class="badge-loader"></div>
             <img id="share-image-preview" src="" alt="Workout Badge">
-            
             <p style="margin-bottom: 1.5em; color: var(--text-muted); font-size: 0.9em;">Show off your hard work!</p>
-
-            <button id="btn-share-badge" class="btn-reset btn-share" onclick="shareBadge()" disabled>Generating Badge...</button>
-            <button class="btn-reset btn-close-modal" onclick="closeBadgeModal()">Close</button>
+            <button id="btn-share-badge" class="btn-reset btn-share" disabled>Generating Badge...</button>
+            <button id="btn-close-badge" class="btn-reset btn-close-modal">Close</button>
         </div>
     </div>
 
     <div id="disclaimer-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2>Medical Disclaimer & Terms of Use</h2>
+            <h2>Medical Disclaimer &amp; Terms of Use</h2>
             <p class="scroll-note">Please scroll to the bottom to read and agree.</p>
             <div class="disclaimer-text-scroll">
                 <p class="strong-disclaimer">Please read carefully before proceeding.</p>
@@ -125,7 +122,7 @@
                 <p>By using this application, you understand and agree that there is an inherent risk of injury associated with participating in any physical activity. You assume all risks and voluntarily choose to participate at your own free will.</p>
                 <p>The creator(s), host(s), and authors of this page explicitly disclaim any liability, loss, or risk, personal or otherwise, which is incurred as a consequence, directly or indirectly, of the use and application of any of the contents herein. <strong>You agree to indemnify and hold harmless the creator(s) from any and all claims, demands, or causes of action arising out of your use of this site.</strong></p>
             </div>
-            <button class="btn-agree" onclick="acceptDisclaimer()">I Understand and Agree</button>
+            <button id="btn-accept-disclaimer" class="btn-agree">I Understand and Agree</button>
         </div>
     </div>
 
@@ -134,8 +131,8 @@
             <h2 style="text-align: center; color: var(--accent); margin-bottom: 1em; font-size: 1.5em;">Data Privacy Policy</h2>
             <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>1. Local Storage Only:</strong> SpikeFit operates entirely within your web browser. All workout data, completion dates, and preferences are stored exclusively in your device's Local Storage. The author does not collect, transmit, track, or store any of your personal information, health data, or location data.</p>
             <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>2. Third-Party Hosting:</strong> This application is hosted via GitHub Pages and Cloudflare. While the application itself does not track you, GitHub and Cloudflare may collect standard web server logs (including IP addresses, browser types, and referring pages) as part of their standard hosting infrastructure. Please review [GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) and [Cloudflare's](https://www.cloudflare.com/privacypolicy/) privacy policy for more details.</p>
-            <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>3. GDPR, CCPA, & Compliance:</strong> Because we do not collect, process, sell, or control your personal data or Personally Identifiable Information (PII), we inherently align with data minimization principles. You retain 100% control over your data. To permanently delete all your data, simply clear your browser's local storage or cache.</p>
-            <button class="btn-reset btn-close-modal" style="margin-top: 1.5em;" onclick="closePrivacyModal()">Close Privacy Policy</button>
+            <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>3. GDPR, CCPA, &amp; Compliance:</strong> Because we do not collect, process, sell, or control your personal data or Personally Identifiable Information (PII), we inherently align with data minimization principles. You retain 100% control over your data. To permanently delete all your data, simply clear your browser's local storage or cache.</p>
+            <button id="btn-close-privacy" class="btn-reset btn-close-modal" style="margin-top: 1.5em;">Close Privacy Policy</button>
         </div>
     </div>
 
@@ -145,919 +142,8 @@
             <div class="toast-title" id="toast-title">Time to Refuel!</div>
             <div class="toast-text" id="toast-text">Don't forget to grab a protein shake or a healthy snack for recovery.</div>
         </div>
-        <button class="toast-close" onclick="closeToast()">&times;</button>
+        <button id="btn-close-toast" class="toast-close">&times;</button>
     </div>
 
-    <script>
-        // --- Workout Database ---
-        const workouts = {
-            'A': {
-                name: 'Workout A: Vertical Power',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'a1', name: 'Seated Box Jumps', reps: '5 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps' },
-                            { id: 'a2', name: 'Pogo Jumps', reps: '15 seconds', notes: 'Max ankle stiffness.', video: 'Pogo Jumps exercise' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'a3', name: 'DB Reverse Lunges', reps: '8 reps / leg', notes: 'Drive through front heel.', video: 'Dumbbell Reverse Lunges' },
-                            { id: 'a4', name: 'Dead Bugs', reps: '10 reps / side', notes: 'Lower back glued to floor.', video: 'Dead Bug exercise' }
-                        ]
-                    }
-                ]
-            },
-            'A2': {
-                name: 'Workout A: Vertical Power (Intermediate)',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'a2-1', name: 'Seated Box Jumps', reps: '5 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps' },
-                            { id: 'a2-2', name: 'Pogo Jumps', reps: '20 seconds', notes: 'Max ankle stiffness and height.', video: 'Pogo Jumps exercise' },
-                            { id: 'a2-3', name: 'Broad Jumps', reps: '5 reps', notes: 'Explode forward, stick the landing.', video: 'Broad Jumps' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'a2-4', name: 'DB Reverse Lunges', reps: '10 reps / leg', notes: 'Drive through front heel.', video: 'Dumbbell Reverse Lunges' },
-                            { id: 'a2-5', name: 'Dead Bugs', reps: '12 reps / side', notes: 'Lower back glued to floor.', video: 'Dead Bug exercise' },
-                            { id: 'a2-6', name: 'DB Romanian Deadlifts', reps: '10 reps', notes: 'Hinge at the hips, slight knee bend.', video: 'Dumbbell RDL' }
-                        ]
-                    }
-                ]
-            },
-            'B': {
-                name: 'Workout B: Upper Body Armor',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'b1', name: 'DB Push Press', reps: '8 reps', notes: 'Slight knee dip to drive up.', video: 'Dumbbell Push Press' },
-                            { id: 'b2', name: 'Pull-Ups or DB Rows', reps: '8-10 reps', notes: 'Squeeze back at the top.', video: 'Dumbbell Rows' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'b3', name: 'DB Scaption (Y-Raises)', reps: '10 reps', notes: '45-deg angle, thumbs up.', video: 'Dumbbell Scaption' },
-                            { id: 'b4', name: 'Weighted Russian Twists', reps: '15 reps / side', notes: 'Rotate torso, not just arms.', video: 'Weighted Russian Twists' }
-                        ]
-                    }
-                ]
-            },
-            'B2': {
-                name: 'Workout B: Upper Body Armor (Intermediate)',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'b2-1', name: 'DB Push Press', reps: '10 reps', notes: 'Slight knee dip to drive up.', video: 'Dumbbell Push Press' },
-                            { id: 'b2-2', name: 'Pull-Ups or DB Rows', reps: '10-12 reps', notes: 'Squeeze back at the top.', video: 'Dumbbell Rows' },
-                            { id: 'b2-3', name: 'Push-Ups', reps: 'Max Reps', notes: 'Strict form, stop 1 rep shy of failure.', video: 'Perfect Pushup' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'b2-4', name: 'DB Scaption (Y-Raises)', reps: '12 reps', notes: '45-deg angle, thumbs up.', video: 'Dumbbell Scaption' },
-                            { id: 'b2-5', name: 'Weighted Russian Twists', reps: '20 reps / side', notes: 'Rotate torso, not just arms.', video: 'Weighted Russian Twists' },
-                            { id: 'b2-6', name: 'Superman Holds', reps: '15 reps', notes: 'Squeeze glutes and back, hold 1s at top.', video: 'Superman Exercise' }
-                        ]
-                    }
-                ]
-            },
-            'C': {
-                name: 'Workout C: Defense Agility',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'c1', name: 'Single-Arm DB Snatches', reps: '6 reps / arm', notes: 'Power from the hips.', video: 'Single-Arm Dumbbell Snatch' },
-                            { id: 'c2', name: 'Lateral Lunges', reps: '8 reps / leg', notes: 'Push hips back.', video: 'Lateral Lunges' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'c3', name: 'Push-Up to Renegade Row', reps: '8 reps / arm', notes: 'Keep hips square to floor.', video: 'Push-Up to Renegade Row' },
-                            { id: 'c4', name: 'Plank w/ Shoulder Taps', reps: '40 seconds', notes: 'Anti-rotation core hold.', video: 'Plank with Shoulder Taps' }
-                        ]
-                    }
-                ],
-            },
-            'C2': {
-                name: 'Workout C: Defense Agility (Intermediate)',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'c2-1', name: 'Single-Arm DB Snatches', reps: '8 reps / arm', notes: 'Power from the hips.', video: 'Single-Arm Dumbbell Snatch' },
-                            { id: 'c2-2', name: 'Lateral Lunges', reps: '10 reps / leg', notes: 'Push hips back.', video: 'Lateral Lunges' },
-                            { id: 'c2-3', name: 'Skater Jumps', reps: '10 reps / side', notes: 'Explosive lateral push off outside leg.', video: 'Skater Jumps' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'c2-4', name: 'Push-Up to Renegade Row', reps: '8 reps / arm', notes: 'Keep hips square to floor.', video: 'Push-Up to Renegade Row' },
-                            { id: 'c2-5', name: 'Plank w/ Shoulder Taps', reps: '45 seconds', notes: 'Anti-rotation core hold.', video: 'Plank with Shoulder Taps' },
-                            { id: 'c2-6', name: 'Mountain Climbers', reps: '30 seconds', notes: 'Fast pace, keep hips level.', video: 'Mountain Climbers' }
-                        ]
-                    }
-                ],
-            },
-            'D': {
-                name: 'Workout D: Core & Swing Mechanics',
-                blocks: [
-                    {
-                        title: 'Volleyball Core (3 Rounds - Rest 45s)',
-                        exercises: [
-                            { id: 'd1', name: 'Hollow Body Hold', reps: '30 seconds', notes: 'Mimics pre-swing mid-air tension. Press lower back into floor.', video: 'Hollow Body Hold' },
-                            { id: 'd2', name: 'Seated Rotational Twists', reps: '15 reps / side', notes: 'Focus on torso rotation to simulate arm swing torque.', video: 'Russian Twists' },
-                            { id: 'd3', name: 'Bird-Dog', reps: '10 reps / side', notes: 'Slow and controlled. Builds back and core stability.', video: 'Bird Dog Exercise' }
-                        ]
-                    },
-                    {
-                        title: 'Swing Mechanics (Focus on Form - Rest as needed)',
-                        exercises: [
-                            { id: 'd4', name: 'Half-Kneeling Swings (Left Knee Up)', reps: '20 reps', notes: 'Left knee bent, right knee on floor. Focus on elbow draw and torque.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
-                            { id: 'd5', name: 'Half-Kneeling Swings (Right Knee Up)', reps: '20 reps', notes: 'Right knee bent, left knee on floor. Maintain high elbow.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
-                            { id: 'd6', name: 'Tall Kneeling Swings', reps: '20 reps', notes: 'Both knees on floor. Engage core to snap through the swing.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' }
-                        ]
-                    }
-                ]
-            },
-            'D2': {
-                name: 'Workout D: Core & Swing Mechanics (Intermediate)',
-                blocks: [
-                    {
-                        title: 'Volleyball Core (3 Rounds - Rest 45s)',
-                        exercises: [
-                            { id: 'd2-1', name: 'Hollow Body Hold', reps: '45 seconds', notes: 'Mimics pre-swing mid-air tension. Press lower back into floor.', video: 'Hollow Body Hold' },
-                            { id: 'd2-2', name: 'Seated Rotational Twists', reps: '20 reps / side', notes: 'Focus on torso rotation to simulate arm swing torque.', video: 'Russian Twists' },
-                            { id: 'd2-3', name: 'Bird-Dog', reps: '12 reps / side', notes: 'Slow and controlled. Builds back and core stability.', video: 'Bird Dog Exercise' },
-                            { id: 'd2-4', name: 'Side Plank', reps: '30 seconds / side', notes: 'Keep body in a straight line, push floor away.', video: 'Side Plank' }
-                        ]
-                    },
-                    {
-                        title: 'Swing Mechanics (Focus on Form - Rest as needed)',
-                        exercises: [
-                            { id: 'd2-5', name: 'Half-Kneeling Swings (Left Knee Up)', reps: '25 reps', notes: 'Left knee bent, right knee on floor. Focus on elbow draw and torque.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
-                            { id: 'd2-6', name: 'Half-Kneeling Swings (Right Knee Up)', reps: '25 reps', notes: 'Right knee bent, left knee on floor. Maintain high elbow.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
-                            { id: 'd2-7', name: 'Tall Kneeling Swings', reps: '25 reps', notes: 'Both knees on floor. Engage core to snap through the swing.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
-                            { id: 'd2-8', name: 'Standing Arm Swings', reps: '20 reps', notes: 'Full standing swing mechanics, focus on quick torque.', video: 'Volleyball Arm Swing Mechanics' },
-                            { id: 'd2-9', name: 'Approach Jumps w/ 2-Foot Landing', reps: '10 reps', notes: 'Full approach jump. Prioritize landing softly on BOTH feet simultaneously to absorb impact.', video: 'Volleyball 2-Foot Landing', url: 'https://www.tiktok.com/@elevateyourselfofficial/video/7112060380637056299' }
-                        ]
-                    }
-                ]
-            },
-            'A3': {
-                name: 'Workout A: Vertical Power (Advanced)',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'a3-1', name: 'Seated Box Jumps', reps: '6 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps' },
-                            { id: 'a3-2', name: 'Pogo Jumps', reps: '30 seconds', notes: 'Max ankle stiffness and height.', video: 'Pogo Jumps exercise' },
-                            { id: 'a3-3', name: 'Broad Jumps', reps: '6 reps', notes: 'Explode forward, stick the landing.', video: 'Broad Jumps' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'a3-4', name: 'DB Reverse Lunges', reps: '12 reps / leg', notes: 'Drive through front heel.', video: 'Dumbbell Reverse Lunges' },
-                            { id: 'a3-5', name: 'Dead Bugs', reps: '15 reps / side', notes: 'Lower back glued to floor.', video: 'Dead Bug exercise' },
-                            { id: 'a3-6', name: 'DB Romanian Deadlifts', reps: '12 reps', notes: 'Hinge at the hips, slight knee bend.', video: 'Dumbbell RDL' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 3 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'a3-7', name: 'Bulgarian Split Squats', reps: '8 reps / leg', notes: 'Keep chest up, drop back knee down.', video: 'Bulgarian Split Squat' },
-                            { id: 'a3-8', name: 'Depth Drops', reps: '5 reps', notes: 'Step off low box, stick landing instantly.', video: 'Depth Drop' },
-                            { id: 'a3-9', name: 'Calf Raises', reps: '20 reps', notes: 'Full extension, slow negative.', video: 'Standing Calf Raise' }
-                        ]
-                    }
-                ]
-            },
-            'B3': {
-                name: 'Workout B: Upper Body Armor (Advanced)',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'b3-1', name: 'DB Push Press', reps: '12 reps', notes: 'Slight knee dip to drive up.', video: 'Dumbbell Push Press' },
-                            { id: 'b3-2', name: 'Pull-Ups or DB Rows', reps: '12-15 reps', notes: 'Squeeze back at the top.', video: 'Dumbbell Rows' },
-                            { id: 'b3-3', name: 'Push-Ups', reps: 'Max Reps', notes: 'Strict form, stop 1 rep shy of failure.', video: 'Perfect Pushup' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'b3-4', name: 'DB Scaption (Y-Raises)', reps: '15 reps', notes: '45-deg angle, thumbs up.', video: 'Dumbbell Scaption' },
-                            { id: 'b3-5', name: 'Weighted Russian Twists', reps: '25 reps / side', notes: 'Rotate torso, not just arms.', video: 'Weighted Russian Twists' },
-                            { id: 'b3-6', name: 'Superman Holds', reps: '20 reps', notes: 'Squeeze glutes and back, hold 1s at top.', video: 'Superman Exercise' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 3 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'b3-7', name: 'Pike Push-Ups', reps: '10 reps', notes: 'Hips high, focus on shoulders.', video: 'Pike Pushup' },
-                            { id: 'b3-8', name: 'DB Lateral Raises', reps: '12 reps', notes: 'Slight bend in elbows, control down.', video: 'Dumbbell Lateral Raise' },
-                            { id: 'b3-9', name: 'Plank to Down-Dog', reps: '10 reps', notes: 'Flow smoothly, stretch shoulders.', video: 'Plank to Downward Dog' }
-                        ]
-                    }
-                ]
-            },
-            'C3': {
-                name: 'Workout C: Defense Agility (Advanced)',
-                blocks: [
-                    {
-                        title: 'Superset 1 (4 Rounds - Rest 60-90s)',
-                        exercises: [
-                            { id: 'c3-1', name: 'Single-Arm DB Snatches', reps: '8 reps / arm', notes: 'Power from the hips.', video: 'Single-Arm Dumbbell Snatch' },
-                            { id: 'c3-2', name: 'Lateral Lunges', reps: '12 reps / leg', notes: 'Push hips back.', video: 'Lateral Lunges' },
-                            { id: 'c3-3', name: 'Skater Jumps', reps: '12 reps / side', notes: 'Explosive lateral push off outside leg.', video: 'Skater Jumps' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'c3-4', name: 'Push-Up to Renegade Row', reps: '10 reps / arm', notes: 'Keep hips square to floor.', video: 'Push-Up to Renegade Row' },
-                            { id: 'c3-5', name: 'Plank w/ Shoulder Taps', reps: '60 seconds', notes: 'Anti-rotation core hold.', video: 'Plank with Shoulder Taps' },
-                            { id: 'c3-6', name: 'Mountain Climbers', reps: '40 seconds', notes: 'Fast pace, keep hips level.', video: 'Mountain Climbers' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 3 (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'c3-7', name: 'Lateral Bounds', reps: '8 reps / side', notes: 'Jump sideways off one leg, stick landing.', video: 'Lateral Bounds' },
-                            { id: 'c3-8', name: 'Bear Crawls', reps: '30 seconds', notes: 'Keep knees hovering just off floor.', video: 'Bear Crawl' },
-                            { id: 'c3-9', name: 'High Knees', reps: '30 seconds', notes: 'Pump arms, drive knees up fast.', video: 'High Knees' }
-                        ]
-                    }
-                ],
-            },
-            'D3': {
-                name: 'Workout D: Core & Swing Mechanics (Advanced)',
-                blocks: [
-                    {
-                        title: 'Superset 1: Volleyball Core (3 Rounds - Rest 45s)',
-                        exercises: [
-                            { id: 'd3-1', name: 'Hollow Body Hold', reps: '60 seconds', notes: 'Mimics pre-swing mid-air tension. Press lower back into floor.', video: 'Hollow Body Hold' },
-                            { id: 'd3-2', name: 'Seated Rotational Twists', reps: '25 reps / side', notes: 'Focus on torso rotation to simulate arm swing torque.', video: 'Russian Twists' },
-                            { id: 'd3-3', name: 'Bird-Dog', reps: '15 reps / side', notes: 'Slow and controlled. Builds back and core stability.', video: 'Bird Dog Exercise' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 2: Swing Mechanics (3 Rounds - Rest as needed)',
-                        exercises: [
-                            { id: 'd3-4', name: 'Half-Kneeling Swings (Left Knee Up)', reps: '30 reps', notes: 'Left knee bent, right knee on floor. Focus on elbow draw and torque.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
-                            { id: 'd3-5', name: 'Half-Kneeling Swings (Right Knee Up)', reps: '30 reps', notes: 'Right knee bent, left knee on floor. Maintain high elbow.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
-                            { id: 'd3-6', name: 'Tall Kneeling Swings', reps: '30 reps', notes: 'Both knees on floor. Engage core to snap through the swing.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' }
-                        ]
-                    },
-                    {
-                        title: 'Superset 3: Dynamic Approach (3 Rounds - Rest 60s)',
-                        exercises: [
-                            { id: 'd3-7', name: 'Standing Arm Swings', reps: '25 reps', notes: 'Full standing swing mechanics, focus on quick torque.', video: 'Volleyball Arm Swing Mechanics' },
-                            { id: 'd3-8', name: 'Approach Jump Footwork', reps: '10 reps', notes: 'Focus on explosive last two steps (penultimate step).', video: 'Volleyball Approach Footwork' },
-                            { id: 'd3-9', name: 'V-Ups or Med Ball Slams', reps: '15 reps', notes: 'Explosive core flexion.', video: 'V-Ups Exercise' },
-                            { id: 'd3-10', name: 'Max Approach Jumps w/ 2-Foot Landing', reps: '10 reps', notes: 'Full max approach. Prioritize landing softly on BOTH feet simultaneously to absorb impact.', video: 'Volleyball 2-Foot Landing', url: 'https://www.tiktok.com/@elevateyourselfofficial/video/7112060380637056299' }
-                        ]
-                    }
-                ]
-            }
-        };
-
-        const schedule = [
-            { day: 'Monday', workout: 'A' },
-            { day: 'Tuesday', workout: 'D' }, 
-            { day: 'Wednesday', workout: 'B' },
-            { day: 'Thursday', workout: 'D' }, 
-            { day: 'Friday', workout: 'C' },
-            { day: 'Saturday', workout: 'A' },
-            { day: 'Sunday', workout: 'Rest/Run' }
-        ];
-
-        let currentDayIndex = (new Date().getDay() + 6) % 7; 
-        let completedExercises = JSON.parse(localStorage.getItem('completedExercises')) || {};
-        let completedDates = JSON.parse(localStorage.getItem('completedDates')) || {};
-        let historyCalDate = new Date();
-        let activeWorkoutStart = localStorage.getItem('activeWorkoutStart') || null;
-        let workoutLevel = localStorage.getItem('workoutLevel') || 'beginner';
-        let manualLevelOverride = localStorage.getItem('manualLevelOverride') === 'true';
-
-        // Add a global variable to store the shared badge blob
-        window.currentShareBlob = null;
-
-        function getWorkoutKey(baseKey) {
-            if (baseKey === 'Rest/Run') return baseKey;
-            if (workoutLevel === 'advanced') return baseKey + '3';
-            if (workoutLevel === 'intermediate') return baseKey + '2';
-            return baseKey;
-        }
-
-        function saveState() {
-            localStorage.setItem('completedExercises', JSON.stringify(completedExercises));
-            localStorage.setItem('completedDates', JSON.stringify(completedDates));
-        }
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            event.currentTarget.classList.add('active');
-            
-            if(window.innerWidth <= 980) {
-                window.scrollTo({ top: document.getElementById('main').offsetTop - 20, behavior: 'smooth' });
-            }
-        }
-
-        function toggleExercise(id, cardElement) {
-            if (!activeWorkoutStart) return; 
-
-            completedExercises[id] = !completedExercises[id];
-            saveState();
-            if(completedExercises[id]) {
-                cardElement.classList.add('completed');
-                cardElement.querySelector('input').checked = true;
-                checkAndMarkComplete();
-            } else {
-                cardElement.classList.remove('completed');
-                cardElement.querySelector('input').checked = false;
-            }
-            updateProgressBar();
-        }
-
-        function updateProgressBar() {
-            const baseWorkoutKey = schedule[currentDayIndex].workout;
-            const workoutKey = getWorkoutKey(baseWorkoutKey);
-            const workout = workouts[workoutKey];
-            
-            if (!workout || !activeWorkoutStart) {
-                document.getElementById('progress-container').style.display = 'none';
-                return;
-            }
-            
-            document.getElementById('progress-container').style.display = 'block';
-            let totalEx = 0; let checkedEx = 0;
-            
-            workout.blocks.forEach(block => {
-                block.exercises.forEach(ex => { totalEx++; if (completedExercises[ex.id]) checkedEx++; });
-            });
-            
-            const pct = totalEx === 0 ? 0 : Math.round((checkedEx / totalEx) * 100);
-            document.getElementById('progress-bar').style.width = pct + '%';
-        }
-
-        function checkAndMarkComplete() {
-            const baseWorkoutKey = schedule[currentDayIndex].workout;
-            const workoutKey = getWorkoutKey(baseWorkoutKey);
-            const workout = workouts[workoutKey];
-            if (!workout) return;
-
-            let allChecked = true;
-            for (const block of workout.blocks) {
-                for (const ex of block.exercises) {
-                    if (!completedExercises[ex.id]) { allChecked = false; break; }
-                }
-                if (!allChecked) break;
-            }
-            if (allChecked) markWorkoutComplete();
-        }
-
-        function resetDay() {
-            if(confirm('Clear all checks for today?')) {
-                const baseWorkoutKey = schedule[currentDayIndex].workout;
-                const workoutKey = getWorkoutKey(baseWorkoutKey);
-                const currentWorkout = workouts[workoutKey];
-                
-                if(currentWorkout) {
-                    currentWorkout.blocks.forEach(block => {
-                        block.exercises.forEach(ex => { completedExercises[ex.id] = false; });
-                    });
-                }
-                activeWorkoutStart = null;
-                localStorage.removeItem('activeWorkoutStart');
-                saveState();
-                renderDaily();
-            }
-        }
-
-        function setWorkoutDay(index) {
-            currentDayIndex = index;
-            saveState();
-            renderDaily();
-            renderSchedule();
-            
-            document.querySelectorAll('.container').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-            document.getElementById('daily').classList.add('active');
-            document.querySelectorAll('.nav button')[0].classList.add('active');
-
-            if(window.innerWidth <= 980) { window.scrollTo({ top: document.getElementById('main').offsetTop - 20, behavior: 'smooth' }); }
-        }
-
-        function startWorkout() {
-            if (!activeWorkoutStart) {
-                activeWorkoutStart = new Date().toISOString();
-                localStorage.setItem('activeWorkoutStart', activeWorkoutStart);
-                renderDaily(); 
-            }
-        }
-
-        function updateWorkoutStatus() {
-            const controlsDiv = document.getElementById('workout-controls');
-            const startBtn = document.getElementById('btn-start-workout');
-            const completeBtn = document.querySelector('.btn-complete');
-
-            const baseWorkoutKey = schedule[currentDayIndex].workout;
-            const workoutKey = getWorkoutKey(baseWorkoutKey);
-            const workout = workouts[workoutKey];
-
-            if (!workout) {
-                if(controlsDiv) controlsDiv.style.display = 'none';
-                if(completeBtn) completeBtn.style.display = 'none';
-                return;
-            } else {
-                if(controlsDiv) controlsDiv.style.display = 'block';
-                if(completeBtn) completeBtn.style.display = 'block';
-            }
-
-            if (activeWorkoutStart) {
-                const startTime = new Date(activeWorkoutStart).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                startBtn.innerText = `Workout started at ${startTime}`;
-                startBtn.classList.add('started');
-                startBtn.disabled = true;
-                if (completeBtn) completeBtn.disabled = false;
-            } else {
-                startBtn.innerText = 'Start Workout';
-                startBtn.classList.remove('started');
-                startBtn.disabled = false;
-                if (completeBtn) completeBtn.disabled = true;
-            }
-        }
-
-        function markWorkoutComplete() {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            const dateStr = `${year}-${month}-${day}`;
-            const displayDate = today.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-            
-            let mins = 0;
-            let durationText = "";
-
-            if (activeWorkoutStart) {
-                const start = new Date(activeWorkoutStart);
-                const durationMs = today - start;
-                mins = Math.max(1, Math.floor(durationMs / 60000));
-                durationText = ` (${mins} min)`;
-            }
-
-            completedDates[dateStr] = { completed: true, startTime: activeWorkoutStart, endTime: today.toISOString() };
-            activeWorkoutStart = null;
-            localStorage.removeItem('activeWorkoutStart');
-
-            saveState();
-            renderHistoryCalendar();
-            renderDaily(); 
-            
-            const completedCount = Object.keys(completedDates).length;
-            if (completedCount >= 16 && workoutLevel === 'intermediate' && !manualLevelOverride) {
-                setLevel('advanced', true);
-                showToast("🔥 MAXIMUM OVERDRIVE!", "You've successfully logged four weeks of workouts. We've automatically upgraded your schedule to the Advanced plan!", "🚀", 10000);
-            } else if (completedCount >= 8 && workoutLevel === 'beginner' && !manualLevelOverride) {
-                setLevel('intermediate', true);
-                showToast("🎉 LEVEL UP!", "You've successfully logged two weeks of workouts. We've automatically upgraded your schedule to the Intermediate plan! Keep crushing it!", "⭐", 10000);
-            }
-            
-            const btn = document.querySelector('.btn-complete');
-            if (btn) {
-                const originalText = "Mark Workout Complete";
-                btn.innerText = `✔ Workout Logged!${durationText}`;
-                btn.style.background = "#4CAF50";
-                btn.style.borderColor = "#4CAF50";
-                btn.style.color = "#ffffff";
-                setTimeout(() => { 
-                    btn.innerText = originalText; btn.style.background = ""; btn.style.borderColor = ""; btn.style.color = "";
-                }, 4000);
-            }
-
-            // Generate Canvas Badge and Open Modal
-            generateShareImage(document.getElementById('current-workout-title').innerText, displayDate, mins);
-            document.getElementById('badge-modal').style.display = 'flex';
-        }
-
-        // --- UPDATED: Generate Shareable Canvas Image with Taint Protection ---
-        async function generateShareImage(workoutName, dateStr, durationMins) {
-            const previewImg = document.getElementById('share-image-preview');
-            const loader = document.getElementById('badge-loader');
-            const shareBtn = document.getElementById('btn-share-badge');
-            
-            previewImg.style.display = 'none';
-            loader.style.display = 'block';
-            shareBtn.disabled = true;
-            shareBtn.innerText = "Generating Badge...";
-
-            const canvas = document.createElement('canvas');
-            canvas.width = 1080;
-            canvas.height = 1080;
-            const ctx = canvas.getContext('2d');
-
-            // 1. Draw Base Dark Background
-            ctx.fillStyle = '#1a0e24'; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Add a subtle glow behind the character
-            const bgGlow = ctx.createRadialGradient(canvas.width / 2, 400, 50, canvas.width / 2, 400, 500);
-            bgGlow.addColorStop(0, 'rgba(232, 10, 137, 0.25)'); 
-            bgGlow.addColorStop(1, 'rgba(26, 14, 36, 0)');
-            ctx.fillStyle = bgGlow;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. Load and Draw the Character Image securely
-            const img = new Image();
-            img.crossOrigin = "anonymous"; // CRITICAL: Prevents canvas tainting!
-
-            await new Promise((resolve) => {
-                img.onload = resolve;
-                img.onerror = () => { 
-                    console.warn("Failed to load local character image. Falling back to remote raw github URL.");
-                    // Fallback to absolute URL if pathing is wrong
-                    img.crossOrigin = "anonymous";
-                    img.onerror = resolve; // Just resolve if it completely fails, so we still show text badge
-                    img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
-                };
-                
-                // CRITICAL FIX: If running locally via file://, a local image automatically taints the canvas, 
-                // completely blocking sharing. Force the remote secure URL in this case.
-                if (window.location.protocol === 'file:') {
-                    img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
-                } else {
-                    img.src = 'img/badge_char.png'; 
-                }
-            });
-
-            if (img.complete && img.naturalWidth > 0) {
-                // Scale the character to fit nicely in the top 780px
-                const maxHeight = 780;
-                const maxWidth = canvas.width * 0.95; 
-                
-                const scale = Math.min(maxWidth / img.width, maxHeight / img.height);
-                const drawWidth = img.width * scale;
-                const drawHeight = img.height * scale;
-                
-                const offsetX = (canvas.width - drawWidth) / 2; 
-                const offsetY = Math.max(0, (maxHeight - drawHeight) / 2); 
-
-                ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-
-                // Blend bottom of the character into the text area
-                const gradient = ctx.createLinearGradient(0, 650, 0, 800);
-                gradient.addColorStop(0, 'rgba(26, 14, 36, 0)');
-                gradient.addColorStop(1, 'rgba(26, 14, 36, 1)');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 650, canvas.width, 150);
-            }
-
-            // 3. Draw Text Elements
-            ctx.textAlign = 'center';
-            
-            ctx.fillStyle = '#e80a89';
-            ctx.font = 'bold 55px "Source Sans 3", Arial, sans-serif';
-            ctx.fillText('SPIKEFIT', canvas.width / 2, 85);
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 95px "Source Sans 3", Arial, sans-serif';
-            ctx.shadowColor = 'rgba(232, 10, 137, 0.5)';
-            ctx.shadowBlur = 20;
-            ctx.fillText('WORKOUT COMPLETE', canvas.width / 2, 780);
-            ctx.shadowBlur = 0; 
-
-            ctx.fillStyle = '#fce8f3';
-            ctx.font = '60px "Source Sans 3", Arial, sans-serif';
-            ctx.fillText(workoutName, canvas.width / 2, 880);
-
-            ctx.fillStyle = '#e80a89';
-            ctx.fillRect(canvas.width / 2 - 75, 930, 150, 6);
-
-            ctx.fillStyle = '#a0aec0';
-            ctx.font = 'bold 45px "Source Sans 3", Arial, sans-serif';
-            const statsText = `${dateStr}   •   ${durationMins > 0 ? durationMins + ' MINS' : 'LOGGED'}`;
-            ctx.fillText(statsText, canvas.width / 2, 1010);
-
-            // 4. Output to UI and Store Blob Safely
-            try {
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-                previewImg.src = dataUrl;
-                
-                // Generate Blob for sharing capabilities
-                window.currentShareBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
-            } catch (err) {
-                console.error("Canvas export failed (Canvas is likely tainted by a security policy).", err);
-                window.currentShareBlob = null;
-            }
-
-            loader.style.display = 'none';
-            previewImg.style.display = 'block';
-            shareBtn.disabled = false;
-            shareBtn.innerText = "Share Workout";
-        }
-
-        async function shareBadge() {
-            const workoutName = document.getElementById('current-workout-title').innerText;
-            const textToShare = `I just crushed "${workoutName}" on SpikeFit! 🏐🔥`;
-            const shareBtn = document.getElementById('btn-share-badge');
-            const origTxt = shareBtn.innerText;
-
-            try {
-                shareBtn.innerText = "Preparing...";
-                
-                if (window.currentShareBlob) {
-                    const file = new File([window.currentShareBlob], 'spikefit-badge.jpg', { type: 'image/jpeg' });
-                    const shareData = {
-                        files: [file],
-                        title: 'SpikeFit Workout Complete',
-                        text: textToShare
-                    };
-
-                    // Try native share API first (Mobile iOS/Android)
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share(shareData);
-                        shareBtn.innerText = "Shared!";
-                    } else {
-                        // Desktop Fallback 1: Try copying image to clipboard directly
-                        try {
-                            if (navigator.clipboard && navigator.clipboard.write) {
-                                await navigator.clipboard.write([
-                                    new ClipboardItem({ 'image/jpeg': window.currentShareBlob })
-                                ]);
-                                shareBtn.innerText = "Image Copied!";
-                                showToast("Copied to Clipboard!", "Badge copied! You can now paste it into an email or social app.", "📋", 6000);
-                            } else {
-                                throw new Error("Clipboard API unsupported");
-                            }
-                        } catch (clipErr) {
-                            // Desktop Fallback 2: Force standard download
-                            const link = document.createElement('a');
-                            link.href = URL.createObjectURL(window.currentShareBlob);
-                            link.download = 'spikefit-badge.jpg';
-                            link.click();
-                            shareBtn.innerText = "Downloaded!";
-                        }
-                    }
-                } else {
-                    // Failsafe: Blob generation failed entirely (canvas tainted). Share text only.
-                    if (navigator.share) {
-                        await navigator.share({ title: 'SpikeFit Workout Complete', text: textToShare });
-                        shareBtn.innerText = "Text Shared!";
-                    }
-                }
-            } catch (err) {
-                console.error('Share failed:', err);
-                if (err.name !== 'AbortError') { shareBtn.innerText = "Share Canceled"; }
-            }
-
-            setTimeout(() => { shareBtn.innerText = origTxt; }, 3000);
-        }
-
-        function closeBadgeModal() { 
-            document.getElementById('badge-modal').style.display = 'none'; 
-            setTimeout(() => { showToast("Time to Refuel!", "Don't forget to grab a protein shake or a healthy snack for recovery.", "🥤"); }, 400); 
-        }
-
-        function showToast(title, text, icon = "🥤", duration = 8000) {
-            document.getElementById('toast-icon').innerText = icon;
-            document.getElementById('toast-title').innerText = title;
-            document.getElementById('toast-text').innerText = text;
-            
-            const toast = document.getElementById('app-toast');
-            toast.classList.add('show');
-            
-            if (window.toastTimeout) clearTimeout(window.toastTimeout);
-            window.toastTimeout = setTimeout(() => { closeToast(); }, duration);
-        }
-
-        function closeToast() { document.getElementById('app-toast').classList.remove('show'); }
-
-        function renderDaily() {
-            const content = document.getElementById('workout-content');
-            const dayData = schedule[currentDayIndex];
-            const baseWorkoutKey = dayData.workout;
-            const workoutKey = getWorkoutKey(baseWorkoutKey);
-            const workout = workouts[workoutKey];
-
-            if(!workout) {
-                document.getElementById('current-workout-title').innerText = "Active Recovery / Cardio";
-                content.innerHTML = `<div style="text-align:center; padding: 4em 0; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
-                        <h2 style="color:var(--text-main); border:none; margin-bottom: 0.5em; justify-content:center;">Rest or Run Day</h2>
-                        <p style="color:var(--text-muted)">Focus on cardio, stretching, and recovery.</p></div>`;
-                document.getElementById('progress-container').style.display = 'none';
-                return;
-            }
-
-            document.getElementById('current-workout-title').innerText = workout.name;
-            let html = '';
-            
-            const isStarted = !!activeWorkoutStart;
-            const disabledClass = isStarted ? '' : 'disabled';
-            const disabledAttr = isStarted ? '' : 'disabled';
-
-            workout.blocks.forEach(block => {
-                html += `<div class="workout-section"><h2>${block.title}</h2>`;
-                block.exercises.forEach(ex => {
-                    const isChecked = completedExercises[ex.id] ? 'checked' : '';
-                    const completedClass = completedExercises[ex.id] ? 'completed' : '';
-                    const videoLink = ex.url ? ex.url : `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.video + ' tutorial')}`;
-                    
-                    html += `
-                        <div class="exercise-card ${completedClass} ${disabledClass}" onclick="toggleExercise('${ex.id}', this);">
-                            <div class="checkbox-container">
-                                <input type="checkbox" ${isChecked} ${disabledAttr} onclick="event.stopPropagation(); toggleExercise('${ex.id}', this.parentElement.parentElement);">
-                            </div>
-                            <div class="exercise-info">
-                                <span class="title">${ex.name}</span>
-                                <span class="reps">${ex.reps}</span>
-                                <p class="notes">${ex.notes}</p>
-                                <a href="${videoLink}" target="_blank" class="video-link" onclick="event.stopPropagation()">Watch</a>
-                            </div>
-                        </div>`;
-                });
-                html += `</div>`;
-            });
-
-            content.innerHTML = html;
-            updateWorkoutStatus();
-            updateProgressBar();
-        }
-
-        function renderSchedule() {
-            const content = document.getElementById('schedule-content');
-            let html = '';
-            schedule.forEach((day, index) => {
-                const isToday = index === currentDayIndex ? 'today' : '';
-                const baseWorkoutKey = day.workout;
-                const workoutKey = getWorkoutKey(baseWorkoutKey);
-                const workoutName = workouts[workoutKey] ? workouts[workoutKey].name : 'Rest / Cardio';
-                
-                html += `<div class="calendar-day ${isToday}" onclick="setWorkoutDay(${index})">
-                        <h3>${day.day} ${isToday ? '<span style="color:var(--accent); font-size:0.8em; margin-left:0.5em;">(Active)</span>' : ''}</h3>
-                        <p style="color: var(--text-muted); font-size: 0.9em; margin-top: 0.25em;">${workoutName}</p></div>`;
-            });
-            content.innerHTML = html;
-        }
-
-        function renderHistoryCalendar() {
-            const content = document.getElementById('month-grid-content');
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            const year = historyCalDate.getFullYear();
-            const month = historyCalDate.getMonth();
-
-            document.getElementById('month-year-display').innerText = `${monthNames[month]} ${year}`;
-            document.getElementById('btn-next-month').disabled = (year >= 2026 && month >= 11);
-
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            let html = `<div class="month-day-header">Sun</div><div class="month-day-header">Mon</div><div class="month-day-header">Tue</div>
-                <div class="month-day-header">Wed</div><div class="month-day-header">Thu</div><div class="month-day-header">Fri</div><div class="month-day-header">Sat</div>`;
-
-            for (let i = 0; i < firstDay; i++) html += `<div class="month-date empty"></div>`;
-            for (let d = 1; d <= daysInMonth; d++) {
-                const mStr = String(month + 1).padStart(2, '0');
-                const dStr = String(d).padStart(2, '0');
-                const dateStr = `${year}-${mStr}-${dStr}`;
-                const isCompleted = completedDates[dateStr] ? 'completed' : '';
-                html += `<div class="month-date ${isCompleted}">${d}</div>`;
-            }
-            content.innerHTML = html;
-        }
-
-        function changeMonth(delta) {
-            const newMonth = historyCalDate.getMonth() + delta;
-            const tempDate = new Date(historyCalDate.getFullYear(), newMonth, 1);
-            if (tempDate.getFullYear() > 2026) return;
-            historyCalDate = tempDate;
-            renderHistoryCalendar();
-        }
-
-        function setLevel(level, auto = false) {
-            workoutLevel = level;
-            localStorage.setItem('workoutLevel', level);
-            if (!auto) { manualLevelOverride = true; localStorage.setItem('manualLevelOverride', 'true'); }
-            
-            document.getElementById('btn-level-beginner').classList.toggle('active', level === 'beginner');
-            document.getElementById('btn-level-intermediate').classList.toggle('active', level === 'intermediate');
-            document.getElementById('btn-level-advanced').classList.toggle('active', level === 'advanced');
-            
-            renderDaily();
-            renderSchedule();
-        }
-
-        function checkStreak() {
-            if (sessionStorage.getItem('welcomeToastShown')) return;
-            sessionStorage.setItem('welcomeToastShown', 'true');
-
-            const today = new Date();
-            const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-            
-            const dates = Object.keys(completedDates).sort((a,b) => new Date(b) - new Date(a)); 
-            if (dates.length === 0) return; 
-
-            let streak = 0;
-            let currentCheckDate = new Date(today);
-            currentCheckDate.setHours(0,0,0,0);
-            
-            const latestDateStr = dates[0];
-            const latestWorkout = new Date(latestDateStr + 'T00:00:00');
-            const daysSinceLast = Math.floor((currentCheckDate - latestWorkout) / (1000 * 60 * 60 * 24));
-
-            if (daysSinceLast >= 2) {
-                 showToast("👋 Welcome Back!", "Missed you the last few days, let's get a streak going!", "🔥", 10000);
-                 return;
-            }
-
-            for(let i=0; i<365; i++) {
-                const checkStr = currentCheckDate.getFullYear() + '-' + String(currentCheckDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentCheckDate.getDate()).padStart(2, '0');
-                if (completedDates[checkStr]) {
-                    streak++;
-                    currentCheckDate.setDate(currentCheckDate.getDate() - 1);
-                } else if (i === 0 && !completedDates[todayStr]) {
-                    currentCheckDate.setDate(currentCheckDate.getDate() - 1);
-                } else {
-                    break;
-                }
-            }
-
-            if (streak >= 2) {
-                showToast("🔥 Hot Streak!", `Daaamn, ${streak} days in a row, keep it up!`, "💪", 10000);
-            } else if (streak === 1 && daysSinceLast === 1) {
-                showToast("💪 Keep the Momentum!", "You logged a workout yesterday. Keep it going today!", "✨", 10000);
-            }
-        }
-
-        function checkDisclaimer() { 
-            if (!localStorage.getItem('disclaimerAgreed')) {
-                openDisclaimerModal(); 
-            } else {
-                setTimeout(checkStreak, 500);
-            }
-        }
-        
-        function openDisclaimerModal() { document.getElementById('disclaimer-modal').style.display = 'flex'; }
-        function acceptDisclaimer() { localStorage.setItem('disclaimerAgreed', 'true'); document.getElementById('disclaimer-modal').style.display = 'none'; setTimeout(checkStreak, 500); }
-        function openPrivacyModal() { document.getElementById('privacy-modal').style.display = 'flex'; }
-        function closePrivacyModal() { document.getElementById('privacy-modal').style.display = 'none'; }
-
-        // --- Init Functionality ---
-        document.getElementById('btn-level-beginner').classList.toggle('active', workoutLevel === 'beginner');
-        document.getElementById('btn-level-intermediate').classList.toggle('active', workoutLevel === 'intermediate');
-        document.getElementById('btn-level-advanced').classList.toggle('active', workoutLevel === 'advanced');
-        
-        renderDaily();
-        renderSchedule();
-        renderHistoryCalendar();
-
-        // --- Splash Screen Logic ---
-        document.body.style.overflow = 'hidden'; 
-        const splashScreen = document.getElementById('splash-screen');
-        const splashProgress = document.getElementById('splash-progress');
-        const splashText = document.getElementById('splash-text');
-
-        let progress = 0;
-        const splashDuration = 3000; 
-        const intervalTime = 30; 
-        const steps = splashDuration / intervalTime;
-        const increment = 100 / steps;
-
-        const splashInterval = setInterval(() => {
-            progress += increment;
-            splashProgress.style.width = `${progress}%`;
-            
-            if (progress > 30 && progress < 70) {
-                splashText.innerText = "Building Today's Workout...";
-            } else if (progress >= 70) {
-                splashText.innerText = "Ready To Crush It!";
-            }
-
-            if (progress >= 100) {
-                clearInterval(splashInterval);
-                setTimeout(() => {
-                    splashScreen.classList.add('hidden');
-                    document.body.style.overflow = ''; 
-                    setTimeout(checkDisclaimer, 600); 
-                }, 200); 
-            }
-        }, intervalTime);
-
-    </script>
 </body>
 </html>
