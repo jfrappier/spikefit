@@ -125,7 +125,19 @@ async function verifyOtp() {
 
     const params   = new URLSearchParams(window.location.search);
     const redirect = params.get('redirect');
-    const safeDest = (redirect && /^\/[^/\\]/.test(redirect)) ? redirect : '/';
+    let safeDest   = '/';
+
+    if (redirect) {
+      try {
+        const url = new URL(redirect, window.location.origin);
+        if (url.origin === window.location.origin) {
+          safeDest = url.pathname + url.search + url.hash;
+        }
+      } catch {
+        // malformed URL — fall back to root
+      }
+    }
+
     setTimeout(() => {
       window.location.href = safeDest;
     }, 800);
