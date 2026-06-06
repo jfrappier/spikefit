@@ -14,7 +14,7 @@
 /* --- Badges & Share Image --- */
 #share-image-preview {
     width: 100%;
-    max-width: 320px;
+    max-width: 320px; !important;
     height: auto;
     margin: 0 auto 1.5em auto;
     border-radius: var(--radius-md);
