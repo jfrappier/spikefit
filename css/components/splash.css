@@ -39,3 +39,95 @@
     0% { background-position: 100% 0; }
     100% { background-position: -100% 0; }
 }
+
+/* Ticker Tape Marquee */
+.ticker-wrap {
+  width: 100%;
+  overflow: hidden;
+  background: var(--accent, #e80a89);
+  color: white;
+  padding: 0.5rem 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+.ticker {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ticker 20s linear infinite;
+}
+.ticker-item { margin: 0 2rem; }
+@keyframes ticker {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+/* Adjust header for ticker */
+.landing-header { margin-top: 2rem; }
+
+/* Floating Stickers */
+.hero-relative { position: relative; }
+.floating-sticker {
+  position: absolute;
+  font-size: 2.5rem;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+  animation: float 6s ease-in-out infinite;
+  z-index: 10;
+}
+.sticker-1 { top: -20px; left: -30px; animation-delay: 0s; transform: rotate(-15deg); }
+.sticker-2 { bottom: -20px; right: -20px; animation-delay: 2s; font-size: 3rem; }
+.sticker-3 { top: 40%; right: -40px; animation-delay: 1s; font-size: 2rem; filter: blur(1px); }
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
+}
+
+/* Social Proof Avatars */
+.social-proof {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+.avatar-group {
+  display: flex;
+  direction: rtl; /* Stacks right to left */
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-body, #fff);
+  margin-left: -12px;
+  background: linear-gradient(135deg, #e80a89, #ff7e5f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: white;
+  font-weight: bold;
+}
+.avatar-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.avatar-text strong { color: var(--text-main); }
+
+/* Glow Effects */
+.glow-box {
+  box-shadow: 0 0 40px rgba(232, 10, 137, 0.15), 0 10px 20px rgba(0,0,0,0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.glow-box:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 60px rgba(232, 10, 137, 0.25), 0 15px 30px rgba(0,0,0,0.1);
+}
