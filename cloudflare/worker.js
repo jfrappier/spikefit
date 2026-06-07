@@ -23,7 +23,11 @@ const STATIC_FILES = new Set([
   '/css/components/nav.css',
   '/css/components/splash.css',
   '/js/auth.js',
-  '/js/app.js'
+  '/js/app.js',
+  '/img/1.jpg',
+  '/img/2.jpg',
+  '/img/3.jpg',
+  '/img/badge_char.png',
 ]);
 
 export default {
@@ -44,9 +48,12 @@ export default {
     // Public pages: Landing page and Auth page
     if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/auth.html') {
       const session = await getSession(req, env);
+      const hasToken = (req.headers.get('Cookie') || '').includes(`${COOKIE}=`);
       
-      // If user is already logged in, skip the landing/auth pages and send them to the app
-      if (session) {
+      // If user is already logged in, skip the landing/auth pages and send them to the app.
+      // We also check `hasToken` to catch immediate post-login redirects from the frontend 
+      // before Cloudflare KV has fully synced, forcing the correct route to /app.html.
+      if (session || (hasToken && url.pathname !== '/auth.html')) {
         return Response.redirect(`${url.origin}/app.html`, 302);
       }
       
