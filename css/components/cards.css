@@ -60,10 +60,15 @@
 
 .bento-card {
     background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg);
-    padding: 2.5rem; box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease;
+    padding: 2.5rem; box-shadow: var(--shadow-sm);
+    transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
     position: relative; overflow: hidden;
 }
-.bento-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); border-color: var(--accent-light); }
+.bento-card:hover { 
+  transform: translateY(-5px); 
+  box-shadow: var(--shadow-hover);
+  border-color: var(--accent);
+}
 .bento-card h3 { color: var(--text-main); font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; text-transform: none; letter-spacing: normal;}
 
 .icon-wrapper {
