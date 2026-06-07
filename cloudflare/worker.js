@@ -28,6 +28,7 @@ const STATIC_FILES = new Set([
   '/img/2.jpg',
   '/img/3.jpg',
   '/img/badge_char.png',
+  '/img/social-banner.jpg'
 ]);
 
 export default {
