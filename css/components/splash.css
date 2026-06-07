@@ -67,26 +67,37 @@
   100% { transform: translate3d(-50%, 0, 0); }
 }
 
-/* Adjust header for ticker */
-.landing-header { margin-top: 2rem; }
-
-/* Floating Stickers */
-.hero-relative { position: relative; }
-.floating-sticker {
-  position: absolute;
-  font-size: 2.5rem;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
-  animation: float 6s ease-in-out infinite;
-  z-index: 10;
+/* --------------------------------------
+   UPDATED: Mobile App Style Header 
+   -------------------------------------- */
+.landing-header {
+  position: sticky;
+  top: 0; /* Sticks flush to the very top */
+  z-index: 99;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08); /* Crisp native hairline border */
+  padding: 0.75rem 1.25rem;
+  margin-top: 2.2rem; /* Clears the absolute ticker */
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); /* Very subtle depth */
 }
-.sticker-1 { top: -20px; left: -30px; animation-delay: 0s; transform: rotate(-15deg); }
-.sticker-2 { bottom: -20px; right: -20px; animation-delay: 2s; font-size: 3rem; }
-.sticker-3 { top: 40%; right: -40px; animation-delay: 1s; font-size: 2rem; filter: blur(1px); }
-
-@keyframes float {
-  0% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-15px) rotate(5deg); }
-  100% { transform: translateY(0px) rotate(0deg); }
+.landing-header .nav-logo img {
+  height: 24px;
+  vertical-align: middle;
+  display: block;
+}
+.landing-header .btn-primary {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 8px; /* Standard native app button radius */
+  box-shadow: none; /* Flatter, more modern app style */
 }
 
 /* Social Proof Avatars */
