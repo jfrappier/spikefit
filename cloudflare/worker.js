@@ -22,7 +22,8 @@ const STATIC_FILES = new Set([
   '/css/components/modals.css',
   '/css/components/nav.css',
   '/css/components/splash.css',
-  '/js/auth.js'
+  '/js/auth.js',
+  '/js/app.js'
 ]);
 
 export default {
@@ -50,7 +51,7 @@ export default {
       }
       
       // Otherwise, serve the public page they requested
-      const targetPath = url.pathname === '/' ? '/index.html' : url.pathname;
+      const targetPath = (url.pathname === '/auth.html') ? '/auth.html' : '/index.html';
       const safeReq = new Request(new URL(targetPath, ORIGIN), req);
       return addSecurityHeaders(await fetch(safeReq));
     }
