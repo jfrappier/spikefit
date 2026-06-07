@@ -148,12 +148,7 @@
   background-size: 28px 28px;
 }
 .hero h1 { color: var(--text-main); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 1.5rem; text-transform: none;}
-.hero h1 span {
-  background: linear-gradient(135deg, var(--accent) 0%, #c90875 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+.hero h1 span { color: var(--accent); }
 .hero p { font-size: clamp(1.1rem, 2vw, 1.25rem); color: var(--text-muted); max-width: 600px; margin-bottom: 2.5rem; }
 .hero-ctas { display: flex; gap: 1rem; justify-content: center; }
 
