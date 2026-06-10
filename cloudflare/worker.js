@@ -23,7 +23,12 @@ const STATIC_FILES = new Set([
   '/css/components/nav.css',
   '/css/components/splash.css',
   '/js/auth.js',
-  '/js/app.js'
+  '/js/app.js',
+  '/img/1.jpg',
+  '/img/2.jpg',
+  '/img/3.jpg',
+  '/img/badge_char.png',
+  '/img/social-banner.jpg'
 ]);
 
 export default {
@@ -31,28 +36,43 @@ export default {
     const url = new URL(req.url);
 
     // Auth endpoints — always pass through
-    if (url.pathname === '/auth.html') {
-      const safeReq = new Request(new URL('/auth.html', ORIGIN), req);
-      return addSecurityHeaders(await fetch(safeReq));
-    }
     if (url.pathname === '/auth/send')     return handleSend(req, env);
     if (url.pathname === '/auth/verify')   return handleVerify(req, env);
     if (url.pathname === '/auth/logout')   return handleLogout(req, env);
 
     // Static assets — always pass through (logo, favicon, fonts, etc.)
-    // Sanitize pathname to strip any characters that aren't valid in a file path
     if (STATIC_FILES.has(url.pathname)) {
       const safeReq = new Request(new URL(url.pathname, ORIGIN), req);
+      return addSecurityHeaders(await fetch(safeReq));
+    }
+
+    // Public pages: Landing page and Auth page
+    if (url.pathname === '/' || url.pathname === '/index.html' || url.pathname === '/auth.html') {
+      const session = await getSession(req, env);
+      const hasToken = (req.headers.get('Cookie') || '').includes(`${COOKIE}=`);
+      
+      // If user is already logged in, skip the landing/auth pages and send them to the app.
+      // We also check `hasToken` to catch immediate post-login redirects from the frontend 
+      // before Cloudflare KV has fully synced, forcing the correct route to /app.html.
+      if (session || (hasToken && url.pathname !== '/auth.html')) {
+        return Response.redirect(`${url.origin}/app.html`, 302);
+      }
+      
+      // Otherwise, serve the public page they requested
+      const targetPath = (url.pathname === '/auth.html') ? '/auth.html' : '/index.html';
+      const safeReq = new Request(new URL(targetPath, ORIGIN), req);
       return addSecurityHeaders(await fetch(safeReq));
     }
 
     // Gate everything else on a valid session cookie
     const session = await getSession(req, env);
     if (!session) {
+      // Send them to auth.html, passing the path they were trying to reach
       return Response.redirect(`${url.origin}/auth.html?redirect=${encodeURIComponent(url.pathname)}`, 302);
     }
 
-    const safeReq = new Request(new URL('/index.html', ORIGIN), req);
+    // Authenticated state: Serve app.html (formerly index.html) for all gated requests
+    const safeReq = new Request(new URL('/app.html', ORIGIN), req);
     return addSecurityHeaders(await fetch(safeReq));
   }
 };
@@ -78,7 +98,6 @@ async function handleSend(req, env) {
   if (!email) return respond({ error: 'bad_request' }, 400);
 
   // Rate limit: max 3 OTP sends per IP per 10 minutes
-  // Prevents inbox bombing and enumeration of the allowlist
   const ip      = req.headers.get('CF-Connecting-IP') || 'unknown';
   const sendKey = `send:${ip}`;
   const sends   = Number.parseInt(await env.RATELIMIT.get(sendKey) || '0');
@@ -90,8 +109,6 @@ async function handleSend(req, env) {
   // Check allowlist
   const isAllowed = await env.ALLOWLIST.get(email);
   if (!isAllowed) {
-    // Return 403 after the rate limit check so the rate limit still applies
-    // to people probing the allowlist
     return respond({ error: 'not_allowed' }, 403);
   }
 
@@ -120,7 +137,6 @@ async function handleVerify(req, env) {
   code  = (code  || '').trim();
 
   // Rate limit: max 5 attempts per IP+email combination within the OTP window
-  // Keyed on both so a single IP can't brute-force multiple accounts simultaneously
   const ip         = req.headers.get('CF-Connecting-IP') || 'unknown';
   const verifyKey  = `verify:${ip}:${email}`;
   const attempts   = Number.parseInt(await env.RATELIMIT.get(verifyKey) || '0');
@@ -128,17 +144,15 @@ async function handleVerify(req, env) {
     return respond({ error: 'rate_limited' }, 429);
   }
 
-  // Increment BEFORE checking the code — prevents an attacker from staying
-  // just under the limit by stopping as soon as they get a hit
   await env.RATELIMIT.put(verifyKey, String(attempts + 1), { expirationTtl: OTP_TTL });
 
   const stored = await env.OTPS.get(email);
 
-  // Constant-time comparison to prevent timing attacks
+  // Constant-time comparison
   const valid = stored && timingSafeEqual(stored, code);
   if (!valid) return respond({ error: 'invalid_code' }, 401);
 
-  // Clean up on success — OTP is single-use, rate limit key no longer needed
+  // Clean up on success
   await env.OTPS.delete(email);
   await env.RATELIMIT.delete(verifyKey);
 
@@ -161,7 +175,7 @@ async function handleLogout(req, env) {
   return new Response(null, {
     status: 302,
     headers: {
-      Location:     '/auth.html',
+      Location:     '/', // Redirects back to the public landing page
       'Set-Cookie': `${COOKIE}=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Strict`
     }
   });
@@ -205,16 +219,10 @@ async function sendEmail(apiKey, to, code) {
 function respond(body, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 
-      'Content-Type': 'application/json',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin', 
-      ...extraHeaders 
-    }
+    headers: { 'Content-Type': 'application/json', ...extraHeaders }
   });
 }
 
-// Applies security headers to all page responses
 function addSecurityHeaders(response) {
   const headers = new Headers(response.headers);
   headers.set('Content-Security-Policy',
@@ -225,7 +233,6 @@ function addSecurityHeaders(response) {
   return new Response(response.body, { status: response.status, headers });
 }
 
-// Prevents timing attacks when comparing OTP codes
 function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false;
   let diff = 0;

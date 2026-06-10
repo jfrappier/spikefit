@@ -20,61 +20,71 @@
   <script src="js/auth.js" defer></script>
 </head>
 <body class="auth-body">
-<div class="card">
 
-  <!-- Step 1: Email -->
-  <div id="step-email" class="step">
-    <img
-      src="logo.png"
-      alt="SpikeFit"
-      class="logo"
-    >
-    <h1>Sign In</h1>
-    <p class="subtitle">Enter your email and we'll send you a one-time code.</p>
+<!-- Wrapper to keep the card and banner stacked vertically -->
+<div class="auth-container" style="width: 100%; max-width: 400px; margin: 0 auto;">
+  
+  <div class="card">
+    <!-- Step 1: Email -->
+    <div id="step-email" class="step">
+      <img
+        src="logo.png"
+        alt="SpikeFit"
+        class="logo"
+      >
+      <h1>Sign In</h1>
+      <p class="subtitle">Enter your email and we'll send you a one-time code.</p>
 
-    <label for="email-input">Email address</label>
-    <input
-      type="email"
-      id="email-input"
-      placeholder="you@example.com"
-      autocomplete="email"
-      autofocus
-    >
-    <div class="error" id="email-error"></div>
-    <button class="btn" id="email-btn">Send Code</button>
-    <p style="margin-top: 1.25em; font-size: 0.8em; color: var(--text-muted);">Don't have access? Ask your favorite volleyball cheerdad.</p>
+      <label for="email-input">Email address</label>
+      <input
+        type="email"
+        id="email-input"
+        placeholder="you@example.com"
+        autocomplete="email"
+        autofocus
+      >
+      <div class="error" id="email-error"></div>
+      <button class="btn" id="email-btn">Send Code</button>
+      <p style="margin-top: 1.25em; font-size: 0.8em; color: var(--text-muted);">Don't have access? Ask your favorite volleyball cheerdad.</p>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="step-otp" class="step" style="display:none">
+      <img
+        src="logo.png"
+        alt="SpikeFit"
+        class="logo"
+      >
+      <h1>Check Your Email</h1>
+      <p class="subtitle" id="otp-subtitle">We sent a 6-digit code to your email.</p>
+
+      <label for="otp-input">One-time code</label>
+      <input
+        type="text"
+        id="otp-input"
+        placeholder="000000"
+        maxlength="6"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+      >
+      <p class="hint">Code expires in 10 minutes.</p>
+      <div class="error" id="otp-error"></div>
+      <button class="btn" id="otp-btn">Verify Code</button>
+      <button class="btn btn-ghost" id="goback-btn">← Use a different email</button>
+    </div>
+
+    <!-- Step 3: Success -->
+    <div id="step-success" class="step" style="display:none">
+      <div class="success-icon">✓</div>
+      <h1>You're In</h1>
+      <p class="subtitle">Redirecting you to your workout…</p>
+    </div>
   </div>
 
-  <!-- Step 2: OTP -->
-  <div id="step-otp" class="step" style="display:none">
-    <img
-      src="logo.png"
-      alt="SpikeFit"
-      class="logo"
-    >
-    <h1>Check Your Email</h1>
-    <p class="subtitle" id="otp-subtitle">We sent a 6-digit code to your email.</p>
-
-    <label for="otp-input">One-time code</label>
-    <input
-      type="text"
-      id="otp-input"
-      placeholder="000000"
-      maxlength="6"
-      inputmode="numeric"
-      autocomplete="one-time-code"
-    >
-    <p class="hint">Code expires in 10 minutes.</p>
-    <div class="error" id="otp-error"></div>
-    <button class="btn" id="otp-btn">Verify Code</button>
-    <button class="btn btn-ghost" id="goback-btn">← Use a different email</button>
-  </div>
-
-  <!-- Step 3: Success -->
-  <div id="step-success" class="step" style="display:none">
-    <div class="success-icon">✓</div>
-    <h1>You're In</h1>
-    <p class="subtitle">Redirecting you to your workout…</p>
+  <!-- Info Banner & Home Link -->
+  <div style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #718096;">
+      <p style="margin-bottom: 0.5rem;">New to SpikeFit? <a href="/" style="color: #e80a89; text-decoration: none; font-weight: bold;">Explore the program</a></p>
+      <p>Always free. Zero tracking.</p>
   </div>
 
 </div>

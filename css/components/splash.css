@@ -39,3 +39,106 @@
     0% { background-position: 100% 0; }
     100% { background-position: -100% 0; }
 }
+
+/* Ticker Tape Marquee */
+.ticker-wrap {
+  width: 100%;
+  overflow: hidden;
+  background: var(--accent, #e80a89);
+  color: white;
+  padding: 0.5rem 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+.ticker {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ticker 20s linear infinite;
+}
+.ticker-item { margin: 0 2rem; }
+@keyframes ticker {
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
+/* --------------------------------------
+   UPDATED: Mobile App Style Header 
+   -------------------------------------- */
+.landing-header {
+  position: sticky;
+  top: 0; /* Sticks flush to the very top */
+  z-index: 99;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08); /* Crisp native hairline border */
+  padding: 0.75rem 1.25rem;
+  margin-top: 2.2rem; /* Clears the absolute ticker */
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); /* Very subtle depth */
+}
+.landing-header .nav-logo img {
+  height: 24px;
+  vertical-align: middle;
+  display: block;
+}
+.landing-header .btn-primary {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 8px; /* Standard native app button radius */
+  box-shadow: none; /* Flatter, more modern app style */
+}
+
+/* Social Proof Avatars */
+.social-proof {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+.avatar-group {
+  display: flex;
+  direction: rtl; /* Stacks right to left */
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-body, #fff);
+  margin-left: -12px;
+  background: linear-gradient(135deg, #e80a89, #ff7e5f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  color: white;
+  font-weight: bold;
+}
+.avatar-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.avatar-text strong { color: var(--text-main); }
+
+/* Glow Effects */
+.glow-box {
+  box-shadow: 0 0 40px rgba(232, 10, 137, 0.15), 0 10px 20px rgba(0,0,0,0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.glow-box:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 0 60px rgba(232, 10, 137, 0.25), 0 15px 30px rgba(0,0,0,0.1);
+}

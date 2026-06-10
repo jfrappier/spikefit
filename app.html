@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SpikeFit: 30-Min Workouts</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="/fonts/fonts.css">
+  <!-- Modular CSS Architecture -->
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components/nav.css">
+  <link rel="stylesheet" href="css/components/buttons.css">
+  <link rel="stylesheet" href="css/components/forms.css">
+  <link rel="stylesheet" href="css/components/cards.css">
+  <link rel="stylesheet" href="css/components/modals.css">
+  <link rel="stylesheet" href="css/components/calendar.css">
+  <link rel="stylesheet" href="css/components/splash.css">
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+
+    <div id="splash-screen">
+        <img src="logo.png" alt="SpikeFit Logo" class="splash-logo" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png'">
+        <div class="splash-loader-container">
+            <div id="splash-progress" class="splash-loader-bar"></div>
+        </div>
+        <div id="splash-text" class="splash-text">Loading Local Data...</div>
+    </div>
+
+    <div id="wrapper">
+        <header id="header">
+            <h1><img src="logo.png" alt="SpikeFit" class="header-logo" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png'"></h1>
+            <p id="current-workout-title">30-Min Power Program</p>
+
+            <div class="nav" id="main-nav">
+                <button class="active" data-tab="daily">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span>Today</span>
+                </button>
+                <button data-tab="schedule">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    <span>Schedule</span>
+                </button>
+                <button data-tab="history">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    <span>Calendar</span>
+                </button>
+                <button id="btn-nav-privacy">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <span>Privacy</span>
+                </button>
+            </div>
+        </header>
+
+        <main id="main">
+            <div id="daily" class="container active">
+                <div id="workout-controls" style="margin-bottom: 1.5em; text-align: center;">
+                    <button id="btn-start-workout" class="btn-reset btn-start">Start Workout</button>
+                </div>
+                <div class="progress-container" id="progress-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div id="workout-content"></div>
+                <button id="btn-mark-complete" class="btn-reset btn-complete">Mark Workout Complete</button>
+                <button id="btn-reset-day" class="btn-reset" style="margin-top: 0; color: var(--text-muted);">Reset Today's Progress</button>
+            </div>
+
+            <div id="schedule" class="container">
+                <h2 style="font-size: 1.5em; border:none; margin-bottom: 0.5em; color: var(--text-main);">Rotating Schedule</h2>
+                <p style="margin-bottom: 2em; color: var(--text-muted);">Select a day below to set it as your current active workout.</p>
+                <div class="level-toggle">
+                    <button id="btn-level-beginner" class="active">Beginner</button>
+                    <button id="btn-level-intermediate">Intermediate</button>
+                    <button id="btn-level-advanced">Advanced</button>
+                </div>
+                <div id="schedule-content" style="display: grid; gap: 1em;"></div>
+            </div>
+
+            <div id="history" class="container">
+                <h2 style="font-size: 1.5em; border:none; margin-bottom: 0.5em; color: var(--text-main);">Workout History</h2>
+                <p style="margin-bottom: 2em; color: var(--text-muted);">Track your completed workouts.</p>
+                <div class="month-header">
+                    <button id="btn-prev-month">&lt; Prev</button>
+                    <h3 id="month-year-display" style="margin:0; border:none; padding:0; letter-spacing: 0.1em; text-transform: uppercase;"></h3>
+                    <button id="btn-next-month">Next &gt;</button>
+                </div>
+                <div class="month-grid" id="month-grid-content"></div>
+            </div>
+
+            <footer id="site-footer">
+                <div class="footer-links">
+                    <a href="#" id="link-footer-privacy">Data Privacy</a>
+                    <span class="separator">|</span>
+                    <a href="#" id="link-footer-disclaimer">Terms &amp; Disclaimer</a>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="badge-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 1em;">Workout Complete!</h2>
+            <div id="badge-loader" class="badge-loader"></div>
+            <img id="share-image-preview" src="" alt="Workout Badge">
+            <p style="margin-bottom: 1.5em; color: var(--text-muted); font-size: 0.9em;">Show off your hard work!</p>
+            <button id="btn-share-badge" class="btn-reset btn-share" disabled>Generating Badge...</button>
+            <button id="btn-close-badge" class="btn-reset btn-close-modal">Close</button>
+        </div>
+    </div>
+
+    <div id="disclaimer-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Medical Disclaimer &amp; Terms of Use</h2>
+            <p class="scroll-note">Please scroll to the bottom to read and agree.</p>
+            <div class="disclaimer-text-scroll">
+                <p class="strong-disclaimer">Please read carefully before proceeding.</p>
+                <p>The exercises, workouts, and information provided on this page are for <strong>educational and example purposes only</strong>. They are not intended as a substitute for professional medical advice, diagnosis, or treatment.</p>
+                <p><strong>Always consult with a qualified healthcare provider or physician</strong> before beginning any new exercise program or fitness regimen. You should be in good physical condition and be able to participate safely in the exercises.</p>
+                <p>By using this application, you understand and agree that there is an inherent risk of injury associated with participating in any physical activity. You assume all risks and voluntarily choose to participate at your own free will.</p>
+                <p>The creator(s), host(s), and authors of this page explicitly disclaim any liability, loss, or risk, personal or otherwise, which is incurred as a consequence, directly or indirectly, of the use and application of any of the contents herein. <strong>You agree to indemnify and hold harmless the creator(s) from any and all claims, demands, or causes of action arising out of your use of this site.</strong></p>
+            </div>
+            <button id="btn-accept-disclaimer" class="btn-agree">I Understand and Agree</button>
+        </div>
+    </div>
+
+    <div id="privacy-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px; text-align: left;">
+            <h2 style="text-align: center; color: var(--accent); margin-bottom: 1em; font-size: 1.5em;">Data Privacy Policy</h2>
+            <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>1. Local Storage Only:</strong> SpikeFit operates entirely within your web browser. All workout data, completion dates, and preferences are stored exclusively in your device's Local Storage. The author does not collect, transmit, track, or store any of your personal information, health data, or location data.</p>
+            <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>2. Third-Party Hosting:</strong> This application is hosted via GitHub Pages and Cloudflare. While the application itself does not track you, GitHub and Cloudflare may collect standard web server logs (including IP addresses, browser types, and referring pages) as part of their standard hosting infrastructure. Please review [GitHub](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) and [Cloudflare's](https://www.cloudflare.com/privacypolicy/) privacy policy for more details.</p>
+            <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>3. GDPR, CCPA, &amp; Compliance:</strong> Because we do not collect, process, sell, or control your personal data or Personally Identifiable Information (PII), we inherently align with data minimization principles. You retain 100% control over your data. To permanently delete all your data, simply clear your browser's local storage or cache.</p>
+            <button id="btn-close-privacy" class="btn-reset btn-close-modal" style="margin-top: 1.5em;">Close Privacy Policy</button>
+        </div>
+    </div>
+
+    <div id="app-toast" class="toast-container">
+        <div class="toast-icon" id="toast-icon">🥤</div>
+        <div class="toast-content">
+            <div class="toast-title" id="toast-title">Time to Refuel!</div>
+            <div class="toast-text" id="toast-text">Don't forget to grab a protein shake or a healthy snack for recovery.</div>
+        </div>
+        <button id="btn-close-toast" class="toast-close">&times;</button>
+    </div>
+
+</body>
+</html>

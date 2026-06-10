@@ -125,7 +125,8 @@ async function verifyOtp() {
 
     const params   = new URLSearchParams(window.location.search);
     const redirect = params.get('redirect');
-    let safeDest   = '/';
+    // Updated default destination to app.html
+    let safeDest   = '/app.html';
 
     if (redirect) {
       try {
