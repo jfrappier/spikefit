@@ -475,6 +475,9 @@ function checkAndMarkComplete() {
     }
     if (allChecked) {
         if (activeWorkoutStart) {
+            // Reset slider state before opening
+            document.getElementById('rpe-slider').value = 7;
+            document.getElementById('rpe-val').innerText = '7';
             document.getElementById('fresh-rpe-modal').style.display = 'flex';
         } else {
             markWorkoutComplete();
@@ -811,7 +814,8 @@ function renderDaily() {
 
     const regulate = FRESH_SYSTEM.needsRegulation();
 
-    if (regulate && isStarted) {
+    // Show banner immediately if regulate is triggered (even before clicking start)
+    if (regulate) {
         html += `<div style="background: rgba(255, 46, 147, 0.1); border: 1px solid var(--accent); padding: 1em; border-radius: var(--radius-sm); margin-bottom: 1.5em; text-align: center;">
                     <strong style="color: var(--accent);">F.R.E.S.H. Auto-Regulator Engaged</strong>
                     <p style="font-size: 0.85em; color: var(--text-main); margin-top: 0.5em;">Swapped heavy impacts for explosive alternatives to protect your joints today.</p>
@@ -967,7 +971,7 @@ function checkDisclaimer() {
 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
 
-// Nav — tab buttons use data-tab, privacy button uses its id
+// Nav — tab buttons use data-tab
 document.getElementById('main-nav').addEventListener('click', e => {
     const btn = e.target.closest('button');
     if (!btn) return;
@@ -976,8 +980,6 @@ document.getElementById('main-nav').addEventListener('click', e => {
         switchTab(tab, btn);
     } else if (btn.id === 'btn-nav-fresh') {
         FRESH_SYSTEM.openDashboardModal();
-    } else if (btn.id === 'btn-nav-privacy') {
-        openPrivacyModal();
     }
 });
 
@@ -988,6 +990,9 @@ if (closeFreshBtn) closeFreshBtn.addEventListener('click', FRESH_SYSTEM.closeDas
 // Workout controls
 document.getElementById('btn-start-workout').addEventListener('click', () => {
     if (!activeWorkoutStart) {
+        // Reset slider state before opening
+        document.getElementById('freshness-slider').value = 8;
+        document.getElementById('freshness-val').innerText = '8';
         document.getElementById('fresh-readiness-modal').style.display = 'flex';
     }
 });
@@ -1001,6 +1006,9 @@ document.getElementById('btn-save-readiness').addEventListener('click', () => {
 
 document.getElementById('btn-mark-complete').addEventListener('click', () => {
     if (activeWorkoutStart) {
+        // Reset slider state before opening
+        document.getElementById('rpe-slider').value = 7;
+        document.getElementById('rpe-val').innerText = '7';
         document.getElementById('fresh-rpe-modal').style.display = 'flex';
     }
 });
@@ -1008,8 +1016,12 @@ document.getElementById('btn-mark-complete').addEventListener('click', () => {
 document.getElementById('btn-save-rpe').addEventListener('click', () => {
     const rpeScore = parseInt(document.getElementById('rpe-slider').value, 10);
     const today = new Date();
+    
+    // Calculate Duration (cap at 3 hours/180 mins to prevent runaway load data)
     const durationMins = Math.round((today - new Date(activeWorkoutStart)) / 60000);
-    const finalDuration = durationMins > 0 ? durationMins : 45; 
+    let finalDuration = durationMins > 0 ? durationMins : 45; 
+    if (finalDuration > 180) finalDuration = 180;
+    
     const sessionLoad = rpeScore * finalDuration;
 
     FRESH_SYSTEM.saveLog({
