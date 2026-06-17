@@ -18,8 +18,16 @@ const FRESH_SYSTEM = {
         const ONE_DAY = 86400000;
         let acuteLoad = 0;   
         let chronicLoad = 0; 
+        let oldestTimestamp = now;
+
+        if (logs.length === 0) {
+            return { ratio: 0, status: 'baseline', acuteLoad: 0, chronicLoad: 0 };
+        }
 
         logs.forEach(log => {
+            if (log.timestamp < oldestTimestamp) {
+                oldestTimestamp = log.timestamp;
+            }
             const daysOld = (now - log.timestamp) / ONE_DAY;
             if (daysOld <= 28) {
                 chronicLoad += log.session.load;
@@ -27,7 +35,14 @@ const FRESH_SYSTEM = {
             }
         });
 
-        const averageWeeklyChronic = chronicLoad / 4;
+        // Fix Cold-Start Math: Calculate how many weeks of data we ACTUALLY have (min 1, max 4)
+        const daysActive = (now - oldestTimestamp) / ONE_DAY;
+        let weeksActive = Math.ceil(daysActive / 7);
+        if (weeksActive < 1) weeksActive = 1;
+        if (weeksActive > 4) weeksActive = 4;
+
+        // Chronic load is expressed as a weekly average over the active weeks
+        const averageWeeklyChronic = chronicLoad / weeksActive;
         
         if (averageWeeklyChronic === 0) {
             return { ratio: 0, status: 'baseline', acuteLoad, chronicLoad: 0 };
@@ -36,9 +51,18 @@ const FRESH_SYSTEM = {
         const ratio = (acuteLoad / averageWeeklyChronic).toFixed(2);
         const floatRatio = parseFloat(ratio);
         
+        // Status logic with cold-start guardrails
+        let status = 'optimal';
+        if (floatRatio >= 1.5) {
+            // Require at least 3 logged sessions before throwing a hard "Danger" block
+            status = logs.length < 3 ? 'caution' : 'danger';
+        } else if (floatRatio >= 1.3) {
+            status = 'caution';
+        }
+        
         return {
             ratio: floatRatio,
-            status: floatRatio >= 1.5 ? 'danger' : floatRatio >= 1.3 ? 'caution' : 'optimal',
+            status: status,
             acuteLoad: Math.round(acuteLoad),
             chronicLoad: Math.round(averageWeeklyChronic)
         };
