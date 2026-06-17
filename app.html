@@ -7,7 +7,6 @@
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
   <link rel="stylesheet" href="/fonts/fonts.css">
-  <!-- Modular CSS Architecture -->
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components/nav.css">
@@ -17,6 +16,7 @@
   <link rel="stylesheet" href="css/components/modals.css">
   <link rel="stylesheet" href="css/components/calendar.css">
   <link rel="stylesheet" href="css/components/splash.css">
+  
   <script src="js/app.js" defer></script>
 </head>
 <body>
@@ -47,9 +47,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                     <span>Calendar</span>
                 </button>
-                <button id="btn-nav-privacy">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                    <span>Privacy</span>
+                
+                <button id="btn-nav-fresh">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    <span>F.R.E.S.H.</span>
                 </button>
             </div>
         </header>
@@ -99,7 +100,6 @@
         </main>
     </div>
 
-    <!-- Modals -->
     <div id="badge-modal" class="modal-overlay">
         <div class="modal-content">
             <h2 style="margin-bottom: 1em;">Workout Complete!</h2>
@@ -110,6 +110,87 @@
             <button id="btn-close-badge" class="btn-reset btn-close-modal">Close</button>
         </div>
     </div>
+
+    <div id="fresh-modal" class="modal-overlay">
+        <div class="modal-content fresh-modal-content">
+            <h2 class="fresh-header">F.R.E.S.H. Status</h2>
+            <p class="fresh-subtitle">Acute:Chronic Workload Ratio</p>
+            
+            <div class="fresh-score-container">
+                <div id="fresh-ratio" class="fresh-ratio">0.00</div>
+                <div id="fresh-status" class="fresh-status">BASELINE</div>
+            </div>
+            
+            <div class="fresh-stats-row">
+                <div class="fresh-stat-col">
+                    <div class="fresh-stat-label">Acute Load</div>
+                    <div class="fresh-stat-sub">(Last 7 Days)</div>
+                    <div id="fresh-acute" class="fresh-stat-val">0</div>
+                </div>
+                <div class="fresh-stat-divider"></div>
+                <div class="fresh-stat-col">
+                    <div class="fresh-stat-label">Chronic Load</div>
+                    <div class="fresh-stat-sub">(28 Day Avg)</div>
+                    <div id="fresh-chronic" class="fresh-stat-val">0</div>
+                </div>
+            </div>
+            
+            <p class="fresh-description">
+                F.R.E.S.H. tracks your volume to prevent CNS fatigue and jumper's knee. A ratio above <strong>1.5</strong> will automatically scale back your workout intensity.
+            </p>
+            <button id="btn-close-fresh" class="btn-reset btn-close-modal fresh-cancel-btn">Close</button>
+        </div>
+    </div>
+
+    <div id="fresh-readiness-modal" class="modal-overlay">
+        <div class="modal-content fresh-modal-content small">
+            <h2 class="fresh-header">F.R.E.S.H. Check-in</h2>
+            <p class="fresh-prompt">How are your knees and joints feeling today?</p>
+            
+            <div class="fresh-slider-group">
+                <label for="freshness-slider" class="fresh-slider-label">
+                    Joint Freshness: <span id="freshness-val" class="fresh-slider-val">8</span>/10
+                </label>
+                <input type="range" id="freshness-slider" min="1" max="10" value="8" class="fresh-slider">
+                <div class="fresh-slider-labels">
+                    <span>Sore/Stiff (1)</span>
+                    <span>Bouncy (10)</span>
+                </div>
+            </div>
+            
+            <button id="btn-save-readiness" class="btn-reset btn-start">Start Workout</button>
+            <button class="btn-reset btn-close-modal fresh-cancel-btn" onclick="document.getElementById('fresh-readiness-modal').style.display='none'">Cancel</button>
+        </div>
+    </div>
+
+    <div id="fresh-rpe-modal" class="modal-overlay">
+        <div class="modal-content fresh-modal-content small">
+            <h2 class="fresh-header">Session Complete!</h2>
+            <p class="fresh-prompt">How hard was that workout?</p>
+            
+            <div class="fresh-slider-group">
+                <label for="rpe-slider" class="fresh-slider-label">
+                    Perceived Exertion (RPE): <span id="rpe-val" class="fresh-slider-val">7</span>/10
+                </label>
+                <input type="range" id="rpe-slider" min="1" max="10" value="7" class="fresh-slider">
+                <div class="fresh-slider-labels">
+                    <span>Easy (1)</span>
+                    <span>Max Effort (10)</span>
+                </div>
+            </div>
+            
+            <button id="btn-save-rpe" class="btn-reset btn-complete">Save & Get Badge</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('freshness-slider').addEventListener('input', (e) => {
+            document.getElementById('freshness-val').innerText = e.target.value;
+        });
+        document.getElementById('rpe-slider').addEventListener('input', (e) => {
+            document.getElementById('rpe-val').innerText = e.target.value;
+        });
+    </script>
 
     <div id="disclaimer-modal" class="modal-overlay">
         <div class="modal-content">
