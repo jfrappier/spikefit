@@ -25,21 +25,24 @@ const FRESH_SYSTEM = {
         }
 
         logs.forEach(log => {
-            if (log.timestamp < oldestTimestamp) {
-                oldestTimestamp = log.timestamp;
-            }
             const daysOld = (now - log.timestamp) / ONE_DAY;
             if (daysOld <= 28) {
+                // FIX: Only update oldestTimestamp for logs within the active 28-day window.
+                // Previously this ran for ALL logs, so a stale test session from >28 days ago
+                // would inflate daysActive → weeksActive → deflate averageWeeklyChronic → inflate ratio.
+                if (log.timestamp < oldestTimestamp) {
+                    oldestTimestamp = log.timestamp;
+                }
                 chronicLoad += log.session.load;
                 if (daysOld <= 7) { acuteLoad += log.session.load; }
             }
         });
 
-        // Fix Cold-Start Math: Calculate how many weeks of data we ACTUALLY have (min 1, max 4)
+        // FIX: Use proportional weeks (bounded 1–4) instead of Math.ceil.
+        // Math.ceil(8 days / 7) = 2 weeks, which halved averageWeeklyChronic and doubled the ratio.
+        // Proportional division (8 / 7 = 1.14) gives an accurate chronic average for partial weeks.
         const daysActive = (now - oldestTimestamp) / ONE_DAY;
-        let weeksActive = Math.ceil(daysActive / 7);
-        if (weeksActive < 1) weeksActive = 1;
-        if (weeksActive > 4) weeksActive = 4;
+        const weeksActive = Math.max(1, Math.min(4, daysActive / 7));
 
         // Chronic load is expressed as a weekly average over the active weeks
         const averageWeeklyChronic = chronicLoad / weeksActive;
@@ -1045,8 +1048,17 @@ document.getElementById('btn-save-rpe').addEventListener('click', () => {
     const durationMins = Math.round((today - new Date(activeWorkoutStart)) / 60000);
     let finalDuration = durationMins > 0 ? durationMins : 45; 
     if (finalDuration > 180) finalDuration = 180;
-    
-    const sessionLoad = rpeScore * finalDuration;
+
+    // FIX: Apply a readiness modifier so jointFreshness actually affects the stored load
+    // (and therefore future ACWR calculations). Previously freshness was saved to the log
+    // but calculateACWR() never read it — it had zero mathematical effect on the ratio.
+    //
+    // Scale: freshness 10 → modifier 0.75 (fresh body absorbs load well, 25% discount)
+    //        freshness 5  → modifier 1.00 (neutral)
+    //        freshness 1  → modifier 1.20 (fatigued body, 20% load premium)
+    const readiness         = FRESH_SYSTEM.sessionState.jointFreshness || 8;
+    const readinessModifier = 1 + (5 - readiness) / 20;
+    const sessionLoad       = Math.round(rpeScore * finalDuration * readinessModifier);
 
     FRESH_SYSTEM.saveLog({
         timestamp: Date.now(),
