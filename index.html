@@ -7,14 +7,12 @@
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
   <link rel="stylesheet" href="fonts/fonts.css">
-  
   <!-- Open Graph / Social Share Meta Tags -->
   <meta property="og:title" content="SpikeFit: 30-Min Workouts">
   <meta property="og:description" content="A progressive daily power program designed specifically to improve vertical, agility, and swing mechanics.">
   <meta property="og:image" content="https://spikefit.app/social-banner.jpg">
   <meta property="og:url" content="https://spikefit.app/">
   <meta property="og:type" content="website">
-  
   <!-- Modular CSS Architecture -->
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
@@ -22,37 +20,116 @@
   <link rel="stylesheet" href="css/components/buttons.css">
   <link rel="stylesheet" href="css/components/forms.css">
   <link rel="stylesheet" href="css/components/cards.css">
+  <link rel="stylesheet" href="css/components/modals.css">
+  <link rel="stylesheet" href="css/components/calendar.css">
+  <link rel="stylesheet" href="css/components/splash.css">
 </head>
 <body>
 
-    <header class="landing-header">
-        <img src="logo.png" alt="SpikeFit" class="landing-logo" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png'">
+    <!-- NEW: Kinetic Ticker Tape -->
+    <div class="ticker-wrap animate-up">
+        <div class="ticker">
+            <span class="ticker-item">⚡️ MAXIMIZE YOUR VERT</span>
+            <span class="ticker-item">🏐 NO EXPENSIVE GYMS NEEDED</span>
+            <span class="ticker-item">🔥 COURT READY IN 30 MIN</span>
+            <span class="ticker-item">💪 BUILD EXPLOSIVE POWER</span>
+            <!-- Duplicated for seamless loop -->
+            <span class="ticker-item">⚡️ MAXIMIZE YOUR VERT</span>
+            <span class="ticker-item">🏐 NO EXPENSIVE GYMS NEEDED</span>
+            <span class="ticker-item">🔥 COURT READY IN 30 MIN</span>
+            <span class="ticker-item">💪 BUILD EXPLOSIVE POWER</span>
+        </div>
+    </div>
+
+    <!-- Floating Glass Pill Header -->
+    <header class="landing-header animate-up">
+        <a href="#" class="nav-logo">
+            <img src="logo.png" alt="SpikeFit" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png'">
+        </a>
+        <div class="nav-actions">
+            <a href="auth.html" class="btn-primary">Sign In</a>
+        </div>
     </header>
 
     <main>
-        <section class="hero-section">
-            <h1 class="hero-title">Elevate Your Game</h1>
-            <p class="hero-subtitle">A progressive daily power program designed specifically to improve vertical jump, defensive agility, and swing mechanics in 30 minutes a day.</p>
-            <a href="app.html" class="cta-button">Launch Web App</a>
-        </section>
+      <section class="hero">
+          <div class="badge-group animate-up delay-1" style="display: flex; gap: 0.5rem; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 1.5rem;">
+              <div class="pill-badge" style="background: rgba(232, 10, 137, 0.1); color: var(--accent, #e80a89); border: 1px solid rgba(232, 10, 137, 0.2); margin: 0;">
+                  🚀 Built for the Modern Athlete
+              </div>
+              <div class="pill-badge" style="background: #111111; color: #ffffff; border: 1px solid rgba(255,255,255,0.15); margin: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                  🔒 Private Beta: Invite Only
+              </div>
+          </div>
+        
+            <h1 class="animate-up delay-1">Elevate Your Game.<br><span style="position: relative; display: inline-block;">
+                <span style="position: absolute; bottom: 8px; left: -5%; width: 110%; height: 30%; background: var(--accent, #e80a89); opacity: 0.2; transform: rotate(-1deg); z-index: -1;"></span>
+                30 Minutes a Day.
+            </span></h1>
+            <p class="animate-up delay-2">A progressive daily power program designed specifically to improve vertical, agility, and swing mechanics.</p>
+            <div class="hero-ctas animate-up delay-3">
+                <a href="auth.html" class="btn-primary hero-btn" style="box-shadow: 0 4px 15px rgba(232, 10, 137, 0.4);">Sign In</a>
+                <a href="#features" class="btn-outline hero-btn">Explore Program</a>
+            </div>
 
-        <section id="features">
+            <!-- Social Proof FOMO -->
+            <div class="social-proof animate-up delay-3">
+                <div class="avatar-group">
+                    <div class="avatar" style="background-image: url('img/1.jpg'); background-size: cover;"></div>
+                    <div class="avatar" style="background-image: url('img/2.jpg'); background-size: cover;"></div>
+                    <div class="avatar" style="background-image: url('img/3.jpg'); background-size: cover;"></div>
+                    <div class="avatar" style="font-size: 0.55rem;">YOU?</div>
+                </div>
+                <div class="avatar-text">Join <strong>your friends</strong> jumping higher</div>
+        </div>
+
+        <div class="hero-preview glow-box animate-up delay-4" style="margin-top: 3rem; background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-body) 100%); min-height: 200px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-lg); border: 1px solid rgba(232, 10, 137, 0.1);">
+            <div style="background: white; padding: 2rem; border-radius: 12px; box-shadow: var(--shadow-sm); width: 80%; text-align: left; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+                            <h3 style="color: var(--text-main); margin: 0;">Superset 1 (4 Rounds)</h3>
+                            <span style="font-size: 0.8rem; background: #f0fdf4; color: #16a34a; padding: 0.2rem 0.6rem; border-radius: 12px; font-weight: bold;">In Progress</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="width: 24px; height: 24px; border: 2px solid var(--accent, #e80a89); border-radius: 6px; background: rgba(232, 10, 137, 0.1);"></div>
+                            <div>
+                                <strong style="color: var(--text-main); display: block;">Seated Box Jumps</strong>
+                            <span style="color: var(--accent, #e80a89); font-size: 0.8rem; font-weight: bold; background: rgba(232, 10, 137, 0.05); padding: 0.2rem 0.5rem; border-radius: 4px;">5 REPS</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+    </section>
+
+    <section id="features" class="features" style="margin-top: 5rem;">
+        <div class="section-header animate-up">
+                <h2>Designed for the Court</h2>
+            </div>
+            
             <div class="bento-grid">
                 
-                <div class="bento-card animate-up delay-1 glow-box">
-                    <div class="icon-wrapper" style="color: var(--accent, #e80a89); background: rgba(232, 10, 137, 0.1);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
-                    </div>
-                    <h3>Daily Programming</h3>
-                    <p>No guesswork. Follow a balanced weekly schedule of Vertical Power, Upper Body Armor, Defense Agility, and Swing Mechanics.</p>
-                </div>
-
-                <div class="bento-card animate-up delay-1 glow-box">
+                <div class="bento-card card-large animate-up delay-1 glow-box">
                     <div class="icon-wrapper" style="color: var(--accent, #e80a89); background: rgba(232, 10, 137, 0.1);">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                     </div>
-                    <h3>Progressive Overload</h3>
-                    <p>Start at Beginner and automatically level up to Intermediate and Advanced routines as you build consistency and strength.</p>
+                    <h3>Progressive Workouts</h3>
+                    <p>SpikeFit automatically scales with you. Start at the Beginner tier and unlock Intermediate and Advanced programming as you build your streak and log completions.</p>
+                </div>
+
+                <div class="bento-card card-small animate-up delay-2 glow-box">
+                    <div class="icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <h3>Privacy First</h3>
+                    <p>No databases, no tracking. Your workout history and preferences live securely in your browser's local storage.</p>
+                </div>
+
+                <div class="bento-card card-small animate-up delay-1 glow-box">
+                    <div class="icon-wrapper">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>
+                    </div>
+                    <h3>Targeted Routines</h3>
+                    <p>Stop doing generic gym workouts. Every exercise targets vertical power, rotational core torque, or injury prevention.</p>
                 </div>
 
                 <div class="bento-card card-large animate-up delay-2 glow-box">
@@ -63,25 +140,13 @@
                     <p>Visualize your consistency with a built-in calendar system, track your workout streaks, and unlock shareable completion badges to hold yourself accountable.</p>
                 </div>
 
-                <!-- NEW: F.R.E.S.H. Feature Card -->
-                <div class="bento-card animate-up delay-3 glow-box" style="grid-column: span 12; border-color: rgba(232, 10, 137, 0.2);">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
-                        <div class="icon-wrapper" style="color: #ffffff; background: var(--accent, #e80a89); margin-bottom: 0;">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                        </div>
-                        <span style="font-size: 0.75rem; background: #fff1f2; color: #be123c; padding: 0.25rem 0.75rem; border-radius: 12px; font-weight: bold; border: 1px solid #fecdd3; letter-spacing: 0.05em; text-transform: uppercase;">Beta Feature</span>
-                    </div>
-                    <h3 style="color: var(--text-main, #ffffff);">F.R.E.S.H. Auto-Regulator</h3>
-                    <p>The <strong>F</strong>atigue &amp; <strong>R</strong>eadiness <strong>E</strong>valuation <strong>S</strong>ystem for <strong>H</strong>ealth tracks your daily jump volume and joint soreness using the Acute:Chronic Workload Ratio (ACWR). If the system detects an unsafe spike in workload, it dynamically intervenes—swapping high-impact plyometrics for explosive, low-impact alternatives to protect your knees from Jumper's Knee. <br><em style="font-size: 0.9em; opacity: 0.8; display: block; margin-top: 0.5rem;">Note: This advanced sports-science logic is currently in beta and may have occasional bugs as we refine the math.</em></p>
-                </div>
-
             </div>
         </section>
     </main>
 
     <footer class="landing-footer" style="margin-top: 4rem; border-top: 1px solid var(--border); padding-top: 2rem;">
         <p>&copy; 2026 SpikeFit. Educational purposes only.</p>
-        <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.5rem;">Always consult a physician before beginning any new exercise program.</p>
+        <p style="font-size: 0.8rem; opacity: 0.7;">Always consult a physician before beginning any new exercise program.</p>
     </footer>
 
     <script>
