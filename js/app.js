@@ -42,6 +42,23 @@ const FRESH_SYSTEM = {
         // Math.ceil(8 days / 7) = 2 weeks, which halved averageWeeklyChronic and doubled the ratio.
         // Proportional division (8 / 7 = 1.14) gives an accurate chronic average for partial weeks.
         const daysActive = (now - oldestTimestamp) / ONE_DAY;
+
+        // BASELINE GATE: With less than 14 days of data, the acute (7-day) and chronic
+        // (28-day) windows substantially overlap, so the ratio is mathematically near-locked
+        // to ~1.0 regardless of actual training variation — it isn't a meaningful signal yet.
+        // Surface "building baseline" instead of a number that looks precise but isn't.
+        const BASELINE_THRESHOLD_DAYS = 14;
+        if (daysActive < BASELINE_THRESHOLD_DAYS) {
+            return {
+                ratio: 0,
+                status: 'baseline',
+                acuteLoad: Math.round(acuteLoad),
+                chronicLoad: Math.round(chronicLoad),
+                baseline: true,
+                daysRemaining: Math.ceil(BASELINE_THRESHOLD_DAYS - daysActive)
+            };
+        }
+
         const weeksActive = Math.max(1, Math.min(4, daysActive / 7));
 
         // Chronic load is expressed as a weekly average over the active weeks
@@ -79,14 +96,21 @@ const FRESH_SYSTEM = {
 
     openDashboardModal: () => {
         const data = FRESH_SYSTEM.calculateACWR();
-        document.getElementById('fresh-ratio').textContent = data.ratio > 0 ? data.ratio.toFixed(2) : '0.00';
-        document.getElementById('fresh-status').textContent = data.status;
-        document.getElementById('fresh-acute').textContent = data.acuteLoad;
-        document.getElementById('fresh-chronic').textContent = data.chronicLoad;
-        
         const statusEl = document.getElementById('fresh-status');
         const ratioEl = document.getElementById('fresh-ratio');
-        
+
+        if (data.baseline) {
+            // Less than 14 days of data — ratio would be a misleading near-1.0 number, so
+            // show progress toward a meaningful baseline instead.
+            ratioEl.textContent = '—';
+            statusEl.textContent = `Building Baseline (${data.daysRemaining}d left)`;
+        } else {
+            ratioEl.textContent = data.ratio > 0 ? data.ratio.toFixed(2) : '0.00';
+            statusEl.textContent = data.status;
+        }
+        document.getElementById('fresh-acute').textContent = data.acuteLoad;
+        document.getElementById('fresh-chronic').textContent = data.chronicLoad;
+
         if (data.status === 'danger') {
             statusEl.style.color = 'var(--accent)'; 
             ratioEl.style.color = 'var(--accent)';
