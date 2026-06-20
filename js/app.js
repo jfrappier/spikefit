@@ -454,7 +454,6 @@ function saveState() {
 }
 
 // ─── Tab Navigation ───────────────────────────────────────────────────────────
-
 // switchTab now accepts the button element directly — avoids relying on
 // the implicit global `event` object that the old inline onclick used.
 function switchTab(tabId, btn) {
