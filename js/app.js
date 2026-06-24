@@ -1,3 +1,137 @@
+// ==========================================
+// F.R.E.S.H. AUTO-REGULATOR ENGINE
+// ==========================================
+const FRESH_SYSTEM = {
+    sessionState: { jointFreshness: null },
+    
+    getLogs: () => JSON.parse(localStorage.getItem('spikefit_fresh_logs')) || [],
+    
+    saveLog: (logEntry) => {
+        const logs = FRESH_SYSTEM.getLogs();
+        logs.push(logEntry);
+        localStorage.setItem('spikefit_fresh_logs', JSON.stringify(logs));
+    },
+
+    calculateACWR: () => {
+        const logs = FRESH_SYSTEM.getLogs();
+        const now = Date.now();
+        const ONE_DAY = 86400000;
+        let acuteLoad = 0;   
+        let chronicLoad = 0; 
+        let oldestTimestamp = now;
+
+        if (logs.length === 0) {
+            return { ratio: 0, status: 'baseline', acuteLoad: 0, chronicLoad: 0 };
+        }
+
+        logs.forEach(log => {
+            const daysOld = (now - log.timestamp) / ONE_DAY;
+            if (daysOld <= 28) {
+                // FIX: Only update oldestTimestamp for logs within the active 28-day window.
+                // Previously this ran for ALL logs, so a stale test session from >28 days ago
+                // would inflate daysActive → weeksActive → deflate averageWeeklyChronic → inflate ratio.
+                if (log.timestamp < oldestTimestamp) {
+                    oldestTimestamp = log.timestamp;
+                }
+                chronicLoad += log.session.load;
+                if (daysOld <= 7) { acuteLoad += log.session.load; }
+            }
+        });
+
+        // FIX: Use proportional weeks (bounded 1–4) instead of Math.ceil.
+        // Math.ceil(8 days / 7) = 2 weeks, which halved averageWeeklyChronic and doubled the ratio.
+        // Proportional division (8 / 7 = 1.14) gives an accurate chronic average for partial weeks.
+        const daysActive = (now - oldestTimestamp) / ONE_DAY;
+
+        // BASELINE GATE: With less than 14 days of data, the acute (7-day) and chronic
+        // (28-day) windows substantially overlap, so the ratio is mathematically near-locked
+        // to ~1.0 regardless of actual training variation — it isn't a meaningful signal yet.
+        // Surface "building baseline" instead of a number that looks precise but isn't.
+        const BASELINE_THRESHOLD_DAYS = 14;
+        if (daysActive < BASELINE_THRESHOLD_DAYS) {
+            return {
+                ratio: 0,
+                status: 'baseline',
+                acuteLoad: Math.round(acuteLoad),
+                chronicLoad: Math.round(chronicLoad),
+                baseline: true,
+                daysRemaining: Math.ceil(BASELINE_THRESHOLD_DAYS - daysActive)
+            };
+        }
+
+        const weeksActive = Math.max(1, Math.min(4, daysActive / 7));
+
+        // Chronic load is expressed as a weekly average over the active weeks
+        const averageWeeklyChronic = chronicLoad / weeksActive;
+        
+        if (averageWeeklyChronic === 0) {
+            return { ratio: 0, status: 'baseline', acuteLoad, chronicLoad: 0 };
+        }
+
+        const ratio = (acuteLoad / averageWeeklyChronic).toFixed(2);
+        const floatRatio = parseFloat(ratio);
+        
+        // Status logic with cold-start guardrails
+        let status = 'optimal';
+        if (floatRatio >= 1.5) {
+            // Require at least 3 logged sessions before throwing a hard "Danger" block
+            status = logs.length < 3 ? 'caution' : 'danger';
+        } else if (floatRatio >= 1.3) {
+            status = 'caution';
+        }
+        
+        return {
+            ratio: floatRatio,
+            status: status,
+            acuteLoad: Math.round(acuteLoad),
+            chronicLoad: Math.round(averageWeeklyChronic)
+        };
+    },
+
+    needsRegulation: () => {
+        const acwr = FRESH_SYSTEM.calculateACWR();
+        const joints = FRESH_SYSTEM.sessionState.jointFreshness;
+        return acwr.status === 'danger' || (joints !== null && joints < 5);
+    },
+
+    openDashboardModal: () => {
+        const data = FRESH_SYSTEM.calculateACWR();
+        const statusEl = document.getElementById('fresh-status');
+        const ratioEl = document.getElementById('fresh-ratio');
+
+        if (data.baseline) {
+            // Less than 14 days of data — ratio would be a misleading near-1.0 number, so
+            // show progress toward a meaningful baseline instead.
+            ratioEl.textContent = '—';
+            statusEl.textContent = `Building Baseline (${data.daysRemaining}d left)`;
+        } else {
+            ratioEl.textContent = data.ratio > 0 ? data.ratio.toFixed(2) : '0.00';
+            statusEl.textContent = data.status;
+        }
+        document.getElementById('fresh-acute').textContent = data.acuteLoad;
+        document.getElementById('fresh-chronic').textContent = data.chronicLoad;
+
+        if (data.status === 'danger') {
+            statusEl.style.color = 'var(--accent)'; 
+            ratioEl.style.color = 'var(--accent)';
+        } else if (data.status === 'caution') {
+            statusEl.style.color = '#ff9800'; 
+            ratioEl.style.color = '#ff9800';
+        } else if (data.status === 'optimal') {
+            statusEl.style.color = '#4CAF50'; 
+            ratioEl.style.color = '#4CAF50';
+        } else {
+            statusEl.style.color = 'var(--text-main)'; 
+            ratioEl.style.color = 'var(--text-main)';
+        }
+        document.getElementById('fresh-modal').style.display = 'flex';
+    },
+
+    closeDashboardModal: () => {
+        document.getElementById('fresh-modal').style.display = 'none';
+    }
+};
+
 // --- Workout Database ---
 const workouts = {
     'A': {
@@ -6,7 +140,7 @@ const workouts = {
             {
                 title: 'Superset 1 (4 Rounds - Rest 60-90s)',
                 exercises: [
-                    { id: 'a1', name: 'Seated Box Jumps', reps: '5 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps' },
+                    { id: 'a1', name: 'Seated Box Jumps', reps: '5 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps', impact: 'high', alt: { name: 'Kettlebell Swings', reps: '15 reps', notes: 'Explosive hip hinge. Protect the knees.', video: 'Kettlebell Swings' } },
                     { id: 'a2', name: 'Pogo Jumps', reps: '15 seconds', notes: 'Max ankle stiffness.', video: 'Pogo Jumps exercise' }
                 ]
             },
@@ -25,9 +159,9 @@ const workouts = {
             {
                 title: 'Superset 1 (4 Rounds - Rest 60-90s)',
                 exercises: [
-                    { id: 'a2-1', name: 'Seated Box Jumps', reps: '5 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps' },
+                    { id: 'a2-1', name: 'Seated Box Jumps', reps: '5 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps', impact: 'high', alt: { name: 'Kettlebell Swings', reps: '15 reps', notes: 'Explosive hip hinge. Protect the knees.', video: 'Kettlebell Swings' } },
                     { id: 'a2-2', name: 'Pogo Jumps', reps: '20 seconds', notes: 'Max ankle stiffness and height.', video: 'Pogo Jumps exercise' },
-                    { id: 'a2-3', name: 'Broad Jumps', reps: '5 reps', notes: 'Explode forward, stick the landing.', video: 'Broad Jumps' }
+                    { id: 'a2-3', name: 'Broad Jumps', reps: '5 reps', notes: 'Explode forward, stick the landing.', video: 'Broad Jumps', impact: 'high', alt: { name: 'Glute Bridges', reps: '15 reps', notes: 'Squeeze glutes at the top.', video: 'Glute Bridge' } }
                 ]
             },
             {
@@ -107,7 +241,7 @@ const workouts = {
                 exercises: [
                     { id: 'c2-1', name: 'Single-Arm DB Snatches', reps: '8 reps / arm', notes: 'Power from the hips.', video: 'Single-Arm Dumbbell Snatch' },
                     { id: 'c2-2', name: 'Lateral Lunges', reps: '10 reps / leg', notes: 'Push hips back.', video: 'Lateral Lunges' },
-                    { id: 'c2-3', name: 'Skater Jumps', reps: '10 reps / side', notes: 'Explosive lateral push off outside leg.', video: 'Skater Jumps' }
+                    { id: 'c2-3', name: 'Skater Jumps', reps: '10 reps / side', notes: 'Explosive lateral push off outside leg.', video: 'Skater Jumps', impact: 'high', alt: { name: 'Lateral Band Walks', reps: '10 reps / side', notes: 'Keep tension on the band.', video: 'Lateral Band Walks' } }
                 ]
             },
             {
@@ -160,7 +294,7 @@ const workouts = {
                     { id: 'd2-6', name: 'Half-Kneeling Swings (Right Knee Up)', reps: '25 reps', notes: 'Right knee bent, left knee on floor. Maintain high elbow.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
                     { id: 'd2-7', name: 'Tall Kneeling Swings', reps: '25 reps', notes: 'Both knees on floor. Engage core to snap through the swing.', video: 'Swing Mechanics', url: 'https://www.youtube.com/watch?v=X2TLr7aLors' },
                     { id: 'd2-8', name: 'Standing Arm Swings', reps: '20 reps', notes: 'Full standing swing mechanics, focus on quick torque.', video: 'Volleyball Arm Swing Mechanics' },
-                    { id: 'd2-9', name: 'Approach Jumps w/ 2-Foot Landing', reps: '10 reps', notes: 'Full approach jump. Prioritize landing softly on BOTH feet simultaneously to absorb impact.', video: 'Volleyball 2-Foot Landing', url: 'https://www.tiktok.com/@elevateyourselfofficial/video/7112060380637056299' }
+                    { id: 'd2-9', name: 'Approach Jumps w/ 2-Foot Landing', reps: '10 reps', notes: 'Full approach jump. Prioritize landing softly on BOTH feet simultaneously to absorb impact.', video: 'Volleyball 2-Foot Landing', url: 'https://www.tiktok.com/@elevateyourselfofficial/video/7112060380637056299', impact: 'high', alt: { name: 'Approach Footwork', reps: '10 reps', notes: 'Focus on explosive last two steps, no jump.', video: 'Volleyball Approach Footwork' } }
                 ]
             }
         ]
@@ -171,9 +305,9 @@ const workouts = {
             {
                 title: 'Superset 1 (4 Rounds - Rest 60-90s)',
                 exercises: [
-                    { id: 'a3-1', name: 'Seated Box Jumps', reps: '6 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps' },
+                    { id: 'a3-1', name: 'Seated Box Jumps', reps: '6 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps', impact: 'high', alt: { name: 'Kettlebell Swings', reps: '20 reps', notes: 'Explosive hip hinge. Protect the knees.', video: 'Kettlebell Swings' } },
                     { id: 'a3-2', name: 'Pogo Jumps', reps: '30 seconds', notes: 'Max ankle stiffness and height.', video: 'Pogo Jumps exercise' },
-                    { id: 'a3-3', name: 'Broad Jumps', reps: '6 reps', notes: 'Explode forward, stick the landing.', video: 'Broad Jumps' }
+                    { id: 'a3-3', name: 'Broad Jumps', reps: '6 reps', notes: 'Explode forward, stick the landing.', video: 'Broad Jumps', impact: 'high', alt: { name: 'Glute Bridges', reps: '20 reps', notes: 'Squeeze glutes at the top.', video: 'Glute Bridge' } }
                 ]
             },
             {
@@ -188,7 +322,7 @@ const workouts = {
                 title: 'Superset 3 (3 Rounds - Rest 60s)',
                 exercises: [
                     { id: 'a3-7', name: 'Bulgarian Split Squats', reps: '8 reps / leg', notes: 'Keep chest up, drop back knee down.', video: 'Bulgarian Split Squat' },
-                    { id: 'a3-8', name: 'Depth Drops', reps: '5 reps', notes: 'Step off low box, stick landing instantly.', video: 'Depth Drop' },
+                    { id: 'a3-8', name: 'Depth Drops', reps: '5 reps', notes: 'Step off low box, stick landing instantly.', video: 'Depth Drop', impact: 'high', alt: { name: 'Squat Pulses', reps: '20 seconds', notes: 'Stay low, pulse up and down.', video: 'Squat Pulses' } },
                     { id: 'a3-9', name: 'Calf Raises', reps: '20 reps', notes: 'Full extension, slow negative.', video: 'Standing Calf Raise' }
                 ]
             }
@@ -231,7 +365,7 @@ const workouts = {
                 exercises: [
                     { id: 'c3-1', name: 'Single-Arm DB Snatches', reps: '8 reps / arm', notes: 'Power from the hips.', video: 'Single-Arm Dumbbell Snatch' },
                     { id: 'c3-2', name: 'Lateral Lunges', reps: '12 reps / leg', notes: 'Push hips back.', video: 'Lateral Lunges' },
-                    { id: 'c3-3', name: 'Skater Jumps', reps: '12 reps / side', notes: 'Explosive lateral push off outside leg.', video: 'Skater Jumps' }
+                    { id: 'c3-3', name: 'Skater Jumps', reps: '12 reps / side', notes: 'Explosive lateral push off outside leg.', video: 'Skater Jumps', impact: 'high', alt: { name: 'Lateral Band Walks', reps: '12 reps / side', notes: 'Keep tension on the band.', video: 'Lateral Band Walks' } }
                 ]
             },
             {
@@ -245,7 +379,7 @@ const workouts = {
             {
                 title: 'Superset 3 (3 Rounds - Rest 60s)',
                 exercises: [
-                    { id: 'c3-7', name: 'Lateral Bounds', reps: '8 reps / side', notes: 'Jump sideways off one leg, stick landing.', video: 'Lateral Bounds' },
+                    { id: 'c3-7', name: 'Lateral Bounds', reps: '8 reps / side', notes: 'Jump sideways off one leg, stick landing.', video: 'Lateral Bounds', impact: 'high', alt: { name: 'Lateral Lunges', reps: '8 reps / side', notes: 'Push hips back.', video: 'Lateral Lunges' } },
                     { id: 'c3-8', name: 'Bear Crawls', reps: '30 seconds', notes: 'Keep knees hovering just off floor.', video: 'Bear Crawl' },
                     { id: 'c3-9', name: 'High Knees', reps: '30 seconds', notes: 'Pump arms, drive knees up fast.', video: 'High Knees' }
                 ]
@@ -277,7 +411,7 @@ const workouts = {
                     { id: 'd3-7', name: 'Standing Arm Swings', reps: '25 reps', notes: 'Full standing swing mechanics, focus on quick torque.', video: 'Volleyball Arm Swing Mechanics' },
                     { id: 'd3-8', name: 'Approach Jump Footwork', reps: '10 reps', notes: 'Focus on explosive last two steps (penultimate step).', video: 'Volleyball Approach Footwork' },
                     { id: 'd3-9', name: 'V-Ups or Med Ball Slams', reps: '15 reps', notes: 'Explosive core flexion.', video: 'V-Ups Exercise' },
-                    { id: 'd3-10', name: 'Max Approach Jumps w/ 2-Foot Landing', reps: '10 reps', notes: 'Full max approach. Prioritize landing softly on BOTH feet simultaneously to absorb impact.', video: 'Volleyball 2-Foot Landing', url: 'https://www.tiktok.com/@elevateyourselfofficial/video/7112060380637056299' }
+                    { id: 'd3-10', name: 'Max Approach Jumps w/ 2-Foot Landing', reps: '10 reps', notes: 'Full max approach. Prioritize landing softly on BOTH feet simultaneously to absorb impact.', video: 'Volleyball 2-Foot Landing', url: 'https://www.tiktok.com/@elevateyourselfofficial/video/7112060380637056299', impact: 'high', alt: { name: 'Approach Footwork', reps: '10 reps', notes: 'Focus on explosive last two steps, no jump.', video: 'Volleyball Approach Footwork' } }
                 ]
             }
         ]
@@ -320,7 +454,6 @@ function saveState() {
 }
 
 // ─── Tab Navigation ───────────────────────────────────────────────────────────
-
 // switchTab now accepts the button element directly — avoids relying on
 // the implicit global `event` object that the old inline onclick used.
 function switchTab(tabId, btn) {
@@ -390,7 +523,16 @@ function checkAndMarkComplete() {
         }
         if (!allChecked) break;
     }
-    if (allChecked) markWorkoutComplete();
+    if (allChecked) {
+        if (activeWorkoutStart) {
+            // Reset slider state before opening
+            document.getElementById('rpe-slider').value = 7;
+            document.getElementById('rpe-val').innerText = '7';
+            document.getElementById('fresh-rpe-modal').style.display = 'flex';
+        } else {
+            markWorkoutComplete();
+        }
+    }
 }
 
 function resetDay() {
@@ -720,23 +862,38 @@ function renderDaily() {
     const disabledAttr  = isStarted ? '' : 'disabled';
     let html = '';
 
+    const regulate = FRESH_SYSTEM.needsRegulation();
+
+    // Show banner immediately if regulate is triggered (even before clicking start)
+    if (regulate) {
+        html += `<div style="background: rgba(255, 46, 147, 0.1); border: 1px solid var(--accent); padding: 1em; border-radius: var(--radius-sm); margin-bottom: 1.5em; text-align: center;">
+                    <strong style="color: var(--accent);">F.R.E.S.H. Auto-Regulator Engaged</strong>
+                    <p style="font-size: 0.85em; color: var(--text-main); margin-top: 0.5em;">Swapped heavy impacts for explosive alternatives to protect your joints today.</p>
+                 </div>`;
+    }
+
     workout.blocks.forEach(block => {
         html += `<div class="workout-section"><h2>${block.title}</h2>`;
         block.exercises.forEach(ex => {
             const isChecked      = completedExercises[ex.id] ? 'checked' : '';
             const completedClass = completedExercises[ex.id] ? 'completed' : '';
-            const videoLink      = ex.url ? ex.url : `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.video + ' tutorial')}`;
+            
+            // F.R.E.S.H. Swap Logic
+            const displayEx = (regulate && ex.impact === 'high' && ex.alt) ? Object.assign({}, ex, ex.alt) : ex;
+            const regulatedClass = (regulate && ex.impact === 'high' && ex.alt) ? 'fresh-regulated' : '';
+            
+            const videoLink      = displayEx.url ? displayEx.url : `https://www.youtube.com/results?search_query=${encodeURIComponent(displayEx.video + ' tutorial')}`;
 
             // data-id drives the delegation handler — no inline onclick needed
             html += `
-                <div class="exercise-card ${completedClass} ${disabledClass}" data-id="${ex.id}">
+                <div class="exercise-card ${completedClass} ${disabledClass} ${regulatedClass}" data-id="${ex.id}" style="${regulatedClass ? 'border-left: 4px solid var(--accent);' : ''}">
                     <div class="checkbox-container">
                         <input type="checkbox" ${isChecked} ${disabledAttr}>
                     </div>
                     <div class="exercise-info">
-                        <span class="title">${ex.name}</span>
-                        <span class="reps">${ex.reps}</span>
-                        <p class="notes">${ex.notes}</p>
+                        <span class="title">${displayEx.name}</span>
+                        <span class="reps">${displayEx.reps}</span>
+                        <p class="notes">${displayEx.notes}</p>
                         <a href="${videoLink}" target="_blank" class="video-link">Watch</a>
                     </div>
                 </div>`;
@@ -864,21 +1021,81 @@ function checkDisclaimer() {
 
 // ─── Event Listeners ──────────────────────────────────────────────────────────
 
-// Nav — tab buttons use data-tab, privacy button uses its id
+// Nav — tab buttons use data-tab
 document.getElementById('main-nav').addEventListener('click', e => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const tab = btn.dataset.tab;
     if (tab) {
         switchTab(tab, btn);
-    } else if (btn.id === 'btn-nav-privacy') {
-        openPrivacyModal();
+    } else if (btn.id === 'btn-nav-fresh') {
+        FRESH_SYSTEM.openDashboardModal();
     }
 });
 
+// F.R.E.S.H. Modals
+const closeFreshBtn = document.getElementById('btn-close-fresh');
+if (closeFreshBtn) closeFreshBtn.addEventListener('click', FRESH_SYSTEM.closeDashboardModal);
+
 // Workout controls
-document.getElementById('btn-start-workout').addEventListener('click',  startWorkout);
-document.getElementById('btn-mark-complete').addEventListener('click',  markWorkoutComplete);
+document.getElementById('btn-start-workout').addEventListener('click', () => {
+    if (!activeWorkoutStart) {
+        // Reset slider state before opening
+        document.getElementById('freshness-slider').value = 8;
+        document.getElementById('freshness-val').innerText = '8';
+        document.getElementById('fresh-readiness-modal').style.display = 'flex';
+    }
+});
+
+document.getElementById('btn-save-readiness').addEventListener('click', () => {
+    const freshnessScore = parseInt(document.getElementById('freshness-slider').value, 10);
+    FRESH_SYSTEM.sessionState.jointFreshness = freshnessScore;
+    document.getElementById('fresh-readiness-modal').style.display = 'none';
+    startWorkout();
+});
+
+document.getElementById('btn-mark-complete').addEventListener('click', () => {
+    if (activeWorkoutStart) {
+        // Reset slider state before opening
+        document.getElementById('rpe-slider').value = 7;
+        document.getElementById('rpe-val').innerText = '7';
+        document.getElementById('fresh-rpe-modal').style.display = 'flex';
+    }
+});
+
+document.getElementById('btn-save-rpe').addEventListener('click', () => {
+    const rpeScore = parseInt(document.getElementById('rpe-slider').value, 10);
+    const today = new Date();
+    
+    // Calculate Duration (cap at 3 hours/180 mins to prevent runaway load data)
+    const durationMins = Math.round((today - new Date(activeWorkoutStart)) / 60000);
+    let finalDuration = durationMins > 0 ? durationMins : 45; 
+    if (finalDuration > 180) finalDuration = 180;
+
+    // FIX: Apply a readiness modifier so jointFreshness actually affects the stored load
+    // (and therefore future ACWR calculations). Previously freshness was saved to the log
+    // but calculateACWR() never read it — it had zero mathematical effect on the ratio.
+    //
+    // Scale: freshness 10 → modifier 0.75 (fresh body absorbs load well, 25% discount)
+    //        freshness 5  → modifier 1.00 (neutral)
+    //        freshness 1  → modifier 1.20 (fatigued body, 20% load premium)
+    const readiness         = FRESH_SYSTEM.sessionState.jointFreshness || 8;
+    const readinessModifier = 1 + (5 - readiness) / 20;
+    const sessionLoad       = Math.round(rpeScore * finalDuration * readinessModifier);
+
+    FRESH_SYSTEM.saveLog({
+        timestamp: Date.now(),
+        dateString: today.toISOString().split('T')[0],
+        readiness: { jointFreshness: FRESH_SYSTEM.sessionState.jointFreshness || 8 },
+        session: { durationMins: finalDuration, rpe: rpeScore, load: sessionLoad }
+    });
+
+    FRESH_SYSTEM.sessionState.jointFreshness = null;
+    document.getElementById('fresh-rpe-modal').style.display = 'none';
+    
+    markWorkoutComplete();
+});
+
 document.getElementById('btn-reset-day').addEventListener('click',      resetDay);
 
 // Level toggle
