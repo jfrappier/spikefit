@@ -7,11 +7,17 @@ const FRESH_SYSTEM = {
     getLogs: () => JSON.parse(localStorage.getItem('spikefit_fresh_logs')) || [],
     
     saveLog: (logEntry) => {
-        const logs = FRESH_SYSTEM.getLogs();
-        logs.push(logEntry);
-        localStorage.setItem('spikefit_fresh_logs', JSON.stringify(logs));
-    },
+    const logs = FRESH_SYSTEM.getLogs();
+    logs.push(logEntry);
 
+    // Prune anything older than 28 days — calculateACWR() never looks past that window
+    const now = Date.now();
+    const PRUNE_WINDOW_MS = 28 * 86400000;
+    const trimmedLogs = logs.filter(log => (now - log.timestamp) <= PRUNE_WINDOW_MS);
+
+    localStorage.setItem('spikefit_fresh_logs', JSON.stringify(trimmedLogs));
+    },
+    
     calculateACWR: () => {
         const logs = FRESH_SYSTEM.getLogs();
         const now = Date.now();
