@@ -1,10 +1,23 @@
+// safeParseJSON avoids JSON.parse on a malformed localStorage value. 
+// Wraps every parse in try/catch and falls back to a safe default instead of crashing.
+function safeParseJSON(key, fallback) {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    try {
+        return JSON.parse(raw);
+    } catch (err) {
+        console.error(`Corrupted localStorage data for "${key}", resetting to default.`, err);
+        return fallback;
+    }
+}
+
 // ==========================================
 // F.R.E.S.H. AUTO-REGULATOR ENGINE
 // ==========================================
 const FRESH_SYSTEM = {
     sessionState: { jointFreshness: null },
     
-    getLogs: () => JSON.parse(localStorage.getItem('spikefit_fresh_logs')) || [],
+    getLogs: () => safeParseJSON('spikefit_fresh_logs', []),
     
     saveLog: (logEntry) => {
         const logs = FRESH_SYSTEM.getLogs();
@@ -440,8 +453,8 @@ const schedule = [
 
 // --- State ---
 let currentDayIndex     = (new Date().getDay() + 6) % 7;
-let completedExercises  = JSON.parse(localStorage.getItem('completedExercises')) || {};
-let completedDates      = JSON.parse(localStorage.getItem('completedDates')) || {};
+let completedExercises  = safeParseJSON('completedExercises', {});
+let completedDates      = safeParseJSON('completedDates', {});
 let historyCalDate      = new Date();
 let activeWorkoutStart  = localStorage.getItem('activeWorkoutStart') || null;
 let workoutLevel        = localStorage.getItem('workoutLevel') || 'beginner';
