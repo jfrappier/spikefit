@@ -1085,6 +1085,10 @@ document.getElementById('btn-save-readiness').addEventListener('click', () => {
     startWorkout();
 });
 
+document.getElementById('btn-cancel-readiness').addEventListener('click', () => {
+    document.getElementById('fresh-readiness-modal').style.display = 'none';
+});
+
 document.getElementById('btn-mark-complete').addEventListener('click', () => {
     if (activeWorkoutStart) {
         // Reset slider state before opening
@@ -1151,6 +1155,18 @@ document.getElementById('btn-accept-disclaimer').addEventListener('click', accep
 
 // Privacy modal
 document.getElementById('btn-close-privacy').addEventListener('click', closePrivacyModal);
+
+// Logo fallback — if local logo.png fails to load, fall back to the GitHub-hosted copy.
+document.getElementById('splash-logo-img').addEventListener('error', function() {
+    this.onerror = null;
+    this.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png';
+}, { once: true });
+
+// Header logo fallback
+document.getElementById('header-logo-img').addEventListener('error', function() {
+    this.onerror = null;
+    this.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png';
+}, { once: true });
 
 // Toast
 document.getElementById('btn-close-toast').addEventListener('click', closeToast);
