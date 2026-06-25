@@ -22,7 +22,7 @@
 <body>
 
     <div id="splash-screen">
-        <img src="logo.png" alt="SpikeFit Logo" class="splash-logo" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png'">
+        <img id="splash-logo-img" src="logo.png" alt="SpikeFit Logo" class="splash-logo">
         <div class="splash-loader-container">
             <div id="splash-progress" class="splash-loader-bar"></div>
         </div>
@@ -31,7 +31,7 @@
 
     <div id="wrapper">
         <header id="header">
-            <h1><img src="logo.png" alt="SpikeFit" class="header-logo" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png'"></h1>
+            <h1><img id="header-logo-img" src="logo.png" alt="SpikeFit" class="header-logo"></h1>
             <p id="current-workout-title">30-Min Power Program</p>
 
             <div class="nav" id="main-nav">
@@ -159,7 +159,7 @@
             </div>
             
             <button id="btn-save-readiness" class="btn-reset btn-start">Start Workout</button>
-            <button class="btn-reset btn-close-modal fresh-cancel-btn" onclick="document.getElementById('fresh-readiness-modal').style.display='none'">Cancel</button>
+            <button id="btn-cancel-readiness" class="btn-reset btn-close-modal fresh-cancel-btn">Cancel</button>
         </div>
     </div>
 
