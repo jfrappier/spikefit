@@ -445,7 +445,6 @@ let completedDates      = JSON.parse(localStorage.getItem('completedDates')) || 
 let historyCalDate      = new Date();
 let activeWorkoutStart  = localStorage.getItem('activeWorkoutStart') || null;
 let workoutLevel        = localStorage.getItem('workoutLevel') || 'beginner';
-let manualLevelOverride = localStorage.getItem('manualLevelOverride') === 'true';
 
 window.currentShareBlob = null;
 
@@ -624,6 +623,30 @@ function updateWorkoutStatus() {
     }
 }
 
+// FIX: Auto-leveling now requires 16 workouts done AT THE CURRENT LEVEL (not lifetime
+// total), within a window that implies a consistent pace — roughly 3+ workouts/week,
+// informed by ACSM training-frequency guidance for novice vs. intermediate trainees.
+// 16 workouts at 1x/week (16 weeks) doesn't mean someone's ready for a harder program.
+// This always fires once the bar is met — there's no manual override that can
+// permanently disable auto-leveling. Advanced is the top tier, so it's never checked
+// for promotion (workoutLevel will never be 'advanced' in either branch below).
+const CONSISTENCY_WINDOW_DAYS = 35; // ~3.2 workouts/week minimum sustained pace
+
+function metConsistentPace(level, requiredCount) {
+    const recentDates = Object.entries(completedDates)
+        .filter(([, entry]) => entry.level === level)
+        .map(([dateStr]) => new Date(dateStr + 'T00:00:00'))
+        .sort((a, b) => b - a); // most recent first
+
+    if (recentDates.length < requiredCount) return false;
+
+    const newest = recentDates[0];
+    const oldest = recentDates[requiredCount - 1];
+    const spanDays = (newest - oldest) / 86400000;
+
+    return spanDays <= CONSISTENCY_WINDOW_DAYS;
+}
+
 function markWorkoutComplete() {
     const today      = new Date();
     const year       = today.getFullYear();
@@ -639,7 +662,7 @@ function markWorkoutComplete() {
         durationText = ` (${mins} min)`;
     }
 
-    completedDates[dateStr] = { completed: true, startTime: activeWorkoutStart, endTime: today.toISOString() };
+    completedDates[dateStr] = { completed: true, startTime: activeWorkoutStart, endTime: today.toISOString(), level: workoutLevel };
     activeWorkoutStart = null;
     localStorage.removeItem('activeWorkoutStart');
 
@@ -647,13 +670,12 @@ function markWorkoutComplete() {
     renderHistoryCalendar();
     renderDaily();
 
-    const completedCount = Object.keys(completedDates).length;
-    if (completedCount >= 16 && workoutLevel === 'intermediate' && !manualLevelOverride) {
+    if (workoutLevel === 'intermediate' && metConsistentPace('intermediate', 16)) {
         setLevel('advanced', true);
-        showToast('🔥 MAXIMUM OVERDRIVE!', "You've successfully logged four weeks of workouts. We've automatically upgraded your schedule to the Advanced plan!", '🚀', 10000);
-    } else if (completedCount >= 8 && workoutLevel === 'beginner' && !manualLevelOverride) {
+        showToast('🔥 MAXIMUM OVERDRIVE!', "You've consistently logged 16 Intermediate workouts. We've automatically upgraded your schedule to the Advanced plan!", '🚀', 10000);
+    } else if (workoutLevel === 'beginner' && metConsistentPace('beginner', 16)) {
         setLevel('intermediate', true);
-        showToast('🎉 LEVEL UP!', "You've successfully logged two weeks of workouts. We've automatically upgraded your schedule to the Intermediate plan! Keep crushing it!", '⭐', 10000);
+        showToast('🎉 LEVEL UP!', "You've consistently logged 16 Beginner workouts. We've automatically upgraded your schedule to the Intermediate plan! Keep crushing it!", '⭐', 10000);
     }
 
     const btn = document.getElementById('btn-mark-complete');
@@ -990,7 +1012,6 @@ function changeMonth(delta) {
 function setLevel(level, auto = false) {
     workoutLevel = level;
     localStorage.setItem('workoutLevel', level);
-    if (!auto) { manualLevelOverride = true; localStorage.setItem('manualLevelOverride', 'true'); }
 
     document.getElementById('btn-level-beginner').classList.toggle('active',     level === 'beginner');
     document.getElementById('btn-level-intermediate').classList.toggle('active', level === 'intermediate');
