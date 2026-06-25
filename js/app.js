@@ -672,6 +672,22 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
     shareBtn.disabled        = true;
     shareBtn.innerText       = 'Generating Badge...';
 
+    // Ensure the webfont is actually loaded before drawing canvas text.
+    // Race against a timeout so a slow/blocked font file can't hang badge generation.
+    try {
+        await Promise.race([
+            Promise.all([
+                document.fonts.load('bold 55px "Source Sans 3"'),
+                document.fonts.load('bold 95px "Source Sans 3"'),
+                document.fonts.load('60px "Source Sans 3"'),
+                document.fonts.load('bold 45px "Source Sans 3"')
+            ]),
+            new Promise(resolve => setTimeout(resolve, 2000))
+        ]);
+    } catch (err) {
+        console.warn('Font load check failed, proceeding with fallback font.', err);
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width  = 1080;
     canvas.height = 1080;
