@@ -467,6 +467,23 @@ function saveState() {
     }
 }
 
+// FIX: completedExercises was keyed only by exercise ID, but the same workout letter
+// (e.g. 'A', 'D') appears on multiple days in the schedule. Checking off Monday's "A"
+// left Saturday's "A" already checked too, since they share exercise IDs. Worse, the
+// same collision happens week-over-week on the same weekday, since nothing was tied to
+// an actual calendar date. Scoping the key to today's real date fixes both at once.
+function getTodayDateStr() {
+    const today = new Date();
+    const year  = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day   = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function getExerciseKey(exerciseId) {
+    return `${getTodayDateStr()}_${exerciseId}`;
+}
+
 // ─── Tab Navigation ───────────────────────────────────────────────────────────
 // switchTab now accepts the button element directly — avoids relying on
 // the implicit global `event` object that the old inline onclick used.
@@ -486,10 +503,11 @@ function switchTab(tabId, btn) {
 function toggleExercise(id, cardElement) {
     if (!activeWorkoutStart) return;
 
-    completedExercises[id] = !completedExercises[id];
+    const key = getExerciseKey(id);
+    completedExercises[key] = !completedExercises[key];
     saveState();
 
-    if (completedExercises[id]) {
+    if (completedExercises[key]) {
         cardElement.classList.add('completed');
         cardElement.querySelector('input').checked = true;
         checkAndMarkComplete();
@@ -516,7 +534,7 @@ function updateProgressBar() {
     workout.blocks.forEach(block => {
         block.exercises.forEach(ex => {
             totalEx++;
-            if (completedExercises[ex.id]) checkedEx++;
+            if (completedExercises[getExerciseKey(ex.id)]) checkedEx++;
         });
     });
 
@@ -533,7 +551,7 @@ function checkAndMarkComplete() {
     let allChecked = true;
     for (const block of workout.blocks) {
         for (const ex of block.exercises) {
-            if (!completedExercises[ex.id]) { allChecked = false; break; }
+            if (!completedExercises[getExerciseKey(ex.id)]) { allChecked = false; break; }
         }
         if (!allChecked) break;
     }
@@ -557,7 +575,7 @@ function resetDay() {
 
         if (currentWorkout) {
             currentWorkout.blocks.forEach(block => {
-                block.exercises.forEach(ex => { completedExercises[ex.id] = false; });
+                block.exercises.forEach(ex => { completedExercises[getExerciseKey(ex.id)] = false; });
             });
         }
         activeWorkoutStart = null;
@@ -568,6 +586,20 @@ function resetDay() {
 }
 
 function setWorkoutDay(index) {
+    // FIX: Switching days mid-workout left activeWorkoutStart pointing at the OLD
+    // day's start time, while renderDaily() rendered the NEW day's exercises as
+    // already "started." Completing that workout would log it under the wrong
+    // start time with a corrupted duration. Now we confirm with the user first —
+    // same pattern resetDay() already uses — and clear the in-progress state
+    // before switching.
+    if (activeWorkoutStart) {
+        if (!confirm('You have a workout in progress. Switching days will end it without saving. Continue?')) {
+            return;
+        }
+        activeWorkoutStart = null;
+        localStorage.removeItem('activeWorkoutStart');
+    }
+
     currentDayIndex = index;
     saveState();
     renderDaily();
@@ -739,45 +771,36 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
     ctx.fillStyle = bgGlow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // FIX: This block previously appeared TWICE in the file — a leftover duplicate
+    // `const img = new Image();` declaration from when the timeout-race fix (below)
+    // was added without removing the original block it was replacing. Two `const img`
+    // declarations in the same scope is a JavaScript SyntaxError, which would have
+    // stopped the ENTIRE script from running — not just this function. Only one
+    // declaration remains now, with the timeout race built in from the start.
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
-    await new Promise((resolve) => {
-        img.onload  = resolve;
-        img.onerror = () => {
-            console.warn('Failed to load local character image. Falling back to remote raw github URL.');
-            img.crossOrigin = 'anonymous';
-            img.onerror = resolve;
-            img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
-        };
-        if (window.location.protocol === 'file:') {
-            img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
-        } else {
-            img.src = 'img/badge_char.png';
-        }
-    });
-
-   const img = new Image();
-   img.crossOrigin = 'anonymous';
-
-   // Avoid race condition on slow networks
-   await Promise.race([
-       new Promise((resolve) => {
-           img.onload  = resolve;
-           img.onerror = () => {
-               console.warn('Failed to load local character image. Falling back to remote raw github URL.');
-               img.crossOrigin = 'anonymous';
-               img.onerror = resolve;
-               img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
-           };
-           if (window.location.protocol === 'file:') {
-               img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
-           } else {
-               img.src = 'img/badge_char.png';
-           }
-       }),
-       new Promise(resolve => setTimeout(resolve, 5000))
-   ]);
+    // Race the image load against a timeout so a stalled network request (slow
+    // connection, or even the fallback URL itself failing) can't hang badge
+    // generation forever. If it times out, img.complete stays false, so the
+    // drawImage block below is skipped automatically.
+    await Promise.race([
+        new Promise((resolve) => {
+            img.onload  = resolve;
+            img.onerror = () => {
+                console.warn('Failed to load local character image. Falling back to remote raw github URL.');
+                img.crossOrigin = 'anonymous';
+                img.onerror = resolve;
+                img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
+            };
+            if (window.location.protocol === 'file:') {
+                img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
+            } else {
+                img.src = 'img/badge_char.png';
+            }
+        }),
+        new Promise(resolve => setTimeout(resolve, 5000))
+    ]);
 
     if (img.complete && img.naturalWidth > 0) {
         const maxHeight = 780;
@@ -950,8 +973,8 @@ function renderDaily() {
     workout.blocks.forEach(block => {
         html += `<div class="workout-section"><h2>${block.title}</h2>`;
         block.exercises.forEach(ex => {
-            const isChecked      = completedExercises[ex.id] ? 'checked' : '';
-            const completedClass = completedExercises[ex.id] ? 'completed' : '';
+            const isChecked      = completedExercises[getExerciseKey(ex.id)] ? 'checked' : '';
+            const completedClass = completedExercises[getExerciseKey(ex.id)] ? 'completed' : '';
             
             // F.R.E.S.H. Swap Logic
             const displayEx = (regulate && ex.impact === 'high' && ex.alt) ? Object.assign({}, ex, ex.alt) : ex;
@@ -1004,8 +1027,12 @@ function renderHistoryCalendar() {
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const year  = historyCalDate.getFullYear();
     const month = historyCalDate.getMonth();
-    
+
     document.getElementById('month-year-display').innerText      = `${monthNames[month]} ${year}`;
+
+    // FIX: Was hardcoded to disable "Next" only at Dec 2026. That was really meant to mean
+    // "don't let the user navigate past the current month" — just written with a literal
+    // year that goes stale. Now computed from the actual current date every time this renders.
     const today = new Date();
     document.getElementById('btn-next-month').disabled =
         (year > today.getFullYear()) || (year === today.getFullYear() && month >= today.getMonth());
@@ -1028,6 +1055,9 @@ function renderHistoryCalendar() {
 function changeMonth(delta) {
     const newMonth  = historyCalDate.getMonth() + delta;
     const tempDate  = new Date(historyCalDate.getFullYear(), newMonth, 1);
+
+    // FIX: Same fix as the disabled-button check above — cap navigation at the
+    // current month using a live Date comparison instead of a hardcoded year.
     const today    = new Date();
     const maxMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     if (tempDate > maxMonth) return;
