@@ -757,6 +757,28 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
         }
     });
 
+   const img = new Image();
+   img.crossOrigin = 'anonymous';
+
+   // Avoid race condition on slow networks
+   await Promise.race([
+       new Promise((resolve) => {
+           img.onload  = resolve;
+           img.onerror = () => {
+               console.warn('Failed to load local character image. Falling back to remote raw github URL.');
+               img.crossOrigin = 'anonymous';
+               img.onerror = resolve;
+               img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
+           };
+           if (window.location.protocol === 'file:') {
+               img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
+           } else {
+               img.src = 'img/badge_char.png';
+           }
+       }),
+       new Promise(resolve => setTimeout(resolve, 5000))
+   ]);
+
     if (img.complete && img.naturalWidth > 0) {
         const maxHeight = 780;
         const maxWidth  = canvas.width * 0.95;
