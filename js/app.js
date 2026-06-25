@@ -7,15 +7,19 @@ const FRESH_SYSTEM = {
     getLogs: () => JSON.parse(localStorage.getItem('spikefit_fresh_logs')) || [],
     
     saveLog: (logEntry) => {
-    const logs = FRESH_SYSTEM.getLogs();
-    logs.push(logEntry);
+        const logs = FRESH_SYSTEM.getLogs();
+        logs.push(logEntry);
 
-    // Prune anything older than 28 days — calculateACWR() never looks past that window
-    const now = Date.now();
-    const PRUNE_WINDOW_MS = 28 * 86400000;
-    const trimmedLogs = logs.filter(log => (now - log.timestamp) <= PRUNE_WINDOW_MS);
+        const now = Date.now();
+        const PRUNE_WINDOW_MS = 28 * 86400000;
+        const trimmedLogs = logs.filter(log => (now - log.timestamp) <= PRUNE_WINDOW_MS);
 
-    localStorage.setItem('spikefit_fresh_logs', JSON.stringify(trimmedLogs));
+        try {
+            localStorage.setItem('spikefit_fresh_logs', JSON.stringify(trimmedLogs));
+        } catch (err) {
+            console.error('Failed to save F.R.E.S.H. log to localStorage (storage may be full or unavailable).', err);
+            showToast('⚠️ Save Failed', "Your browser couldn't save this workout's load data — storage may be full or restricted.", '⚠️', 8000);
+        }
     },
     
     calculateACWR: () => {
@@ -455,8 +459,13 @@ function getWorkoutKey(baseKey) {
 }
 
 function saveState() {
-    localStorage.setItem('completedExercises', JSON.stringify(completedExercises));
-    localStorage.setItem('completedDates',     JSON.stringify(completedDates));
+    try {
+        localStorage.setItem('completedExercises', JSON.stringify(completedExercises));
+        localStorage.setItem('completedDates',     JSON.stringify(completedDates));
+    } catch (err) {
+        console.error('Failed to save workout state to localStorage (storage may be full or unavailable).', err);
+        showToast('⚠️ Save Failed', "Your browser couldn't save this update — storage may be full or restricted (e.g. private browsing).", '⚠️', 8000);
+    }
 }
 
 // ─── Tab Navigation ───────────────────────────────────────────────────────────
