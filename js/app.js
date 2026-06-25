@@ -1004,9 +1004,11 @@ function renderHistoryCalendar() {
     const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const year  = historyCalDate.getFullYear();
     const month = historyCalDate.getMonth();
-
+    
     document.getElementById('month-year-display').innerText      = `${monthNames[month]} ${year}`;
-    document.getElementById('btn-next-month').disabled = (year >= 2026 && month >= 11);
+    const today = new Date();
+    document.getElementById('btn-next-month').disabled =
+        (year > today.getFullYear()) || (year === today.getFullYear() && month >= today.getMonth());
 
     const firstDay    = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -1026,7 +1028,10 @@ function renderHistoryCalendar() {
 function changeMonth(delta) {
     const newMonth  = historyCalDate.getMonth() + delta;
     const tempDate  = new Date(historyCalDate.getFullYear(), newMonth, 1);
-    if (tempDate.getFullYear() > 2026) return;
+    const today    = new Date();
+    const maxMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    if (tempDate > maxMonth) return;
+
     historyCalDate  = tempDate;
     renderHistoryCalendar();
 }
