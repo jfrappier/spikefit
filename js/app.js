@@ -925,7 +925,7 @@ function renderDaily() {
                         <span class="title">${displayEx.name}</span>
                         <span class="reps">${displayEx.reps}</span>
                         <p class="notes">${displayEx.notes}</p>
-                        <a href="${videoLink}" target="_blank" class="video-link">Watch</a>
+                        <a href="${videoLink}" target="_blank" rel="noopener noreferrer" class="video-link">Watch</a>
                     </div>
                 </div>`;
         });
