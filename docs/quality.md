@@ -4,7 +4,7 @@ SpikeFit uses two code quality services connected to GitHub: **Codacy** and **So
 
 No Node.js, npm, or Docker is required.
 
-### Required: API tokens in `~/.zshrc`
+## Required: API tokens in `~/.zshrc`
 
 Both tools require an API token. Add them once to `~/.zshrc` so they persist across sessions:
 

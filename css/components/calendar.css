@@ -20,7 +20,7 @@
 /* Workout Progress Bar */
 .progress-container {
     width: 100%; background-color: var(--border); border-radius: 20px; height: 8px;
-    margin: 1.5em 0 2.5em 0; overflow: hidden; display: none;
+    margin: 1.5em 0 2.5em; overflow: hidden; display: none;
 }
 .progress-bar {
     height: 100%; background: linear-gradient(90deg, var(--accent), #ff66ba); width: 0%;

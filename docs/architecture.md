@@ -169,6 +169,7 @@ Exercises marked with `impact: 'high'` carry an `alt` object. When `FRESH_SYSTEM
 ## Auto-Leveling Rules
 
 Promotion from Beginner → Intermediate or Intermediate → Advanced requires:
+
 - **16 workouts** logged at the current level
 - The oldest of those 16 falls within a **35-day rolling window** (≈3.2 workouts/week)
 
@@ -183,6 +184,7 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 **Purpose:** Hosting-only access gate. Limits who can access the spikefit.app hosted instance. Not a security requirement — it performs no app logic and never handles user workout data.
 
 **Routing logic:**
+
 1. `/auth/send`, `/auth/verify`, `/auth/logout` — always pass through (no session check)
 2. Assets in `STATIC_FILES` set — pass through with security headers
 3. `/`, `/index.html`, `/auth.html` — serve the page, but redirect authenticated users to `/app.html`
@@ -216,6 +218,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 `'unsafe-inline'` is present because some styles are applied inline in components. Removing it requires an audit of all inline style usage.
 
 **Gap: wrangler.toml is not in the repo.** Anyone deploying the Worker must create `cloudflare/wrangler.toml` manually. Required bindings:
+
 - KV namespace bindings for `SESSIONS`, `OTPS`, `RATELIMIT`, `ALLOWLIST`
 - Secret binding for `RESEND_API_KEY`
 - `main = "worker.js"`, `compatibility_date`, and `name` fields
@@ -229,6 +232,7 @@ Goal: allow cross-device sync without the app ever controlling the storage backe
 The user provides their own storage (a self-hosted endpoint, Dropbox, Google Drive, etc.). The app never routes user workout data through any app-controlled server.
 
 The `saveState()` and `safeParseJSON()` functions in `app.js`, and `FRESH_SYSTEM.saveLog()` / `FRESH_SYSTEM.getLogs()`, are the intended abstraction boundary. The interface a BYOS backend will need to support:
+
 - `read(key)` → value string or null
 - `write(key, value)` → void
 - `listKeys(prefix)` → string[] (needed for bulk export/import)

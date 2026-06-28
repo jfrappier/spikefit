@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 import pytest
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Page
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 APP_URL = f"file://{REPO_ROOT / 'app.html'}"
@@ -17,8 +17,7 @@ def app_page(page: Page):
 
 @pytest.fixture
 def seeded_page(page: Page):
-    """
-    Factory fixture: returns a function that seeds localStorage and opens the app.
+    """Factory fixture: returns a function that seeds localStorage and opens the app.
 
     Usage:
         def test_example(seeded_page):
