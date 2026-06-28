@@ -22,6 +22,7 @@ SpikeFit is a mobile-responsive volleyball training app. It has zero runtime dep
 JS is being split into multiple files by responsibility. Each file uses global scope — no `import`, no `export`. Load order (script tag order in HTML) replaces the module system.
 
 Planned split:
+
 - `js/workouts.js` — the `workouts` object and `schedule` array (first planned extraction)
 - `js/app.js` — all remaining logic
 
