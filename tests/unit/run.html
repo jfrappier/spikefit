@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpikeFit Unit Tests</title>
+    <link rel="stylesheet" href="qunit/qunit.css">
+</head>
+<body>
+
+<div id="qunit"></div>
+<div id="qunit-fixture"></div>
+
+<!--
+    QUnit vendored files: download from https://qunitjs.com and place in tests/unit/qunit/
+      qunit.js  — https://code.jquery.com/qunit/qunit-2.21.1.js
+      qunit.css — https://code.jquery.com/qunit/qunit-2.21.1.css
+    No package manager needed — just save the two files.
+-->
+<script src="qunit/qunit.js"></script>
+
+<!--
+    Stub the DOM and localStorage APIs that the extracted JS files depend on.
+    Pure functions (calculateACWR, getWorkoutKey, getExerciseKey, safeParseJSON) are
+    tested directly. Functions that call getElementById or renderDaily are not tested here.
+-->
+<script>
+    // Minimal localStorage stub for safeParseJSON tests
+    const _store = {};
+    globalThis._stubStorage = {
+        getItem: k => _store[k] ?? null,
+        setItem: (k, v) => { _store[k] = v; },
+        removeItem: k => { delete _store[k]; },
+    };
+</script>
+
+<!--
+    Load only the files being tested. Once js/workouts.js and js/fresh.js are extracted,
+    add them here. Until then, copy the functions under test into the test files directly
+    as inline <script> blocks, or load app.js with a DOM stub.
+-->
+
+<script src="acwr.test.js"></script>
+<script src="workout-keys.test.js"></script>
+
+</body>
+</html>

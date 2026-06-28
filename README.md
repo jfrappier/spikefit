@@ -13,50 +13,79 @@
 
 ---
 
-> This page is set up for my own personal use. If you decide to use this, I am not liable for any injury sustained, lack of progression, etc. This is not a commerical application.
+> This project is set up for personal use. If you use it, please consult a qualified healthcare provider before beginning any exercise program. This is not a commercial application — use at your own risk.
 
-**SpikeFit** is a mobile-responsive web application designed to help players track their training. It runs completely in the browser, meaning there is no backend, no database setup, and no complex installation required. It is built to be lightweight, fast, and heavily focused on privacy.
+**SpikeFit** is a mobile-responsive volleyball training app built on a single principle: your workout data belongs to you. There is no account, no backend, no data collection. Everything runs in your browser and stays on your device.
 
-## ✨ Core Features
+Open the app, see today's workout, check off exercises as you complete them, answer a quick readiness check-in, and earn a shareable badge when you finish. The F.R.E.S.H. system monitors your training load week over week and automatically swaps high-impact exercises on days when your body needs recovery — without you having to think about it.
 
-* 📈 **Progressive Workout Tiers:** Automatically scales from Beginner (2 exercises per superset) to Intermediate and Advanced (3x3 supersets) based on your workout completion history.
-* 🏐 **Volleyball-Specific Programming:** Features targeted core routines and swing mechanic repetitions to translate directly to on-court performance.
-* 🔒 **Privacy-First Tracking:** All workout history, completion dates, and preferences are stored entirely in your device's Local Storage. No personal data is transmitted or collected.
-* 🏅 **Milestone Tracking:** Includes a visual calendar and a shareable completion badge system.
+## The Science
 
-## Science backed training program
+**Progressive overload** — the foundation of the program — is drawn from the [ACSM Position Stand on Progression Models in Resistance Training](https://pubmed.ncbi.nlm.nih.gov/19204579/), which recommends 2–3 sessions/week for novice trainees, 3–4 for intermediate, and 4–5 for advanced. SpikeFit auto-promotes you from Beginner → Intermediate → Advanced once you demonstrate consistent training pace: 16 workouts at your current level within any 35-day window (≈3.2 sessions/week).
 
-[ACSM Position Stand on Progression Models in Resistance Training](https://pubmed.ncbi.nlm.nih.gov/19204579/) recommends training frequency of 2-3 days/week for novices, 3-4 days/week for intermediate trainees, and 4-5 days/week for advanced trainees. This is the model used to progress players from begginer, through advanced.
+**F.R.E.S.H.** (Fatigue & Readiness Evaluation System for Health) implements Tim Gabbett's Acute:Chronic Workload Ratio framework. ACWR compares your recent training load (last 7 days) against your average load over the past 28 days. The ratio tells you whether you're building fitness or accumulating excessive fatigue:
 
-F.R.E.S.H (currently in beta) is based on Tim Gabbett's Acute:Chronic Workload Ratio framework. ACWR is a widely used sports science model for monitoring training load and reducing injury risk, and it's fundamentally about consistency of load over time for safe adaptation. 
+| ACWR | Zone | What it means |
+|---|---|---|
+| < 0.8 | Underload | Risk of deconditioning |
+| 0.8–1.3 | Optimal | Sweet spot for adaptation |
+| 1.3–1.5 | Caution | Elevated load — monitor recovery |
+| > 1.5 | Danger | High injury risk — high-impact exercises auto-regulated |
 
-## 🚀 Getting Started
+The system waits until you have 14 days of logged workouts before showing a ratio — before that point, the acute and chronic windows overlap too much to produce a meaningful number.
 
-Because SpikeFit is a static application, you do not need a package manager, build tools, or a local server to run it. 
+## Getting Started
 
-### Local Execution
+Because SpikeFit is a static application, you do not need a package manager, build tools, or a local server.
 
-To run the app on your own machine, simply download or clone the repository and open the `index.html` file in any modern web browser. The app will immediately initialize and create the necessary local storage keys to begin tracking your progress.
+**To run locally:** Download or clone the repository and open `index.html` in any modern browser. The app initializes immediately. All your data is stored in your browser's local storage.
 
-### Live Hosting via GitHub Pages
-
-The easiest way to share this application with other players is to host it via GitHub Pages. 
+**To host on GitHub Pages:**
 
 1. Navigate to the **Settings** tab of your repository.
-2. Select **Pages** from the left-hand sidebar.
-3. Under the **Build and deployment** source dropdown, select **Deploy from a branch**.
+2. Select **Pages** from the left sidebar.
+3. Under **Build and deployment**, select **Deploy from a branch**.
 4. Select your `main` branch and click **Save**.
 
-GitHub will provide a live URL where the application can be accessed, perfectly formatted for mobile devices.
+GitHub provides a live URL accessible on any device, formatted for mobile.
 
-## Authentication
+## Optional: Access Control via Cloudflare Workers
 
-The page is meant to operate indepently of any backend or external services. However, there may be reasons to gate access. An example `worker.js` is in the cloudflare directory that enables you to use `auth.html` in those scenarios. This is simply an example of how to add authentication, and not a robust solution.
+The app works completely without any backend. If you're hosting a shared instance and want to limit who can access it, `cloudflare/worker.js` provides an allowlist-based access gate.
 
-## 🔄 Resetting Data
+The Worker sits in front of your GitHub Pages deployment and requires email-based OTP authentication before serving `app.html`. It never handles or stores user workout data — only session tokens and rate limit counters.
 
-If you need to clear your progress and start the program over, you can use the "Reset Today's Progress" button for a single day, or simply clear your browser's site data/local storage to wipe the application completely clean.
+**What you'll need to deploy it:**
+
+- A Cloudflare account with Workers and KV enabled
+- A [Resend](https://resend.com) account and API key for sending OTP emails
+- `wrangler.toml` in the `cloudflare/` directory with four KV namespace bindings:
+
+| Namespace | Purpose |
+|---|---|
+| `SESSIONS` | Maps session tokens to email addresses (30-day TTL) |
+| `OTPS` | Stores one-time codes while they're valid (10-minute TTL) |
+| `RATELIMIT` | Tracks OTP send and verify attempt counts |
+| `ALLOWLIST` | The set of email addresses allowed to log in |
+
+Add users by putting their email address as a key in the `ALLOWLIST` namespace (value can be anything, e.g. `'true'`). There is no self-registration.
+
+## Resetting Data
+
+To clear a single day: use the **Reset Today's Progress** button in the app.
+
+To wipe everything and start fresh: clear your browser's site data or local storage for the app's domain.
+
+## Architecture
+
+Static HTML/CSS/JS served from GitHub Pages. All state in browser local storage. Optional Cloudflare Worker for access control. No build step, no framework, no server-side user data.
+
+See [`docs/architecture.md`](docs/architecture.md) for a full breakdown of the system, localStorage schema, and F.R.E.S.H. data flow. See [`docs/decisions.md`](docs/decisions.md) for the rationale behind key design choices. See [`docs/quality.md`](docs/quality.md) for how Codacy and SonarCloud are configured and how to run them locally.
+
+## Contributing
+
+Before making changes, read [`guardrails/coding-rules.md`](guardrails/coding-rules.md) for the non-negotiables (especially around privacy and the zero-dependency constraint). Run [`guardrails/review-checklist.md`](guardrails/review-checklist.md) before submitting a PR. See [`tests/README.md`](tests/README.md) for how to run the test suite.
 
 ---
 
-**Disclaimer:** *This project is for educational and example purposes only. Users should always consult with a qualified healthcare provider or physician before beginning any new exercise program. The repository owner assumes no liability for injuries incurred while using this application.*
+**Disclaimer:** *This project is for educational and personal use only. Users should always consult a qualified healthcare provider or physician before beginning any new exercise program. The repository owner assumes no liability for injuries incurred while using this application.*
