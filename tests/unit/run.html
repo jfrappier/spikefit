@@ -27,7 +27,7 @@
 <script>
     // Minimal localStorage stub for safeParseJSON tests
     const _store = {};
-    window._stubStorage = {
+    globalThis._stubStorage = {
         getItem: k => _store[k] ?? null,
         setItem: (k, v) => { _store[k] = v; },
         removeItem: k => { delete _store[k]; },

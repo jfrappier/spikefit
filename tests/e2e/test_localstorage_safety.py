@@ -60,7 +60,7 @@ def test_exercise_keys_scoped_to_date(seeded_page):
     )
 
 
-def test_missing_localStorage_key_returns_default(seeded_page):
+def test_missing_localstorage_key_returns_default(seeded_page):
     """App treats absent localStorage keys as their default values."""
     p = seeded_page({})
     level = p.evaluate("localStorage.getItem('workoutLevel')")
