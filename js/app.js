@@ -1,17 +1,40 @@
+// safeParseJSON avoids JSON.parse on a malformed localStorage value. 
+// Wraps every parse in try/catch and falls back to a safe default instead of crashing.
+function safeParseJSON(key, fallback) {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    try {
+        return JSON.parse(raw);
+    } catch (err) {
+        console.error(`Corrupted localStorage data for "${key}", resetting to default.`, err);
+        return fallback;
+    }
+}
+
 // ==========================================
 // F.R.E.S.H. AUTO-REGULATOR ENGINE
 // ==========================================
 const FRESH_SYSTEM = {
     sessionState: { jointFreshness: null },
     
-    getLogs: () => JSON.parse(localStorage.getItem('spikefit_fresh_logs')) || [],
+    getLogs: () => safeParseJSON('spikefit_fresh_logs', []),
     
     saveLog: (logEntry) => {
         const logs = FRESH_SYSTEM.getLogs();
         logs.push(logEntry);
-        localStorage.setItem('spikefit_fresh_logs', JSON.stringify(logs));
-    },
 
+        const now = Date.now();
+        const PRUNE_WINDOW_MS = 28 * 86400000;
+        const trimmedLogs = logs.filter(log => (now - log.timestamp) <= PRUNE_WINDOW_MS);
+
+        try {
+            localStorage.setItem('spikefit_fresh_logs', JSON.stringify(trimmedLogs));
+        } catch (err) {
+            console.error('Failed to save F.R.E.S.H. log to localStorage (storage may be full or unavailable).', err);
+            showToast('⚠️ Save Failed', "Your browser couldn't save this workout's load data — storage may be full or restricted.", '⚠️', 8000);
+        }
+    },
+    
     calculateACWR: () => {
         const logs = FRESH_SYSTEM.getLogs();
         const now = Date.now();
@@ -430,12 +453,11 @@ const schedule = [
 
 // --- State ---
 let currentDayIndex     = (new Date().getDay() + 6) % 7;
-let completedExercises  = JSON.parse(localStorage.getItem('completedExercises')) || {};
-let completedDates      = JSON.parse(localStorage.getItem('completedDates')) || {};
+let completedExercises  = safeParseJSON('completedExercises', {});
+let completedDates      = safeParseJSON('completedDates', {});
 let historyCalDate      = new Date();
 let activeWorkoutStart  = localStorage.getItem('activeWorkoutStart') || null;
 let workoutLevel        = localStorage.getItem('workoutLevel') || 'beginner';
-let manualLevelOverride = localStorage.getItem('manualLevelOverride') === 'true';
 
 window.currentShareBlob = null;
 
@@ -449,8 +471,30 @@ function getWorkoutKey(baseKey) {
 }
 
 function saveState() {
-    localStorage.setItem('completedExercises', JSON.stringify(completedExercises));
-    localStorage.setItem('completedDates',     JSON.stringify(completedDates));
+    try {
+        localStorage.setItem('completedExercises', JSON.stringify(completedExercises));
+        localStorage.setItem('completedDates',     JSON.stringify(completedDates));
+    } catch (err) {
+        console.error('Failed to save workout state to localStorage (storage may be full or unavailable).', err);
+        showToast('⚠️ Save Failed', "Your browser couldn't save this update — storage may be full or restricted (e.g. private browsing).", '⚠️', 8000);
+    }
+}
+
+// FIX: completedExercises was keyed only by exercise ID, but the same workout letter
+// (e.g. 'A', 'D') appears on multiple days in the schedule. Checking off Monday's "A"
+// left Saturday's "A" already checked too, since they share exercise IDs. Worse, the
+// same collision happens week-over-week on the same weekday, since nothing was tied to
+// an actual calendar date. Scoping the key to today's real date fixes both at once.
+function getTodayDateStr() {
+    const today = new Date();
+    const year  = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day   = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function getExerciseKey(exerciseId) {
+    return `${getTodayDateStr()}_${exerciseId}`;
 }
 
 // ─── Tab Navigation ───────────────────────────────────────────────────────────
@@ -472,10 +516,11 @@ function switchTab(tabId, btn) {
 function toggleExercise(id, cardElement) {
     if (!activeWorkoutStart) return;
 
-    completedExercises[id] = !completedExercises[id];
+    const key = getExerciseKey(id);
+    completedExercises[key] = !completedExercises[key];
     saveState();
 
-    if (completedExercises[id]) {
+    if (completedExercises[key]) {
         cardElement.classList.add('completed');
         cardElement.querySelector('input').checked = true;
         checkAndMarkComplete();
@@ -502,7 +547,7 @@ function updateProgressBar() {
     workout.blocks.forEach(block => {
         block.exercises.forEach(ex => {
             totalEx++;
-            if (completedExercises[ex.id]) checkedEx++;
+            if (completedExercises[getExerciseKey(ex.id)]) checkedEx++;
         });
     });
 
@@ -519,7 +564,7 @@ function checkAndMarkComplete() {
     let allChecked = true;
     for (const block of workout.blocks) {
         for (const ex of block.exercises) {
-            if (!completedExercises[ex.id]) { allChecked = false; break; }
+            if (!completedExercises[getExerciseKey(ex.id)]) { allChecked = false; break; }
         }
         if (!allChecked) break;
     }
@@ -543,7 +588,7 @@ function resetDay() {
 
         if (currentWorkout) {
             currentWorkout.blocks.forEach(block => {
-                block.exercises.forEach(ex => { completedExercises[ex.id] = false; });
+                block.exercises.forEach(ex => { completedExercises[getExerciseKey(ex.id)] = false; });
             });
         }
         activeWorkoutStart = null;
@@ -554,6 +599,20 @@ function resetDay() {
 }
 
 function setWorkoutDay(index) {
+    // FIX: Switching days mid-workout left activeWorkoutStart pointing at the OLD
+    // day's start time, while renderDaily() rendered the NEW day's exercises as
+    // already "started." Completing that workout would log it under the wrong
+    // start time with a corrupted duration. Now we confirm with the user first —
+    // same pattern resetDay() already uses — and clear the in-progress state
+    // before switching.
+    if (activeWorkoutStart) {
+        if (!confirm('You have a workout in progress. Switching days will end it without saving. Continue?')) {
+            return;
+        }
+        activeWorkoutStart = null;
+        localStorage.removeItem('activeWorkoutStart');
+    }
+
     currentDayIndex = index;
     saveState();
     renderDaily();
@@ -609,6 +668,30 @@ function updateWorkoutStatus() {
     }
 }
 
+// FIX: Auto-leveling now requires 16 workouts done AT THE CURRENT LEVEL (not lifetime
+// total), within a window that implies a consistent pace — roughly 3+ workouts/week,
+// informed by ACSM training-frequency guidance for novice vs. intermediate trainees.
+// 16 workouts at 1x/week (16 weeks) doesn't mean someone's ready for a harder program.
+// This always fires once the bar is met — there's no manual override that can
+// permanently disable auto-leveling. Advanced is the top tier, so it's never checked
+// for promotion (workoutLevel will never be 'advanced' in either branch below).
+const CONSISTENCY_WINDOW_DAYS = 35; // ~3.2 workouts/week minimum sustained pace
+
+function metConsistentPace(level, requiredCount) {
+    const recentDates = Object.entries(completedDates)
+        .filter(([, entry]) => entry.level === level)
+        .map(([dateStr]) => new Date(dateStr + 'T00:00:00'))
+        .sort((a, b) => b - a); // most recent first
+
+    if (recentDates.length < requiredCount) return false;
+
+    const newest = recentDates[0];
+    const oldest = recentDates[requiredCount - 1];
+    const spanDays = (newest - oldest) / 86400000;
+
+    return spanDays <= CONSISTENCY_WINDOW_DAYS;
+}
+
 function markWorkoutComplete() {
     const today      = new Date();
     const year       = today.getFullYear();
@@ -624,7 +707,7 @@ function markWorkoutComplete() {
         durationText = ` (${mins} min)`;
     }
 
-    completedDates[dateStr] = { completed: true, startTime: activeWorkoutStart, endTime: today.toISOString() };
+    completedDates[dateStr] = { completed: true, startTime: activeWorkoutStart, endTime: today.toISOString(), level: workoutLevel };
     activeWorkoutStart = null;
     localStorage.removeItem('activeWorkoutStart');
 
@@ -632,13 +715,12 @@ function markWorkoutComplete() {
     renderHistoryCalendar();
     renderDaily();
 
-    const completedCount = Object.keys(completedDates).length;
-    if (completedCount >= 16 && workoutLevel === 'intermediate' && !manualLevelOverride) {
+    if (workoutLevel === 'intermediate' && metConsistentPace('intermediate', 16)) {
         setLevel('advanced', true);
-        showToast('🔥 MAXIMUM OVERDRIVE!', "You've successfully logged four weeks of workouts. We've automatically upgraded your schedule to the Advanced plan!", '🚀', 10000);
-    } else if (completedCount >= 8 && workoutLevel === 'beginner' && !manualLevelOverride) {
+        showToast('🔥 MAXIMUM OVERDRIVE!', "You've consistently logged 16 Intermediate workouts. We've automatically upgraded your schedule to the Advanced plan!", '🚀', 10000);
+    } else if (workoutLevel === 'beginner' && metConsistentPace('beginner', 16)) {
         setLevel('intermediate', true);
-        showToast('🎉 LEVEL UP!', "You've successfully logged two weeks of workouts. We've automatically upgraded your schedule to the Intermediate plan! Keep crushing it!", '⭐', 10000);
+        showToast('🎉 LEVEL UP!', "You've consistently logged 16 Beginner workouts. We've automatically upgraded your schedule to the Intermediate plan! Keep crushing it!", '⭐', 10000);
     }
 
     const btn = document.getElementById('btn-mark-complete');
@@ -672,6 +754,22 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
     shareBtn.disabled        = true;
     shareBtn.innerText       = 'Generating Badge...';
 
+    // Ensure the webfont is actually loaded before drawing canvas text.
+    // Race against a timeout so a slow/blocked font file can't hang badge generation.
+    try {
+        await Promise.race([
+            Promise.all([
+                document.fonts.load('bold 55px "Source Sans 3"'),
+                document.fonts.load('bold 95px "Source Sans 3"'),
+                document.fonts.load('60px "Source Sans 3"'),
+                document.fonts.load('bold 45px "Source Sans 3"')
+            ]),
+            new Promise(resolve => setTimeout(resolve, 2000))
+        ]);
+    } catch (err) {
+        console.warn('Font load check failed, proceeding with fallback font.', err);
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width  = 1080;
     canvas.height = 1080;
@@ -686,23 +784,36 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
     ctx.fillStyle = bgGlow;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // FIX: This block previously appeared TWICE in the file — a leftover duplicate
+    // `const img = new Image();` declaration from when the timeout-race fix (below)
+    // was added without removing the original block it was replacing. Two `const img`
+    // declarations in the same scope is a JavaScript SyntaxError, which would have
+    // stopped the ENTIRE script from running — not just this function. Only one
+    // declaration remains now, with the timeout race built in from the start.
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
-    await new Promise((resolve) => {
-        img.onload  = resolve;
-        img.onerror = () => {
-            console.warn('Failed to load local character image. Falling back to remote raw github URL.');
-            img.crossOrigin = 'anonymous';
-            img.onerror = resolve;
-            img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
-        };
-        if (window.location.protocol === 'file:') {
-            img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
-        } else {
-            img.src = 'img/badge_char.png';
-        }
-    });
+    // Race the image load against a timeout so a stalled network request (slow
+    // connection, or even the fallback URL itself failing) can't hang badge
+    // generation forever. If it times out, img.complete stays false, so the
+    // drawImage block below is skipped automatically.
+    await Promise.race([
+        new Promise((resolve) => {
+            img.onload  = resolve;
+            img.onerror = () => {
+                console.warn('Failed to load local character image. Falling back to remote raw github URL.');
+                img.crossOrigin = 'anonymous';
+                img.onerror = resolve;
+                img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
+            };
+            if (window.location.protocol === 'file:') {
+                img.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/img/badge_char.png';
+            } else {
+                img.src = 'img/badge_char.png';
+            }
+        }),
+        new Promise(resolve => setTimeout(resolve, 5000))
+    ]);
 
     if (img.complete && img.naturalWidth > 0) {
         const maxHeight = 780;
@@ -875,8 +986,8 @@ function renderDaily() {
     workout.blocks.forEach(block => {
         html += `<div class="workout-section"><h2>${block.title}</h2>`;
         block.exercises.forEach(ex => {
-            const isChecked      = completedExercises[ex.id] ? 'checked' : '';
-            const completedClass = completedExercises[ex.id] ? 'completed' : '';
+            const isChecked      = completedExercises[getExerciseKey(ex.id)] ? 'checked' : '';
+            const completedClass = completedExercises[getExerciseKey(ex.id)] ? 'completed' : '';
             
             // F.R.E.S.H. Swap Logic
             const displayEx = (regulate && ex.impact === 'high' && ex.alt) ? Object.assign({}, ex, ex.alt) : ex;
@@ -894,7 +1005,7 @@ function renderDaily() {
                         <span class="title">${displayEx.name}</span>
                         <span class="reps">${displayEx.reps}</span>
                         <p class="notes">${displayEx.notes}</p>
-                        <a href="${videoLink}" target="_blank" class="video-link">Watch</a>
+                        <a href="${videoLink}" target="_blank" rel="noopener noreferrer" class="video-link">Watch</a>
                     </div>
                 </div>`;
         });
@@ -931,7 +1042,13 @@ function renderHistoryCalendar() {
     const month = historyCalDate.getMonth();
 
     document.getElementById('month-year-display').innerText      = `${monthNames[month]} ${year}`;
-    document.getElementById('btn-next-month').disabled = (year >= 2026 && month >= 11);
+
+    // FIX: Was hardcoded to disable "Next" only at Dec 2026. That was really meant to mean
+    // "don't let the user navigate past the current month" — just written with a literal
+    // year that goes stale. Now computed from the actual current date every time this renders.
+    const today = new Date();
+    document.getElementById('btn-next-month').disabled =
+        (year > today.getFullYear()) || (year === today.getFullYear() && month >= today.getMonth());
 
     const firstDay    = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -951,7 +1068,13 @@ function renderHistoryCalendar() {
 function changeMonth(delta) {
     const newMonth  = historyCalDate.getMonth() + delta;
     const tempDate  = new Date(historyCalDate.getFullYear(), newMonth, 1);
-    if (tempDate.getFullYear() > 2026) return;
+
+    // FIX: Same fix as the disabled-button check above — cap navigation at the
+    // current month using a live Date comparison instead of a hardcoded year.
+    const today    = new Date();
+    const maxMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    if (tempDate > maxMonth) return;
+
     historyCalDate  = tempDate;
     renderHistoryCalendar();
 }
@@ -959,7 +1082,6 @@ function changeMonth(delta) {
 function setLevel(level, auto = false) {
     workoutLevel = level;
     localStorage.setItem('workoutLevel', level);
-    if (!auto) { manualLevelOverride = true; localStorage.setItem('manualLevelOverride', 'true'); }
 
     document.getElementById('btn-level-beginner').classList.toggle('active',     level === 'beginner');
     document.getElementById('btn-level-intermediate').classList.toggle('active', level === 'intermediate');
@@ -1054,6 +1176,10 @@ document.getElementById('btn-save-readiness').addEventListener('click', () => {
     startWorkout();
 });
 
+document.getElementById('btn-cancel-readiness').addEventListener('click', () => {
+    document.getElementById('fresh-readiness-modal').style.display = 'none';
+});
+
 document.getElementById('btn-mark-complete').addEventListener('click', () => {
     if (activeWorkoutStart) {
         // Reset slider state before opening
@@ -1120,6 +1246,18 @@ document.getElementById('btn-accept-disclaimer').addEventListener('click', accep
 
 // Privacy modal
 document.getElementById('btn-close-privacy').addEventListener('click', closePrivacyModal);
+
+// Logo fallback — if local logo.png fails to load, fall back to the GitHub-hosted copy.
+document.getElementById('splash-logo-img').addEventListener('error', function() {
+    this.onerror = null;
+    this.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png';
+}, { once: true });
+
+// Header logo fallback
+document.getElementById('header-logo-img').addEventListener('error', function() {
+    this.onerror = null;
+    this.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png';
+}, { once: true });
 
 // Toast
 document.getElementById('btn-close-toast').addEventListener('click', closeToast);

@@ -24,6 +24,12 @@
 * 🔒 **Privacy-First Tracking:** All workout history, completion dates, and preferences are stored entirely in your device's Local Storage. No personal data is transmitted or collected.
 * 🏅 **Milestone Tracking:** Includes a visual calendar and a shareable completion badge system.
 
+## Science backed training program
+
+[ACSM Position Stand on Progression Models in Resistance Training](https://pubmed.ncbi.nlm.nih.gov/19204579/) recommends training frequency of 2-3 days/week for novices, 3-4 days/week for intermediate trainees, and 4-5 days/week for advanced trainees. This is the model used to progress players from begginer, through advanced.
+
+F.R.E.S.H (currently in beta) is based on Tim Gabbett's Acute:Chronic Workload Ratio framework. ACWR is a widely used sports science model for monitoring training load and reducing injury risk, and it's fundamentally about consistency of load over time for safe adaptation. 
+
 ## 🚀 Getting Started
 
 Because SpikeFit is a static application, you do not need a package manager, build tools, or a local server to run it. 
