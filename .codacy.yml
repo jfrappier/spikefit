@@ -1,0 +1,23 @@
+---
+# Codacy configuration
+# Docs: https://docs.codacy.com/repositories-configure/codacy-configuration-file/
+
+engines:
+  eslint:
+    enabled: true
+  pylint:
+    enabled: true
+  csslint:
+    enabled: true
+  markdownlint:
+    enabled: true
+  # Disable tools that don't apply to this project
+  bandit:
+    enabled: false
+  stylelint:
+    enabled: false
+
+exclude_paths:
+  - "tests/unit/qunit/**"   # vendored QUnit library — not our code
+  - "fonts/**"              # binary font files
+  - "img/**"                # binary image files

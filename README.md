@@ -80,7 +80,7 @@ To wipe everything and start fresh: clear your browser's site data or local stor
 
 Static HTML/CSS/JS served from GitHub Pages. All state in browser local storage. Optional Cloudflare Worker for access control. No build step, no framework, no server-side user data.
 
-See [`docs/architecture.md`](docs/architecture.md) for a full breakdown of the system, localStorage schema, and F.R.E.S.H. data flow. See [`docs/decisions.md`](docs/decisions.md) for the rationale behind key design choices.
+See [`docs/architecture.md`](docs/architecture.md) for a full breakdown of the system, localStorage schema, and F.R.E.S.H. data flow. See [`docs/decisions.md`](docs/decisions.md) for the rationale behind key design choices. See [`docs/quality.md`](docs/quality.md) for how Codacy and SonarCloud are configured and how to run them locally.
 
 ## Contributing
 

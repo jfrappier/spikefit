@@ -119,6 +119,38 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count.
 
 ---
 
+## Code Quality Tools
+
+**Codacy** and **SonarCloud** run automatically on every GitHub push and PR. Config files: `.codacy.yml` and `sonar-project.properties`.
+
+**Codacy** runs automatically on GitHub push. To fetch what it flagged for a file (Docker CLI doesn't work on macOS — use the API):
+```bash
+source ~/.zshrc
+FILE_ID=$(curl -s -H "api-token: $CODACY_API_TOKEN" \
+  "https://app.codacy.com/api/v3/organizations/gh/jfrappier/repositories/spikefit/files?limit=100" \
+  | python3 -c "import sys,json; files=json.load(sys.stdin)['data']; print(next(f['fileId'] for f in files if f['path']=='js/app.js'))")
+curl -s -H "api-token: $CODACY_API_TOKEN" \
+  "https://app.codacy.com/api/v3/organizations/gh/jfrappier/repositories/spikefit/files/$FILE_ID/issues" \
+  | python3 -m json.tool
+```
+
+**SonarCloud** uses Automatic Analysis (GitHub-triggered only — CLI scanner does not work alongside it). To fetch what it flagged, query the API with `$SONAR_TOKEN`:
+```bash
+# All open issues
+curl -s -u "$SONAR_TOKEN:" \
+  "https://sonarcloud.io/api/issues/search?projectKeys=jfrappier_volleyfit&statuses=OPEN" \
+  | python3 -m json.tool
+
+# Issues on a specific PR (replace 42 with PR number)
+curl -s -u "$SONAR_TOKEN:" \
+  "https://sonarcloud.io/api/issues/search?projectKeys=jfrappier_volleyfit&pullRequest=42&statuses=OPEN" \
+  | python3 -m json.tool
+```
+
+See `docs/quality.md` for full details including known false positives.
+
+---
+
 ## How to Run
 
 Open `index.html` in any modern browser. No server, no build step, no installation required.

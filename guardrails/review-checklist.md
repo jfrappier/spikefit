@@ -4,6 +4,33 @@ Open this file during review. Check every applicable box before approving.
 
 ---
 
+## Before Opening a PR
+
+Both tools run automatically when you push to GitHub. To check findings before or after a push:
+
+**Codacy** (query by file — replace `js/app.js` with the file you changed):
+```bash
+source ~/.zshrc
+FILE_ID=$(curl -s -H "api-token: $CODACY_API_TOKEN" \
+  "https://app.codacy.com/api/v3/organizations/gh/jfrappier/repositories/spikefit/files?limit=100" \
+  | python3 -c "import sys,json; files=json.load(sys.stdin)['data']; print(next(f['fileId'] for f in files if f['path']=='js/app.js'))")
+curl -s -H "api-token: $CODACY_API_TOKEN" \
+  "https://app.codacy.com/api/v3/organizations/gh/jfrappier/repositories/spikefit/files/$FILE_ID/issues" \
+  | python3 -m json.tool
+```
+
+**SonarCloud** (by PR number):
+
+```bash
+curl -s -u "$SONAR_TOKEN:" \
+  "https://sonarcloud.io/api/issues/search?projectKeys=jfrappier_volleyfit&pullRequest=<PR_NUMBER>&statuses=OPEN" \
+  | python3 -m json.tool
+```
+
+Known false positives to ignore: Codacy flagging `acwr.test.js` and `workout-keys.test.js` as "no tests found" — QUnit's API is not recognized. See `docs/quality.md` for details.
+
+---
+
 ## General
 
 - [ ] No new npm packages in any browser-shipped file
