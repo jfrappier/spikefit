@@ -1079,7 +1079,7 @@ function changeMonth(delta) {
     renderHistoryCalendar();
 }
 
-function setLevel(level, auto = false) {
+function setLevel(level) {
     workoutLevel = level;
     localStorage.setItem('workoutLevel', level);
 
