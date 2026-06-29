@@ -362,8 +362,14 @@ function updateWorkoutStatus() {
     const workout     = workouts[getWorkoutKey(schedule[currentDayIndex].workout)];
 
     if (!workout) {
-        if (controlsDiv) controlsDiv.style.display = 'none';
-        if (completeBtn) completeBtn.style.display  = 'none';
+        if (controlsDiv) controlsDiv.style.display = 'block';
+        if (activeWorkoutStart) {
+            if (completeBtn) completeBtn.style.display = 'block';
+            setStartedState(startBtn, completeBtn);
+        } else {
+            if (completeBtn) completeBtn.style.display = 'none';
+            setIdleState(startBtn, completeBtn);
+        }
         return;
     }
 
@@ -737,6 +743,7 @@ function renderDaily() {
         content.textContent = '';
         content.appendChild(wrap);
         document.getElementById('progress-container').style.display = 'none';
+        updateWorkoutStatus();
         return;
     }
 
