@@ -1,6 +1,3 @@
-const COOKIE       = 'sf_session';
-const SESSION_DAYS = 30;
-
 let emailValue  = '';
 let otpAttempts = 0;
 

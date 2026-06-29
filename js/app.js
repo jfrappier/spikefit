@@ -716,10 +716,10 @@ function markWorkoutComplete() {
     renderDaily();
 
     if (workoutLevel === 'intermediate' && metConsistentPace('intermediate', 16)) {
-        setLevel('advanced', true);
+        setLevel('advanced');
         showToast('🔥 MAXIMUM OVERDRIVE!', "You've consistently logged 16 Intermediate workouts. We've automatically upgraded your schedule to the Advanced plan!", '🚀', 10000);
     } else if (workoutLevel === 'beginner' && metConsistentPace('beginner', 16)) {
-        setLevel('intermediate', true);
+        setLevel('intermediate');
         showToast('🎉 LEVEL UP!', "You've consistently logged 16 Beginner workouts. We've automatically upgraded your schedule to the Intermediate plan! Keep crushing it!", '⭐', 10000);
     }
 
@@ -1079,7 +1079,7 @@ function changeMonth(delta) {
     renderHistoryCalendar();
 }
 
-function setLevel(level, auto = false) {
+function setLevel(level) {
     workoutLevel = level;
     localStorage.setItem('workoutLevel', level);
 
