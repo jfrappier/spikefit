@@ -23,6 +23,7 @@ const STATIC_FILES = new Set([
   '/css/components/nav.css',
   '/css/components/splash.css',
   '/js/auth.js',
+  '/js/workouts.js',
   '/js/app.js',
   '/img/1.jpg',
   '/img/2.jpg',
