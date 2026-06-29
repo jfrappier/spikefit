@@ -599,7 +599,7 @@ async function shareFile(file, text) {
         await navigator.share(shareData);
         return 'Shared!';
     }
-    return copyOrDownloadBadge(window.currentShareBlob);
+    return copyOrDownloadBadge(globalThis.currentShareBlob);
 }
 
 async function shareBadge() {
@@ -675,11 +675,11 @@ function createRegulationBanner() {
 function createExerciseCard(ex, regulate, isStarted) {
     const isChecked  = !!completedExercises[getExerciseKey(ex.id)];
     const isRegulated = regulate && ex.impact === 'high' && ex.alt;
-    const displayEx  = isRegulated ? Object.assign({}, ex, ex.alt) : ex;
+    const displayEx  = isRegulated ? { ...ex, ...ex.alt } : ex;
     const videoLink  = displayEx.url || `https://www.youtube.com/results?search_query=${encodeURIComponent(displayEx.video + ' tutorial')}`;
 
     const card = document.createElement('div');
-    card.className  = ['exercise-card', isChecked ? 'completed' : '', !isStarted ? 'disabled' : '', isRegulated ? 'fresh-regulated' : ''].filter(Boolean).join(' ');
+    card.className  = ['exercise-card', isChecked ? 'completed' : '', isStarted ? '' : 'disabled', isRegulated ? 'fresh-regulated' : ''].filter(Boolean).join(' ');
     card.dataset.id = ex.id;
     if (isRegulated) card.style.borderLeft = '4px solid var(--accent)';
 
