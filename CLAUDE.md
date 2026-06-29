@@ -21,9 +21,9 @@ SpikeFit is a mobile-responsive volleyball training app. It has zero runtime dep
 
 JS is being split into multiple files by responsibility. Each file uses global scope — no `import`, no `export`. Load order (script tag order in HTML) replaces the module system.
 
-Planned split:
+Current split:
 
-- `js/workouts.js` — the `workouts` object and `schedule` array (first planned extraction)
+- `js/workouts.js` — the `workouts` object and `schedule` array (static workout data)
 - `js/app.js` — all remaining logic
 
 When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in the relevant HTML files, before any file that depends on its globals.
@@ -35,7 +35,7 @@ When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in th
 | File | Purpose |
 |---|---|
 | `index.html` | Marketing landing page. No JavaScript. |
-| `app.html` + `js/app.js` | Main app shell and all workout logic. |
+| `app.html` + `js/workouts.js` + `js/app.js` | Main app shell. `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state. |
 | `auth.html` + `js/auth.js` | OTP auth flow. Only used when the Worker is deployed. |
 | `cloudflare/worker.js` | Optional hosting gate — routing, OTP, sessions. Never touches workout data. |
 | `css/base.css` | All CSS custom properties (design tokens). The only file that defines `:root` variables. |

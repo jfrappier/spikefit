@@ -30,11 +30,11 @@ Lightweight ADR format: **Status → Context → Decision → Consequences**
 
 ## ADR-003: Multi-File Global-Scope JavaScript
 
-**Status:** Accepted (in progress)
+**Status:** Accepted
 
-**Context:** ES module `import`/`export` syntax does not work when loading HTML via the `file://` protocol without a local server — the browser blocks cross-origin module loads. The app must work when opened directly from disk. At the same time, `app.js` has grown to ~1,300 lines and needs to be split for maintainability.
+**Context:** ES module `import`/`export` syntax does not work when loading HTML via the `file://` protocol without a local server — the browser blocks cross-origin module loads. The app must work when opened directly from disk. At the same time, `app.js` had grown to ~1,300 lines and needed to be split for maintainability.
 
-**Decision:** All browser-shipped JS files use global scope — no `import`, no `export`. Files are split by responsibility and loaded in order via `<script defer>` in the HTML. Load order is the dependency graph. The first planned extraction is the workout database into `js/workouts.js` to separate static data from application logic.
+**Decision:** All browser-shipped JS files use global scope — no `import`, no `export`. Files are split by responsibility and loaded in order via `<script defer>` in the HTML. Load order is the dependency graph. The workout database has been extracted into `js/workouts.js` (loaded before `js/app.js`) to separate static data from application logic.
 
 **Consequences:** No tree-shaking, no circular dependency detection, no dead code elimination by tooling. Load order bugs (calling a function before its file loads) are possible. This tradeoff is acceptable for the current scale. If a local server ever becomes a requirement, migrating to ES modules is straightforward.
 

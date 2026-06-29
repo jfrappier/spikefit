@@ -27,7 +27,7 @@ The Worker is a hosting-only access gate. It controls who can reach the hosted i
 | File | JavaScript | Purpose |
 |---|---|---|
 | `index.html` | none | Marketing landing page. Pure HTML/CSS — no JS at all. |
-| `app.html` | `js/app.js` (defer) | Main application shell. All workout, schedule, history, and F.R.E.S.H. UI. |
+| `app.html` | `js/workouts.js` then `js/app.js` (both defer) | Main application shell. `workouts.js` defines the workout database; `js/app.js` handles all logic, rendering, and state. |
 | `auth.html` | `js/auth.js` (defer) | Two-step OTP flow. Only needed when the Worker is deployed. |
 | `tos.html` | none | Terms of service. Static HTML. |
 
@@ -41,28 +41,33 @@ ES module `import`/`export` does not work when an HTML file is opened directly f
 
 The app is being split into multiple files by responsibility. Each file declares its contents in global scope with no `import` or `export`. Load order (script tag order in the HTML) is the dependency graph.
 
-Planned file breakdown:
-- `js/workouts.js` — the workout database (`workouts` object, `schedule` array) — first planned extraction
+Current file breakdown:
+- `js/workouts.js` — the workout database (`workouts` object, `schedule` array); loaded first
 - `js/app.js` — all remaining app logic, event handling, rendering, state management
+
+### Contents of `js/workouts.js`
+
+- `workouts` object — 12 workout definitions (A/B/C/D × Beginner/Intermediate/Advanced)
+- `schedule` array — 7-day rotating weekly schedule: A, D, B, D, C, A, Rest
+
+Custom workout sets for coaches/teams follow the same shape and variable names. The Cloudflare Worker can serve a different `workouts-*.js` file at the `/js/workouts.js` URL based on the user's email mapping in the ALLOWLIST KV.
 
 ### Logical sections of `js/app.js` (in source order)
 
 1. `safeParseJSON(key, fallback)` — safe localStorage read helper
 2. `FRESH_SYSTEM` object — F.R.E.S.H. auto-regulator engine (ACWR)
-3. `workouts` object — 12 workout definitions (A/B/C/D × Beginner/Intermediate/Advanced)
-4. `schedule` array — 7-day rotating weekly schedule: A, D, B, D, C, A, Rest
-5. Module-level state variables — `completedExercises`, `completedDates`, `workoutLevel`, `activeWorkoutStart`, `historyCalDate`, `currentDayIndex`
-6. Core helpers — `getWorkoutKey()`, `getTodayDateStr()`, `getExerciseKey()`, `saveState()`
-7. Auto-leveling — `metConsistentPace()`, `checkAndAutoLevel()`
-8. Workout lifecycle — `startWorkout()`, `toggleExercise()`, `markWorkoutComplete()`, `resetDay()`
-9. Tab navigation — `showTab()`
-10. Schedule management — `setWorkoutDay()`, `renderSchedule()`
-11. History calendar — `renderHistoryCalendar()`, `changeMonth()`, `checkStreak()`
-12. Badge generation — `generateShareImage()`, `shareBadge()` (Canvas API)
-13. Render functions — `renderDaily()` (rebuilds full workout HTML from state on every change)
-14. Modal helpers — disclaimer, privacy, readiness check-in, RPE survey, FRESH dashboard
-15. Event listeners — all delegation-based, set up at page load
-16. Init sequence + splash screen
+3. Module-level state variables — `completedExercises`, `completedDates`, `workoutLevel`, `activeWorkoutStart`, `historyCalDate`, `currentDayIndex`
+4. Core helpers — `getWorkoutKey()`, `getTodayDateStr()`, `getExerciseKey()`, `saveState()`
+5. Auto-leveling — `metConsistentPace()`, `checkAndAutoLevel()`
+6. Workout lifecycle — `startWorkout()`, `toggleExercise()`, `markWorkoutComplete()`, `resetDay()`
+7. Tab navigation — `showTab()`
+8. Schedule management — `setWorkoutDay()`, `renderSchedule()`
+9. History calendar — `renderHistoryCalendar()`, `changeMonth()`, `checkStreak()`
+10. Badge generation — `generateShareImage()`, `shareBadge()` (Canvas API)
+11. Render functions — `renderDaily()` (rebuilds full workout HTML from state on every change)
+12. Modal helpers — disclaimer, privacy, readiness check-in, RPE survey, FRESH dashboard
+13. Event listeners — all delegation-based, set up at page load
+14. Init sequence + splash screen
 
 ---
 
