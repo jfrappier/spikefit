@@ -189,12 +189,12 @@ function saveState() {
 // left Saturday's "A" already checked too, since they share exercise IDs. Worse, the
 // same collision happens week-over-week on the same weekday, since nothing was tied to
 // an actual calendar date. Scoping the key to today's real date fixes both at once.
+function formatDateStr(date) {
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+}
+
 function getTodayDateStr() {
-    const today = new Date();
-    const year  = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day   = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return formatDateStr(new Date());
 }
 
 function getExerciseKey(exerciseId) {
@@ -340,35 +340,46 @@ function startWorkout() {
     }
 }
 
-function updateWorkoutStatus() {
-    const controlsDiv  = document.getElementById('workout-controls');
-    const startBtn     = document.getElementById('btn-start-workout');
-    const completeBtn  = document.getElementById('btn-mark-complete');
+function setStartedState(startBtn, completeBtn) {
+    const startTime = new Date(activeWorkoutStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    startBtn.innerText = `Workout started at ${startTime}`;
+    startBtn.classList.add('started');
+    startBtn.disabled = true;
+    if (completeBtn) completeBtn.disabled = false;
+}
 
-    const baseWorkoutKey = schedule[currentDayIndex].workout;
-    const workoutKey     = getWorkoutKey(baseWorkoutKey);
-    const workout        = workouts[workoutKey];
+function setIdleState(startBtn, completeBtn) {
+    startBtn.innerText = 'Start Workout';
+    startBtn.classList.remove('started');
+    startBtn.disabled = false;
+    if (completeBtn) completeBtn.disabled = true;
+}
+
+function updateWorkoutStatus() {
+    const controlsDiv = document.getElementById('workout-controls');
+    const startBtn    = document.getElementById('btn-start-workout');
+    const completeBtn = document.getElementById('btn-mark-complete');
+    const workout     = workouts[getWorkoutKey(schedule[currentDayIndex].workout)];
 
     if (!workout) {
-        if (controlsDiv)  controlsDiv.style.display  = 'none';
-        if (completeBtn)  completeBtn.style.display   = 'none';
+        if (controlsDiv) controlsDiv.style.display = 'block';
+        if (activeWorkoutStart) {
+            if (completeBtn) completeBtn.style.display = 'block';
+            setStartedState(startBtn, completeBtn);
+        } else {
+            if (completeBtn) completeBtn.style.display = 'none';
+            setIdleState(startBtn, completeBtn);
+        }
         return;
-    } else {
-        if (controlsDiv)  controlsDiv.style.display  = 'block';
-        if (completeBtn)  completeBtn.style.display   = 'block';
     }
 
+    if (controlsDiv) controlsDiv.style.display = 'block';
+    if (completeBtn) completeBtn.style.display  = 'block';
+
     if (activeWorkoutStart) {
-        const startTime = new Date(activeWorkoutStart).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        startBtn.innerText = `Workout started at ${startTime}`;
-        startBtn.classList.add('started');
-        startBtn.disabled = true;
-        if (completeBtn) completeBtn.disabled = false;
+        setStartedState(startBtn, completeBtn);
     } else {
-        startBtn.innerText = 'Start Workout';
-        startBtn.classList.remove('started');
-        startBtn.disabled = false;
-        if (completeBtn) completeBtn.disabled = true;
+        setIdleState(startBtn, completeBtn);
     }
 }
 
@@ -397,11 +408,8 @@ function metConsistentPace(level, requiredCount) {
 }
 
 function markWorkoutComplete() {
-    const today      = new Date();
-    const year       = today.getFullYear();
-    const month      = String(today.getMonth() + 1).padStart(2, '0');
-    const day        = String(today.getDate()).padStart(2, '0');
-    const dateStr    = `${year}-${month}-${day}`;
+    const today       = new Date();
+    const dateStr     = formatDateStr(today);
     const displayDate = today.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
     let mins = 0, durationText = '';
@@ -448,18 +456,7 @@ function markWorkoutComplete() {
 
 // ─── Badge / Share ────────────────────────────────────────────────────────────
 
-async function generateShareImage(workoutName, dateStr, durationMins) {
-    const previewImg = document.getElementById('share-image-preview');
-    const loader     = document.getElementById('badge-loader');
-    const shareBtn   = document.getElementById('btn-share-badge');
-
-    previewImg.style.display = 'none';
-    loader.style.display     = 'block';
-    shareBtn.disabled        = true;
-    shareBtn.innerText       = 'Generating Badge...';
-
-    // Ensure the webfont is actually loaded before drawing canvas text.
-    // Race against a timeout so a slow/blocked font file can't hang badge generation.
+async function loadBadgeFonts() {
     try {
         await Promise.race([
             Promise.all([
@@ -473,34 +470,12 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
     } catch (err) {
         console.warn('Font load check failed, proceeding with fallback font.', err);
     }
+}
 
-    const canvas = document.createElement('canvas');
-    canvas.width  = 1080;
-    canvas.height = 1080;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = '#1a0e24';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const bgGlow = ctx.createRadialGradient(canvas.width / 2, 400, 50, canvas.width / 2, 400, 500);
-    bgGlow.addColorStop(0, 'rgba(232, 10, 137, 0.25)');
-    bgGlow.addColorStop(1, 'rgba(26, 14, 36, 0)');
-    ctx.fillStyle = bgGlow;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // FIX: This block previously appeared TWICE in the file — a leftover duplicate
-    // `const img = new Image();` declaration from when the timeout-race fix (below)
-    // was added without removing the original block it was replacing. Two `const img`
-    // declarations in the same scope is a JavaScript SyntaxError, which would have
-    // stopped the ENTIRE script from running — not just this function. Only one
-    // declaration remains now, with the timeout race built in from the start.
+async function loadBadgeCharacter() {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-
-    // Race the image load against a timeout so a stalled network request (slow
-    // connection, or even the fallback URL itself failing) can't hang badge
-    // generation forever. If it times out, img.complete stays false, so the
-    // drawImage block below is skipped automatically.
+    // crossOrigin must be set before src to prevent canvas tainting over HTTP
     await Promise.race([
         new Promise((resolve) => {
             img.onload  = resolve;
@@ -518,28 +493,40 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
         }),
         new Promise(resolve => setTimeout(resolve, 5000))
     ]);
+    return img;
+}
 
-    if (img.complete && img.naturalWidth > 0) {
-        const maxHeight = 780;
-        const maxWidth  = canvas.width * 0.95;
-        const scale     = Math.min(maxWidth / img.width, maxHeight / img.height);
-        const drawWidth  = img.width  * scale;
-        const drawHeight = img.height * scale;
-        const offsetX    = (canvas.width - drawWidth) / 2;
-        const offsetY    = Math.max(0, (maxHeight - drawHeight) / 2);
+function drawBadgeBackground(ctx, canvas) {
+    ctx.fillStyle = '#1a0e24';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const bgGlow = ctx.createRadialGradient(canvas.width / 2, 400, 50, canvas.width / 2, 400, 500);
+    bgGlow.addColorStop(0, 'rgba(232, 10, 137, 0.25)');
+    bgGlow.addColorStop(1, 'rgba(26, 14, 36, 0)');
+    ctx.fillStyle = bgGlow;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
 
-        ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+function drawBadgeCharacter(ctx, canvas, img) {
+    if (!img.complete || img.naturalWidth === 0) return;
+    const maxHeight  = 780;
+    const maxWidth   = canvas.width * 0.95;
+    const scale      = Math.min(maxWidth / img.width, maxHeight / img.height);
+    const drawWidth  = img.width  * scale;
+    const drawHeight = img.height * scale;
+    const offsetX    = (canvas.width - drawWidth) / 2;
+    const offsetY    = Math.max(0, (maxHeight - drawHeight) / 2);
+    ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+    const gradient = ctx.createLinearGradient(0, 650, 0, 800);
+    gradient.addColorStop(0, 'rgba(26, 14, 36, 0)');
+    gradient.addColorStop(1, 'rgba(26, 14, 36, 1)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 650, canvas.width, 150);
+}
 
-        const gradient = ctx.createLinearGradient(0, 650, 0, 800);
-        gradient.addColorStop(0, 'rgba(26, 14, 36, 0)');
-        gradient.addColorStop(1, 'rgba(26, 14, 36, 1)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 650, canvas.width, 150);
-    }
-
-    ctx.textAlign  = 'center';
-    ctx.fillStyle  = '#e80a89';
-    ctx.font       = 'bold 55px "Source Sans 3", Arial, sans-serif';
+function drawBadgeText(ctx, canvas, workoutName, dateStr, durationMins) {
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#e80a89';
+    ctx.font      = 'bold 55px "Source Sans 3", Arial, sans-serif';
     ctx.fillText('SPIKEFIT', canvas.width / 2, 85);
 
     ctx.fillStyle   = '#ffffff';
@@ -559,20 +546,66 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
     ctx.fillStyle = '#a0aec0';
     ctx.font      = 'bold 45px "Source Sans 3", Arial, sans-serif';
     ctx.fillText(`${dateStr}   •   ${durationMins > 0 ? durationMins + ' MINS' : 'LOGGED'}`, canvas.width / 2, 1010);
+}
 
+async function exportBadge(canvas, previewImg, loader, shareBtn) {
     try {
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-        previewImg.src = dataUrl;
+        previewImg.src = canvas.toDataURL('image/jpeg', 0.9);
         window.currentShareBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
     } catch (err) {
         console.error('Canvas export failed (canvas is likely tainted by a security policy).', err);
         window.currentShareBlob = null;
     }
-
     loader.style.display     = 'none';
     previewImg.style.display = 'block';
     shareBtn.disabled        = false;
     shareBtn.innerText       = 'Share Workout';
+}
+
+async function generateShareImage(workoutName, dateStr, durationMins) {
+    const previewImg = document.getElementById('share-image-preview');
+    const loader     = document.getElementById('badge-loader');
+    const shareBtn   = document.getElementById('btn-share-badge');
+
+    previewImg.style.display = 'none';
+    loader.style.display     = 'block';
+    shareBtn.disabled        = true;
+    shareBtn.innerText       = 'Generating Badge...';
+
+    await loadBadgeFonts();
+
+    const canvas  = document.createElement('canvas');
+    canvas.width  = 1080;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+
+    drawBadgeBackground(ctx, canvas);
+    const img = await loadBadgeCharacter();
+    drawBadgeCharacter(ctx, canvas, img);
+    drawBadgeText(ctx, canvas, workoutName, dateStr, durationMins);
+    await exportBadge(canvas, previewImg, loader, shareBtn);
+}
+
+async function copyOrDownloadBadge(blob) {
+    if (navigator.clipboard && navigator.clipboard.write) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/jpeg': blob })]);
+        showToast('Copied to Clipboard!', 'Badge copied! You can now paste it into an email or social app.', '📋', 6000);
+        return 'Image Copied!';
+    }
+    const link    = document.createElement('a');
+    link.href     = URL.createObjectURL(blob);
+    link.download = 'spikefit-badge.jpg';
+    link.click();
+    return 'Downloaded!';
+}
+
+async function shareFile(file, text) {
+    const shareData = { files: [file], title: 'SpikeFit Workout Complete', text };
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share(shareData);
+        return 'Shared!';
+    }
+    return copyOrDownloadBadge(globalThis.currentShareBlob);
 }
 
 async function shareBadge() {
@@ -585,34 +618,11 @@ async function shareBadge() {
         shareBtn.innerText = 'Preparing...';
 
         if (window.currentShareBlob) {
-            const file      = new File([window.currentShareBlob], 'spikefit-badge.jpg', { type: 'image/jpeg' });
-            const shareData = { files: [file], title: 'SpikeFit Workout Complete', text: textToShare };
-
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share(shareData);
-                shareBtn.innerText = 'Shared!';
-            } else {
-                try {
-                    if (navigator.clipboard && navigator.clipboard.write) {
-                        await navigator.clipboard.write([new ClipboardItem({ 'image/jpeg': window.currentShareBlob })]);
-                        shareBtn.innerText = 'Image Copied!';
-                        showToast('Copied to Clipboard!', 'Badge copied! You can now paste it into an email or social app.', '📋', 6000);
-                    } else {
-                        throw new Error('Clipboard API unsupported');
-                    }
-                } catch (clipErr) {
-                    const link  = document.createElement('a');
-                    link.href   = URL.createObjectURL(window.currentShareBlob);
-                    link.download = 'spikefit-badge.jpg';
-                    link.click();
-                    shareBtn.innerText = 'Downloaded!';
-                }
-            }
-        } else {
-            if (navigator.share) {
-                await navigator.share({ title: 'SpikeFit Workout Complete', text: textToShare });
-                shareBtn.innerText = 'Text Shared!';
-            }
+            const file = new File([window.currentShareBlob], 'spikefit-badge.jpg', { type: 'image/jpeg' });
+            shareBtn.innerText = await shareFile(file, textToShare);
+        } else if (navigator.share) {
+            await navigator.share({ title: 'SpikeFit Workout Complete', text: textToShare });
+            shareBtn.innerText = 'Text Shared!';
         }
     } catch (err) {
         console.error('Share failed:', err);
@@ -654,69 +664,109 @@ function closePrivacyModal()    { document.getElementById('privacy-modal').style
 
 // ─── Render Functions ─────────────────────────────────────────────────────────
 
+function createRegulationBanner() {
+    const banner  = document.createElement('div');
+    banner.style.cssText = 'background:rgba(255,46,147,0.1);border:1px solid var(--accent);padding:1em;border-radius:var(--radius-sm);margin-bottom:1.5em;text-align:center;';
+    const strong  = document.createElement('strong');
+    strong.style.color   = 'var(--accent)';
+    strong.textContent   = 'F.R.E.S.H. Auto-Regulator Engaged';
+    const p       = document.createElement('p');
+    p.style.cssText      = 'font-size:0.85em;color:var(--text-main);margin-top:0.5em;';
+    p.textContent        = 'Swapped heavy impacts for explosive alternatives to protect your joints today.';
+    banner.appendChild(strong);
+    banner.appendChild(p);
+    return banner;
+}
+
+function createExerciseCard(ex, regulate, isStarted) {
+    const isChecked  = !!completedExercises[getExerciseKey(ex.id)];
+    const isRegulated = regulate && ex.impact === 'high' && ex.alt;
+    const displayEx  = isRegulated ? { ...ex, ...ex.alt } : ex;
+    const videoLink  = displayEx.url || `https://www.youtube.com/results?search_query=${encodeURIComponent(displayEx.video + ' tutorial')}`;
+
+    const card = document.createElement('div');
+    card.className  = ['exercise-card', isChecked ? 'completed' : '', isStarted ? '' : 'disabled', isRegulated ? 'fresh-regulated' : ''].filter(Boolean).join(' ');
+    card.dataset.id = ex.id;
+    if (isRegulated) card.style.borderLeft = '4px solid var(--accent)';
+
+    const checkboxWrap = document.createElement('div');
+    checkboxWrap.className = 'checkbox-container';
+    const checkbox = document.createElement('input');
+    checkbox.type     = 'checkbox';
+    checkbox.checked  = isChecked;
+    checkbox.disabled = !isStarted;
+    checkboxWrap.appendChild(checkbox);
+
+    const info  = document.createElement('div');
+    info.className = 'exercise-info';
+    const title = document.createElement('span');
+    title.className   = 'title';
+    title.textContent = displayEx.name;
+    const reps  = document.createElement('span');
+    reps.className    = 'reps';
+    reps.textContent  = displayEx.reps;
+    const notes = document.createElement('p');
+    notes.className   = 'notes';
+    notes.textContent = displayEx.notes;
+    const link  = document.createElement('a');
+    link.href      = videoLink;
+    link.target    = '_blank';
+    link.rel       = 'noopener noreferrer';
+    link.className = 'video-link';
+    link.textContent = 'Watch';
+    info.appendChild(title);
+    info.appendChild(reps);
+    info.appendChild(notes);
+    info.appendChild(link);
+
+    card.appendChild(checkboxWrap);
+    card.appendChild(info);
+    return card;
+}
+
 function renderDaily() {
-    const content        = document.getElementById('workout-content');
-    const dayData        = schedule[currentDayIndex];
-    const baseWorkoutKey = dayData.workout;
-    const workoutKey     = getWorkoutKey(baseWorkoutKey);
-    const workout        = workouts[workoutKey];
+    const content    = document.getElementById('workout-content');
+    const workout    = workouts[getWorkoutKey(schedule[currentDayIndex].workout)];
 
     if (!workout) {
         document.getElementById('current-workout-title').innerText = 'Active Recovery / Cardio';
-        content.innerHTML = `<div style="text-align:center; padding: 4em 0; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
-            <h2 style="color:var(--text-main); border:none; margin-bottom: 0.5em; justify-content:center;">Rest or Run Day</h2>
-            <p style="color:var(--text-muted)">Focus on cardio, stretching, and recovery.</p></div>`;
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'text-align:center;padding:4em 0;background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);';
+        const h2 = document.createElement('h2');
+        h2.style.cssText  = 'color:var(--text-main);border:none;margin-bottom:0.5em;justify-content:center;';
+        h2.textContent    = 'Rest or Run Day';
+        const p  = document.createElement('p');
+        p.style.color     = 'var(--text-muted)';
+        p.textContent     = 'Focus on cardio, stretching, and recovery.';
+        wrap.appendChild(h2);
+        wrap.appendChild(p);
+        content.textContent = '';
+        content.appendChild(wrap);
         document.getElementById('progress-container').style.display = 'none';
+        updateWorkoutStatus();
         return;
     }
 
     document.getElementById('current-workout-title').innerText = workout.name;
 
-    const isStarted     = !!activeWorkoutStart;
-    const disabledClass = isStarted ? '' : 'disabled';
-    const disabledAttr  = isStarted ? '' : 'disabled';
-    let html = '';
+    const isStarted = !!activeWorkoutStart;
+    const regulate  = FRESH_SYSTEM.needsRegulation();
+    const fragment  = document.createDocumentFragment();
 
-    const regulate = FRESH_SYSTEM.needsRegulation();
-
-    // Show banner immediately if regulate is triggered (even before clicking start)
-    if (regulate) {
-        html += `<div style="background: rgba(255, 46, 147, 0.1); border: 1px solid var(--accent); padding: 1em; border-radius: var(--radius-sm); margin-bottom: 1.5em; text-align: center;">
-                    <strong style="color: var(--accent);">F.R.E.S.H. Auto-Regulator Engaged</strong>
-                    <p style="font-size: 0.85em; color: var(--text-main); margin-top: 0.5em;">Swapped heavy impacts for explosive alternatives to protect your joints today.</p>
-                 </div>`;
-    }
+    if (regulate) fragment.appendChild(createRegulationBanner());
 
     workout.blocks.forEach(block => {
-        html += `<div class="workout-section"><h2>${block.title}</h2>`;
-        block.exercises.forEach(ex => {
-            const isChecked      = completedExercises[getExerciseKey(ex.id)] ? 'checked' : '';
-            const completedClass = completedExercises[getExerciseKey(ex.id)] ? 'completed' : '';
-            
-            // F.R.E.S.H. Swap Logic
-            const displayEx = (regulate && ex.impact === 'high' && ex.alt) ? Object.assign({}, ex, ex.alt) : ex;
-            const regulatedClass = (regulate && ex.impact === 'high' && ex.alt) ? 'fresh-regulated' : '';
-            
-            const videoLink      = displayEx.url ? displayEx.url : `https://www.youtube.com/results?search_query=${encodeURIComponent(displayEx.video + ' tutorial')}`;
-
-            // data-id drives the delegation handler — no inline onclick needed
-            html += `
-                <div class="exercise-card ${completedClass} ${disabledClass} ${regulatedClass}" data-id="${ex.id}" style="${regulatedClass ? 'border-left: 4px solid var(--accent);' : ''}">
-                    <div class="checkbox-container">
-                        <input type="checkbox" ${isChecked} ${disabledAttr}>
-                    </div>
-                    <div class="exercise-info">
-                        <span class="title">${displayEx.name}</span>
-                        <span class="reps">${displayEx.reps}</span>
-                        <p class="notes">${displayEx.notes}</p>
-                        <a href="${videoLink}" target="_blank" rel="noopener noreferrer" class="video-link">Watch</a>
-                    </div>
-                </div>`;
-        });
-        html += `</div>`;
+        const section = document.createElement('div');
+        section.className = 'workout-section';
+        const heading = document.createElement('h2');
+        heading.textContent = block.title;
+        section.appendChild(heading);
+        block.exercises.forEach(ex => section.appendChild(createExerciseCard(ex, regulate, isStarted)));
+        fragment.appendChild(section);
     });
 
-    content.innerHTML = html;
+    content.textContent = '';
+    content.appendChild(fragment);
     updateWorkoutStatus();
     updateProgressBar();
 }
@@ -797,40 +847,45 @@ function setLevel(level) {
 
 // ─── Streak Check ─────────────────────────────────────────────────────────────
 
-function checkStreak() {
-    if (sessionStorage.getItem('welcomeToastShown')) return;
-    sessionStorage.setItem('welcomeToastShown', 'true');
-
-    const today    = new Date();
-    const todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-    const dates    = Object.keys(completedDates).sort((a, b) => new Date(b) - new Date(a));
-    if (dates.length === 0) return;
-
-    let streak            = 0;
-    let currentCheckDate  = new Date(today);
-    currentCheckDate.setHours(0, 0, 0, 0);
+function calculateStreak(dates) {
+    const today           = new Date();
+    const todayStr        = formatDateStr(today);
+    const currentCheck    = new Date(today);
+    currentCheck.setHours(0, 0, 0, 0);
 
     const latestWorkout  = new Date(dates[0] + 'T00:00:00');
-    const daysSinceLast  = Math.floor((currentCheckDate - latestWorkout) / (1000 * 60 * 60 * 24));
+    const daysSinceLast  = Math.floor((currentCheck - latestWorkout) / (1000 * 60 * 60 * 24));
 
-    if (daysSinceLast >= 2) {
-        showToast('👋 Welcome Back!', "Missed you the last few days, let's get a streak going!", '🔥', 10000);
-        return;
-    }
+    if (daysSinceLast >= 2) return { streak: 0, daysSinceLast };
 
+    let streak = 0;
     for (let i = 0; i < 365; i++) {
-        const checkStr = currentCheckDate.getFullYear() + '-' + String(currentCheckDate.getMonth() + 1).padStart(2, '0') + '-' + String(currentCheckDate.getDate()).padStart(2, '0');
+        const checkStr = formatDateStr(currentCheck);
         if (completedDates[checkStr]) {
             streak++;
-            currentCheckDate.setDate(currentCheckDate.getDate() - 1);
+            currentCheck.setDate(currentCheck.getDate() - 1);
         } else if (i === 0 && !completedDates[todayStr]) {
-            currentCheckDate.setDate(currentCheckDate.getDate() - 1);
+            currentCheck.setDate(currentCheck.getDate() - 1);
         } else {
             break;
         }
     }
 
-    if (streak >= 2) {
+    return { streak, daysSinceLast };
+}
+
+function checkStreak() {
+    if (sessionStorage.getItem('welcomeToastShown')) return;
+    sessionStorage.setItem('welcomeToastShown', 'true');
+
+    const dates = Object.keys(completedDates).sort((a, b) => new Date(b) - new Date(a));
+    if (dates.length === 0) return;
+
+    const { streak, daysSinceLast } = calculateStreak(dates);
+
+    if (daysSinceLast >= 2) {
+        showToast('👋 Welcome Back!', "Missed you the last few days, let's get a streak going!", '🔥', 10000);
+    } else if (streak >= 2) {
         showToast('🔥 Hot Streak!', `Daaamn, ${streak} days in a row, keep it up!`, '💪', 10000);
     } else if (streak === 1 && daysSinceLast === 1) {
         showToast('💪 Keep the Momentum!', 'You logged a workout yesterday. Keep it going today!', '✨', 10000);
