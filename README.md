@@ -8,6 +8,7 @@
   [![Vanilla JS](https://img.shields.io/badge/Vanilla_JS-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)]()
   [![Privacy First](https://img.shields.io/badge/Local_Storage-Privacy_First-4CAF50?style=for-the-badge)]()
   [![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-blue?style=for-the-badge)]()
+  [![Codacy Badge](https://img.shields.io/badge/codacy_grade-a-brightgreen?style=for-the-badge)](https://app.codacy.com/gh/jfrappier/spikefit/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
 
 </div>
 
