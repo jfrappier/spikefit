@@ -116,7 +116,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 2px solid var(--bg-body, #fff);
+  border: 2px solid var(--bg-body, #ffffff);
   margin-left: -12px;
   background: linear-gradient(135deg, #e80a89, #ff7e5f);
   display: flex;

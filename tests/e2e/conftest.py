@@ -17,7 +17,8 @@ def app_page(page: Page):
 
 @pytest.fixture
 def seeded_page(page: Page):
-    """Factory fixture: returns a function that seeds localStorage and opens the app.
+    """
+    Factory fixture: returns a function that seeds localStorage and opens the app.
 
     Usage:
         def test_example(seeded_page):
