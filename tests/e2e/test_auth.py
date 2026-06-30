@@ -1,4 +1,5 @@
-"""E2E tests for the OTP authentication UI flow.
+"""
+E2E tests for the OTP authentication UI flow.
 
 Auth tests mock /auth/send and /auth/verify — the Cloudflare Worker
 does not need to be deployed. Tests run against auth.html directly.

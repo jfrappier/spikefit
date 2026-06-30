@@ -42,6 +42,7 @@ ES module `import`/`export` does not work when an HTML file is opened directly f
 The app is being split into multiple files by responsibility. Each file declares its contents in global scope with no `import` or `export`. Load order (script tag order in the HTML) is the dependency graph.
 
 Current file breakdown:
+
 - `js/workouts.js` — the workout database (`workouts` object, `schedule` array); loaded first
 - `js/app.js` — all remaining app logic, event handling, rendering, state management
 
