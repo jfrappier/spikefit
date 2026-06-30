@@ -167,6 +167,7 @@ window.currentShareBlob = null;
 
 // ─── Core Helpers ─────────────────────────────────────────────────────────────
 
+/** Appends the level suffix to a base key ('A' → 'A2' intermediate, 'A3' advanced); 'Rest/Run' passes through unchanged. */
 function getWorkoutKey(baseKey) {
     if (baseKey === 'Rest/Run') return baseKey;
     if (workoutLevel === 'advanced')     return baseKey + '3';
@@ -259,6 +260,7 @@ function updateProgressBar() {
     document.getElementById('progress-bar').style.width = pct + '%';
 }
 
+/** Triggers the RPE modal when every exercise is checked; skips the modal and completes directly if no active session. */
 function checkAndMarkComplete() {
     const baseWorkoutKey = schedule[currentDayIndex].workout;
     const workoutKey     = getWorkoutKey(baseWorkoutKey);
@@ -392,6 +394,7 @@ function updateWorkoutStatus() {
 // for promotion (workoutLevel will never be 'advanced' in either branch below).
 const CONSISTENCY_WINDOW_DAYS = 35; // ~3.2 workouts/week minimum sustained pace
 
+/** Returns true if the most recent requiredCount workouts at level all fall within CONSISTENCY_WINDOW_DAYS of each other. */
 function metConsistentPace(level, requiredCount) {
     const recentDates = Object.entries(completedDates)
         .filter(([, entry]) => entry.level === level)
@@ -586,6 +589,7 @@ async function generateShareImage(workoutName, dateStr, durationMins) {
     await exportBadge(canvas, previewImg, loader, shareBtn);
 }
 
+/** Writes the badge to the clipboard if available; falls back to a synthetic download link. */
 async function copyOrDownloadBadge(blob) {
     if (navigator.clipboard && navigator.clipboard.write) {
         await navigator.clipboard.write([new ClipboardItem({ 'image/jpeg': blob })]);
@@ -847,6 +851,7 @@ function setLevel(level) {
 
 // ─── Streak Check ─────────────────────────────────────────────────────────────
 
+/** Counts consecutive workout days from a newest-first sorted date array; allows today to be incomplete without breaking the streak. */
 function calculateStreak(dates) {
     const today           = new Date();
     const todayStr        = formatDateStr(today);
