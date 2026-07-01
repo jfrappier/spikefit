@@ -18,7 +18,7 @@ Do not open a public issue for security concerns.
 
 - Description of the vulnerability and potential impact
 - Steps to reproduce
-- Any proof-of-concept (screenshots, request/response, etc.)
+- Any proof-of-concept (screenshots, request/response, or other relevant information.)
 
 ## Response
 
