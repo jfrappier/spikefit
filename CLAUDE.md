@@ -167,6 +167,7 @@ include:
 ```
 
 **Adding a new static file:**
+
 1. Add its path to `STATIC_FILES` in `cloudflare/worker.js` so the Worker serves it without an auth check. 
 
 1. If the file lives in a dotfile directory, add that directory to `_config.yml`'s `include` list so Jekyll publishes it.
