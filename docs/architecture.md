@@ -12,13 +12,19 @@ Browser (user device)
         │  Nothing workout-related ever leaves the device.
         │
         ↕  (optional — only if the Cloudflare Worker is deployed)
-  Cloudflare Worker
+  Cloudflare Worker        ← auth gate; deployed at spikefit.app
+        │
+        │  fetches static files from ORIGIN = https://spikefit.app
+        ↓
+  GitHub Pages             ← actual static file host (CNAME → spikefit.app)
     ├── Routes: GET /  /app.html  /auth.html  /auth/send  /auth/verify  /auth/logout
     ├── KV: SESSIONS · OTPS · RATELIMIT · ALLOWLIST
     └── Secret: RESEND_API_KEY → Resend API → user's email
 ```
 
 The Worker is a hosting-only access gate. It controls who can reach the hosted instance at spikefit.app. It never touches user workout data. Forks running locally have no need for it.
+
+**Static file hosting:** The repo is deployed via GitHub Pages. `CNAME` maps `spikefit.app` to the Pages deployment. GitHub Pages runs Jekyll by default; files and directories whose names start with `.` are ignored unless explicitly listed in `_config.yml`'s `include` array.
 
 ---
 
@@ -222,6 +228,8 @@ Referrer-Policy: strict-origin-when-cross-origin
 ```
 
 `'unsafe-inline'` is present because some styles are applied inline in components. Removing it requires an audit of all inline style usage.
+
+**Origin:** `ORIGIN = 'https://spikefit.app'` in `worker.js` points to GitHub Pages. When the Worker serves a `STATIC_FILES` path, it fetches the file from GitHub Pages and passes it through. Adding a new public static file requires adding its path to `STATIC_FILES`; if the file is in a dotfile directory, also add that directory to `_config.yml`'s `include` list.
 
 **Gap: wrangler.toml is not in the repo.** Anyone deploying the Worker must create `cloudflare/wrangler.toml` manually. Required bindings:
 

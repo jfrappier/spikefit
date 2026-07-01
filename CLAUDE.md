@@ -38,6 +38,7 @@ When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in th
 | `app.html` + `js/workouts.js` + `js/app.js` | Main app shell. `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state. |
 | `auth.html` + `js/auth.js` | OTP auth flow. Only used when the Worker is deployed. |
 | `cloudflare/worker.js` | Optional hosting gate — routing, OTP, sessions. Never touches workout data. |
+| `_config.yml` | Jekyll config. Only purpose: `include` list for dotfile directories that Jekyll would otherwise ignore (e.g. `.well-known/`). |
 | `css/base.css` | All CSS custom properties (design tokens). The only file that defines `:root` variables. |
 | `css/layout.css` | Page structure and grid layouts. |
 | `css/components/*.css` | One file per UI component. |
@@ -149,6 +150,25 @@ curl -s -u "$SONAR_TOKEN:" \
 ```
 
 See `docs/quality.md` for full details including known false positives.
+
+---
+
+## Hosting Architecture
+
+**Static files → GitHub Pages.** The `CNAME` file maps `spikefit.app` to this repo's GitHub Pages deployment. All HTML, CSS, JS, images, and fonts are served from there.
+
+**Auth gate → Cloudflare Worker.** `cloudflare/worker.js` is deployed as a Cloudflare Worker in front of GitHub Pages. `ORIGIN = 'https://spikefit.app'` in the Worker points back to GitHub Pages. The Worker fetches static files from GitHub Pages and passes them through with security headers; everything else is auth-gated.
+
+**Jekyll is active.** GitHub Pages uses Jekyll by default (no `.nojekyll` file in this repo). Jekyll silently ignores any file or directory whose name starts with `.`. Use `_config.yml` to opt directories in:
+
+```yaml
+include:
+  - .well-known
+```
+
+**Adding a new static file:**
+1. Add its path to `STATIC_FILES` in `cloudflare/worker.js` so the Worker serves it without an auth check.
+2. If the file lives in a dotfile directory, add that directory to `_config.yml`'s `include` list so Jekyll publishes it.
 
 ---
 
