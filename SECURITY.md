@@ -10,7 +10,7 @@ Do not open a public issue for security concerns.
 ## Scope
 
 - `app.html` / `js/app.js` / `js/workouts.js` — client-side app logic
-- `cloudflare/worker.js` — the optional hosting gate (OTP auth, session management)
+- `cloudflare/worker.js` — the optional hosting gate (One-time passwod (OTP auth), session management)
 
 **Out of scope:** Cloudflare infrastructure, Resend email delivery, GitHub itself.
 
