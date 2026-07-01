@@ -1,12 +1,63 @@
 # SpikeFit Changelog
 
-## Unreleased
+## v0.0.701
 
-### Code Quality
+This release updates workout flow, adds warmups, separates workout list from `app.js`, and adds security documentation.
 
-#### Extract workout database to `js/workouts.js`
+---
+
+## 🏐 Workouts
+
+### Add warm-up blocks to all 12 workouts *(#30)*
+
+Every workout (Beginner, Intermediate, and Advanced tiers for A/B/C/D) now begins with a structured warm-up block that renders like any other exercise block and counts toward completion. Warm-ups are tailored to the movement demands of each session:
+
+- **Workout A (Vertical Power):** Hip/ankle mobility series — Leg Swings, Hip Circles, Squat to Stand, Glute Bridge, Ankle Bounces. Intermediate adds Single-Leg Glute Bridge and Lateral Leg Swings.
+- **Workout B (Upper Body Armor):** Shoulder prep series — Arm Circles, Shoulder Pendulum, Cat-Cow, Wall Slides. Intermediate adds Thoracic Rotation.
+- **Workout C (Lateral Agility):** 3-round sport-specific activation — Lateral Shuffles, W-Drill, Fast-Feet Taps.
+- **Workout D (Spike Mechanics):** Hip and rotation prep — Cat-Cow, Kneeling Hip Flexor Stretch, Hip Circles, Cross-Body Arm Swings, Seated Torso Rotation. Intermediate adds Thoracic Rotation.
+
+Additional exercises were added to two workouts in the same pass:
+
+- **Workout A Superset 2:** Added Goblet Squat (10 reps) and Glute Bridge (15 reps) across all tiers.
+- **Workout B:** Added a dedicated "Shoulder Health" finisher block with Band Pull-Aparts; Intermediate also includes Side-Lying DB External Rotation.
+
+---
+
+## 🔒 Security
+
+### Add security vulnerability reporting policy *(#31, #33)*
+
+Added a `SECURITY.md` file and a `/.well-known/security.txt` endpoint documenting how to responsibly report vulnerabilities. The Cloudflare Worker was updated to serve `/.well-known/security.txt` without requiring authentication. `_config.yml` was added to configure Jekyll to publish the `.well-known/` directory — Jekyll silently ignores dotfile directories by default, and without this file the `security.txt` would never reach GitHub Pages.
+
+---
+
+## ⚙️ Code Quality
+
+### Extract workout database to `js/workouts.js` *(#26)*
 
 The `workouts` object (12 workout definitions across Beginner/Intermediate/Advanced) and the `schedule` array were extracted from `js/app.js` into a new `js/workouts.js` file. `app.html` now loads `workouts.js` before `app.js` via `<script defer>`. Both files use global scope — no `import`/`export`. The `workouts.js` file is added to `STATIC_FILES` in the Cloudflare Worker. This separation makes the workout data independently editable and lays the groundwork for serving coach-specific workout sets via the Worker.
+
+### Refactor `app.js` for readability and SonarQube compliance *(#27)*
+
+A large refactor pass on `app.js` extracted several inline blocks into named functions, reducing cognitive complexity scores and making the file easier to navigate:
+
+- `formatDateStr(date)` — date-to-string formatting pulled out of inline expressions
+- `setStartedState(startBtn, completeBtn)` / `setIdleState(startBtn, completeBtn)` — button-state logic extracted from `updateWorkoutStatus()`
+- `drawBadgeBackground(ctx, canvas)` / `drawBadgeCharacter(ctx, canvas, img)` / `drawBadgeText(ctx, canvas, workoutName, dateStr, durationMins)` — badge canvas drawing split into three focused functions
+- `createRegulationBanner()` / `createExerciseCard(ex, regulate, isStarted)` — exercise-rendering DOM helpers extracted from `renderDaily()`
+- `calculateStreak(dates)` — pure streak calculation extracted from the side-effectful `checkStreak()`
+
+Also fixed a bug where rest days were not correctly identified, and cleaned up several findings flagged by SonarQube.
+
+## Files Changed
+
+- `js/workouts.js`
+- `js/app.js`
+- `cloudflare/worker.js`
+- `.well-known/security.txt`
+- `SECURITY.md`
+- `_config.yml`
 
 ---
 
