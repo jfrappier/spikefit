@@ -159,3 +159,17 @@ Open `index.html` in any modern browser. No server, no build step, no installati
 Auth (if deploying with the Cloudflare Worker): requires a Cloudflare account, `wrangler.toml` with KV bindings for `SESSIONS`/`OTPS`/`RATELIMIT`/`ALLOWLIST`, and a `RESEND_API_KEY` secret. See `docs/architecture.md` for binding details.
 
 Tests: see `tests/README.md`.
+
+---
+
+## Testing Protocol
+
+After any code change, run the E2E suite and confirm it passes before reporting the task done:
+
+```bash
+pytest tests/e2e/
+```
+
+For changes to pure logic functions in `app.js` (ACWR, workout keys, localStorage helpers), also open `tests/unit/run.html` in a browser and confirm all QUnit tests pass.
+
+**Exception:** Changes that are purely static data (e.g. adding exercises to `workouts.js` with no logic change) do not require a test run, but a quick visual check of `app.html` in a browser is expected before reporting done.
