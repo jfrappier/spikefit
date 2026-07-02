@@ -44,7 +44,7 @@
     <!-- Floating Glass Pill Header -->
     <header class="landing-header animate-up">
         <a href="#" class="nav-logo">
-            <img src="logo.png" alt="SpikeFit" onerror="this.onerror=null; this.src='https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png'">
+            <img src="logo.png" alt="SpikeFit" id="nav-logo-img">
         </a>
         <div class="nav-actions">
             <a href="auth.html" class="btn-primary">Sign In</a>
@@ -161,6 +161,14 @@
     </footer>
 
     <script>
+        var logoImg = document.getElementById('nav-logo-img');
+        if (logoImg) {
+            logoImg.addEventListener('error', function onLogoError() {
+                logoImg.removeEventListener('error', onLogoError);
+                logoImg.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png';
+            });
+        }
+
         // Smooth scroll for anchor links
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {

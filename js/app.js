@@ -337,7 +337,12 @@ function setWorkoutDay(index) {
 function startWorkout() {
     if (!activeWorkoutStart) {
         activeWorkoutStart = new Date().toISOString();
-        localStorage.setItem('activeWorkoutStart', activeWorkoutStart);
+        try {
+            localStorage.setItem('activeWorkoutStart', activeWorkoutStart);
+        } catch (err) {
+            console.error('Failed to save workout start time to localStorage.', err);
+            showToast('⚠️ Save Failed', "Your browser couldn't save this update — storage may be full or restricted (e.g. private browsing).", '⚠️', 8000);
+        }
         renderDaily();
     }
 }
@@ -662,7 +667,16 @@ function closeToast() {
 // ─── Modals ───────────────────────────────────────────────────────────────────
 
 function openDisclaimerModal()  { document.getElementById('disclaimer-modal').style.display = 'flex'; }
-function acceptDisclaimer()     { localStorage.setItem('disclaimerAgreed', 'true'); document.getElementById('disclaimer-modal').style.display = 'none'; setTimeout(checkStreak, 500); }
+function acceptDisclaimer() {
+    try {
+        localStorage.setItem('disclaimerAgreed', 'true');
+    } catch (err) {
+        console.error('Failed to save disclaimer agreement to localStorage.', err);
+        showToast('⚠️ Save Failed', "Your browser couldn't save this update — storage may be full or restricted (e.g. private browsing).", '⚠️', 8000);
+    }
+    document.getElementById('disclaimer-modal').style.display = 'none';
+    setTimeout(checkStreak, 500);
+}
 function openPrivacyModal()     { document.getElementById('privacy-modal').style.display = 'flex'; }
 function closePrivacyModal()    { document.getElementById('privacy-modal').style.display = 'none'; }
 
@@ -839,7 +853,12 @@ function changeMonth(delta) {
 
 function setLevel(level) {
     workoutLevel = level;
-    localStorage.setItem('workoutLevel', level);
+    try {
+        localStorage.setItem('workoutLevel', level);
+    } catch (err) {
+        console.error('Failed to save workout level to localStorage.', err);
+        showToast('⚠️ Save Failed', "Your browser couldn't save this update — storage may be full or restricted (e.g. private browsing).", '⚠️', 8000);
+    }
 
     document.getElementById('btn-level-beginner').classList.toggle('active',     level === 'beginner');
     document.getElementById('btn-level-intermediate').classList.toggle('active', level === 'intermediate');
