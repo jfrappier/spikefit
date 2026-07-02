@@ -1,0 +1,28 @@
+/* css/components/auth.css - Auth page specific styles */
+
+.auth-notice {
+    margin-top: 1.25em;
+    font-size: 0.8em;
+    color: var(--text-muted);
+}
+
+.auth-footer-info {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.auth-footer-p {
+    margin-bottom: 0.5rem;
+}
+
+.auth-footer-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.auth-footer-link:hover {
+    text-decoration: underline;
+}

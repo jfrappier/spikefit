@@ -1060,6 +1060,15 @@ document.getElementById('schedule-content').addEventListener('click', e => {
     setWorkoutDay(Number(day.dataset.index));
 });
 
+// ─── Slider display listeners ─────────────────────────────────────────────────
+
+document.getElementById('freshness-slider').addEventListener('input', (e) => {
+    document.getElementById('freshness-val').innerText = e.target.value;
+});
+document.getElementById('rpe-slider').addEventListener('input', (e) => {
+    document.getElementById('rpe-val').innerText = e.target.value;
+});
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.getElementById('btn-level-beginner').classList.toggle('active',     workoutLevel === 'beginner');

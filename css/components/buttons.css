@@ -23,6 +23,9 @@
 .btn-ghost:hover:not(:disabled) { border-color: var(--text-main); color: var(--text-main); background: transparent; box-shadow: none; }
 
 /* Main App Action Buttons */
+#workout-controls { margin-bottom: 1.5em; text-align: center; }
+#btn-reset-day { margin-top: 0; color: var(--text-muted); }
+
 .btn-reset {
     display: block; width: 100%; appearance: none; background: transparent; border: solid 2px var(--border);
     border-radius: var(--radius-sm); color: var(--text-main); cursor: pointer; font-family: 'Source Sans 3', sans-serif;

@@ -11,6 +11,16 @@
 }
 .modal-content h2 { margin-bottom: 0.5em; color: var(--text-main); }
 
+/* --- Badge modal heading & hint text --- */
+#badge-modal .modal-content > h2 { margin-bottom: 1em; }
+.modal-hint { margin-bottom: 1.5em; color: var(--text-muted); font-size: 0.9em; }
+
+/* --- Privacy modal --- */
+#privacy-modal .modal-content { max-width: 600px; text-align: left; }
+#privacy-modal h2 { text-align: center; color: var(--accent); margin-bottom: 1em; font-size: 1.5em; }
+#privacy-modal p { font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6; }
+#btn-close-privacy { margin-top: 1.5em; }
+
 /* --- Badges & Share Image --- */
 #share-image-preview {
     width: 100%;

@@ -17,12 +17,13 @@
   <link rel="stylesheet" href="css/components/modals.css">
   <link rel="stylesheet" href="css/components/calendar.css">
   <link rel="stylesheet" href="css/components/splash.css">
+  <link rel="stylesheet" href="css/components/auth.css">
   <script src="js/auth.js" defer></script>
 </head>
 <body class="auth-body">
 
 <!-- Wrapper to keep the card and banner stacked vertically -->
-<div class="auth-container" style="width: 100%; max-width: 400px; margin: 0 auto;">
+<div class="auth-container">
   
   <div class="card">
     <!-- Step 1: Email -->
@@ -45,11 +46,11 @@
       >
       <div class="error" id="email-error"></div>
       <button class="btn" id="email-btn">Send Code</button>
-      <p style="margin-top: 1.25em; font-size: 0.8em; color: var(--text-muted);">Don't have access? Ask your favorite volleyball cheerdad.</p>
+      <p class="auth-notice">Don't have access? Ask your favorite volleyball cheerdad.</p>
     </div>
 
     <!-- Step 2: OTP -->
-    <div id="step-otp" class="step" style="display:none">
+    <div id="step-otp" class="step u-hidden">
       <img
         src="logo.png"
         alt="SpikeFit"
@@ -74,7 +75,7 @@
     </div>
 
     <!-- Step 3: Success -->
-    <div id="step-success" class="step" style="display:none">
+    <div id="step-success" class="step u-hidden">
       <div class="success-icon">✓</div>
       <h1>You're In</h1>
       <p class="subtitle">Redirecting you to your workout…</p>
@@ -82,8 +83,8 @@
   </div>
 
   <!-- Info Banner & Home Link -->
-  <div style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #718096;">
-      <p style="margin-bottom: 0.5rem;">New to SpikeFit? <a href="/" style="color: #e80a89; text-decoration: none; font-weight: bold;">Explore the program</a></p>
+  <div class="auth-footer-info">
+      <p class="auth-footer-p">New to SpikeFit? <a href="/" class="auth-footer-link">Explore the program</a></p>
       <p>Always free. Zero tracking.</p>
   </div>
 
