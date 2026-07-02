@@ -70,6 +70,21 @@ for f in files:
 EOF
 ```
 
+**Ignoring issues (false positives or won't fix):**
+
+```bash
+source ~/.zshrc
+
+# Bulk ignore up to 100 issues by ID — HTTP 204 = success, no response body
+curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+  -H "api-token: $CODACY_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"issueIds": ["<id1>","<id2>"]}' \
+  "https://app.codacy.com/api/v3/analysis/organizations/gh/jfrappier/repositories/spikefit/issues/bulk-ignore"
+```
+
+Issue IDs come from the file issues query above (`issueId` field in each result).
+
 ---
 
 ## Querying SonarCloud Findings via API
@@ -107,6 +122,17 @@ curl -s -u "$SONAR_TOKEN:" \
 ```
 
 Results include file path, line number, severity, rule ID, and message — the same data shown in the SonarCloud PR decoration.
+
+**Marking an issue as false positive or won't fix:**
+
+```bash
+# transition = falsepositive | wontfix | reopen
+curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST -u "$SONAR_TOKEN:" \
+  "https://sonarcloud.io/api/issues/do_transition" \
+  -d "issue=<issueKey>&transition=falsepositive"
+```
+
+Issue keys come from the `key` field in the issues/search results above. HTTP 200 = success. To undo, use `transition=reopen`.
 
 ---
 

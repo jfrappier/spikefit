@@ -195,3 +195,51 @@ pytest tests/e2e/
 For changes to pure logic functions in `app.js` (ACWR, workout keys, localStorage helpers), also open `tests/unit/run.html` in a browser and confirm all QUnit tests pass.
 
 **Exception:** Changes that are purely static data (e.g. adding exercises to `workouts.js` with no logic change) do not require a test run, but a quick visual check of `app.html` in a browser is expected before reporting done.
+
+---
+
+## Automated Audit Agents
+
+These agents run automatically — do not wait to be asked. Each has a defined trigger; if the trigger condition is met, spawn the agent before reporting the task done.
+
+### QA Agent
+
+**Trigger:** Any change to JS or HTML logic before reporting a task complete (same exceptions as Testing Protocol above).
+
+**What it does:** Runs `pytest tests/e2e/` and reports pass/fail with any failure output. For logic changes to `app.js`, also runs the QUnit suite via `tests/unit/run.html` and confirms all tests pass. Does not fix failures — reports them so the main task can address them.
+
+### Constraint Enforcer
+
+**Trigger:** Any PR that adds or modifies JS or HTML files.
+
+**What it does:** Audits all browser-shipped JS and HTML against the Hard Constraints listed above. Checks for: ES module syntax, bare `JSON.parse(localStorage.getItem())` calls, localStorage writes without try/catch, `target="_blank"` without `rel="noopener noreferrer"`, inline event handlers, hardcoded workout level suffixes, and CDN/npm imports. Reports PASS or VIOLATION with file:line for each constraint.
+
+### Privacy Boundary Auditor
+
+**Trigger:** Any change to a `fetch()` call, `navigator.*` usage, URL construction, or anything in `cloudflare/worker.js`.
+
+**What it does:** Finds every network transmission in `js/app.js`, `js/auth.js`, and `cloudflare/worker.js`. For each, confirms none of the protected keys (`completedDates`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `completedExercises`) or their values are transmitted. Reports PASS or VIOLATION per call site.
+
+### Test Gap Analyst
+
+**Trigger:** After adding a new named function or feature branch to `app.js`.
+
+**What it does:** Maps the new code against existing QUnit and Playwright coverage. Identifies untested functions or branches introduced by the change and ranks them by risk. Does not write tests — produces a prioritized gap report so tests can be added in a follow-up.
+
+### Documentation Agent
+
+**Trigger:** Before reporting any task complete that changes behavior, adds a feature, fixes a bug, or modifies any file referenced in `docs/`.
+
+**What it does:** Two checks:
+
+1. **Docs currency** — reviews `docs/architecture.md`, `docs/decisions.md`, and `docs/quality.md` against the change. Flags any section that is now stale or missing coverage (e.g. a new localStorage key not added to the key registry, a new ADR-worthy decision not recorded, a new JS file not reflected in the file map).
+
+2. **Changelog entry** — verifies a changelog entry exists in `changelog.md` for this change, or drafts one if missing. Entries must follow the established pattern:
+   - Version heading: `## v0.0.MMDD` where MMDD is today's date (e.g. `## v0.0.702` for July 2nd)
+   - One-sentence summary paragraph immediately after the heading
+   - `---` separator
+   - Category subheadings with emoji (e.g. `## 🔒 Security`, `## ⚙️ Code Quality`) matching the nature of the change
+   - Named `###` entries per logical change with PR reference if applicable
+   - `## Files Changed` list at the end
+
+Reports what needs updating and drafts any missing content — does not silently skip stale docs.
