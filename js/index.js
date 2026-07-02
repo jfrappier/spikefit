@@ -1,4 +1,4 @@
-var logoImg = document.getElementById('nav-logo-img');
+const logoImg = document.getElementById('nav-logo-img');
 if (logoImg) {
     logoImg.addEventListener('error', function onLogoError() {
         logoImg.removeEventListener('error', onLogoError);
