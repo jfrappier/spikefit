@@ -163,9 +163,9 @@
     <script>
         var logoImg = document.getElementById('nav-logo-img');
         if (logoImg) {
-            logoImg.addEventListener('error', function () {
-                this.removeEventListener('error', arguments.callee);
-                this.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png';
+            logoImg.addEventListener('error', function onLogoError() {
+                logoImg.removeEventListener('error', onLogoError);
+                logoImg.src = 'https://raw.githubusercontent.com/jfrappier/spikefit/refs/heads/main/logo.png';
             });
         }
 
