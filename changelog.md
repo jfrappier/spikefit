@@ -1,5 +1,33 @@
 # SpikeFit Changelog
 
+## v0.0.703
+
+This release fixes three bugs introduced or exposed during the inline-style extraction and CSS refactor: a missing layout rule on the landing hero preview, broken avatar image paths in the landing stylesheet, and a timing-dependent auth step initialization.
+
+---
+
+## 🐞 Bug Fixes
+
+### Restore `.hero-preview` width and max-width in `cards.css`
+
+`width: 100%; max-width: 900px` were accidentally dropped from the `.hero-preview` rule in `css/components/cards.css` when inline styles were extracted to the stylesheet. The hero preview section rendered without a constrained width. The properties are restored.
+
+### Fix avatar background-image paths in `landing.css`
+
+Avatar rules in `css/landing.css` referenced `url('img/1.jpg')` etc. CSS resolves relative URLs relative to the stylesheet's own location — `css/landing.css` — so the paths resolved to `css/img/` (404). Corrected to `url('../img/1.jpg')` to resolve to the top-level `img/` directory.
+
+### Initialize auth step via JS at module level in `auth.js`
+
+The initial auth step was previously shown by relying on CSS or inline-style visibility. Under the Cloudflare Worker's strict CSP, this could leave the wrong step visible during deployment transitions. `showStep('step-email')` is now called at module level so the correct step is always set via CSSOM as soon as the script runs.
+
+## Files Changed
+
+- `css/components/cards.css`
+- `css/landing.css`
+- `js/auth.js`
+
+---
+
 ## v0.0.701
 
 This release updates workout flow, adds warmups, separates workout list from `app.js`, and adds security documentation.
