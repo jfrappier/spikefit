@@ -15,6 +15,8 @@ const STATIC_FILES = new Set([
   '/fonts/source-sans-3-v19-latin-700.woff2',
   '/css/base.css',
   '/css/layout.css',
+  '/css/landing.css',
+  '/css/components/auth.css',
   '/css/components/buttons.css',
   '/css/components/calendar.css',
   '/css/components/cards.css',
@@ -23,6 +25,7 @@ const STATIC_FILES = new Set([
   '/css/components/nav.css',
   '/css/components/splash.css',
   '/js/auth.js',
+  '/js/index.js',
   '/js/workouts.js',
   '/js/app.js',
   '/img/1.jpg',
@@ -228,7 +231,7 @@ function respond(body, status = 200, extraHeaders = {}) {
 function addSecurityHeaders(response) {
   const headers = new Headers(response.headers);
   headers.set('Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: raw.githubusercontent.com; font-src 'self'; connect-src 'self'");
+    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: raw.githubusercontent.com; font-src 'self'; connect-src 'self'");
   headers.set('X-Content-Type-Options', 'nosniff');
   headers.set('X-Frame-Options', 'DENY');
   headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');

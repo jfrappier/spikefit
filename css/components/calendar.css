@@ -1,6 +1,8 @@
 /* css/components/calendar.css - Grids, progress bars, tracking components */
 
 /* Calendar Elements */
+#month-year-display { border: none; letter-spacing: 0.1em; }
+
 .month-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2em; }
 .month-header button { 
     background: var(--bg-panel); border: solid 1px var(--border); padding: 0.75em 1.5em; cursor: pointer; 

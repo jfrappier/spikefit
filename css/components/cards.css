@@ -52,9 +52,10 @@
 
 /* --- Landing Page Cards --- */
 .hero-preview {
-    margin-top: 4rem; width: 100%; max-width: 900px; background: var(--bg-panel);
-    border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem;
-    box-shadow: var(--shadow-lg); position: relative;
+    margin-top: 3rem; width: 100%; max-width: 900px; min-height: 200px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-body) 100%);
+    border-radius: var(--radius-lg); border: 1px solid rgba(232, 10, 137, 0.1);
 }
 .hero-preview img { width: 100%; border-radius: var(--radius-md); border: 1px solid var(--border); }
 
@@ -76,3 +77,5 @@
     border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem;
 }
 .icon-wrapper svg { width: 24px; height: 24px; }
+.icon-wrapper--no-mb { margin-bottom: 0; }
+.bento-card--accent-border { border-color: rgba(232, 10, 137, 0.2); }

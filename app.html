@@ -58,7 +58,7 @@
 
         <main id="main">
             <div id="daily" class="container active">
-                <div id="workout-controls" style="margin-bottom: 1.5em; text-align: center;">
+                <div id="workout-controls">
                     <button id="btn-start-workout" class="btn-reset btn-start">Start Workout</button>
                 </div>
                 <div class="progress-container" id="progress-container">
@@ -66,26 +66,26 @@
                 </div>
                 <div id="workout-content"></div>
                 <button id="btn-mark-complete" class="btn-reset btn-complete">Mark Workout Complete</button>
-                <button id="btn-reset-day" class="btn-reset" style="margin-top: 0; color: var(--text-muted);">Reset Today's Progress</button>
+                <button id="btn-reset-day" class="btn-reset">Reset Today's Progress</button>
             </div>
 
             <div id="schedule" class="container">
-                <h2 style="font-size: 1.5em; border:none; margin-bottom: 0.5em; color: var(--text-main);">Rotating Schedule</h2>
-                <p style="margin-bottom: 2em; color: var(--text-muted);">Select a day below to set it as your current active workout.</p>
+                <h2 class="section-heading">Rotating Schedule</h2>
+                <p class="subtitle">Select a day below to set it as your current active workout.</p>
                 <div class="level-toggle">
                     <button id="btn-level-beginner" class="active">Beginner</button>
                     <button id="btn-level-intermediate">Intermediate</button>
                     <button id="btn-level-advanced">Advanced</button>
                 </div>
-                <div id="schedule-content" style="display: grid; gap: 1em;"></div>
+                <div id="schedule-content"></div>
             </div>
 
             <div id="history" class="container">
-                <h2 style="font-size: 1.5em; border:none; margin-bottom: 0.5em; color: var(--text-main);">Workout History</h2>
-                <p style="margin-bottom: 2em; color: var(--text-muted);">Track your completed workouts.</p>
+                <h2 class="section-heading">Workout History</h2>
+                <p class="subtitle">Track your completed workouts.</p>
                 <div class="month-header">
                     <button id="btn-prev-month">&lt; Prev</button>
-                    <h3 id="month-year-display" style="margin:0; border:none; padding:0; letter-spacing: 0.1em; text-transform: uppercase;"></h3>
+                    <h3 id="month-year-display"></h3>
                     <button id="btn-next-month">Next &gt;</button>
                 </div>
                 <div class="month-grid" id="month-grid-content"></div>
@@ -103,10 +103,10 @@
 
     <div id="badge-modal" class="modal-overlay">
         <div class="modal-content">
-            <h2 style="margin-bottom: 1em;">Workout Complete!</h2>
+            <h2>Workout Complete!</h2>
             <div id="badge-loader" class="badge-loader"></div>
             <img id="share-image-preview" src="" alt="Workout Badge">
-            <p style="margin-bottom: 1.5em; color: var(--text-muted); font-size: 0.9em;">Show off your hard work!</p>
+            <p class="modal-hint">Show off your hard work!</p>
             <button id="btn-share-badge" class="btn-reset btn-share" disabled>Generating Badge...</button>
             <button id="btn-close-badge" class="btn-reset btn-close-modal">Close</button>
         </div>
@@ -184,15 +184,6 @@
         </div>
     </div>
 
-    <script>
-        document.getElementById('freshness-slider').addEventListener('input', (e) => {
-            document.getElementById('freshness-val').innerText = e.target.value;
-        });
-        document.getElementById('rpe-slider').addEventListener('input', (e) => {
-            document.getElementById('rpe-val').innerText = e.target.value;
-        });
-    </script>
-
     <div id="disclaimer-modal" class="modal-overlay">
         <div class="modal-content">
             <h2>Medical Disclaimer &amp; Terms of Use</h2>
@@ -209,12 +200,12 @@
     </div>
 
     <div id="privacy-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 600px; text-align: left;">
-            <h2 style="text-align: center; color: var(--accent); margin-bottom: 1em; font-size: 1.5em;">Data Privacy Policy</h2>
-            <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>1. Local Storage Only:</strong> All workout data, completion dates, and preferences are stored exclusively in your device's Local Storage. The author does not collect, transmit, track, or store any of your personal information, health data, or location data. Some static visual assets (the logo and workout badge artwork) may load from a fallback hosting location if the local copy fails to load — this is image delivery only and involves no transmission of your data.</p>
-            <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>2. Third-Party Hosting:</strong> This application is hosted via GitHub Pages and Cloudflare. While the application itself does not track you, GitHub and Cloudflare may collect standard web server logs (including IP addresses, browser types, and referring pages) as part of their standard hosting infrastructure. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub's</a> and <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare's</a> privacy policy for more details.</p>
-            <p style="font-size: 0.9em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6;"><strong>3. GDPR, CCPA, &amp; Compliance:</strong> Because we do not collect, process, sell, or control your personal data or Personally Identifiable Information (PII), we inherently align with data minimization principles. You retain 100% control over your data. To permanently delete all your data, simply clear your browser's local storage or cache.</p>
-            <button id="btn-close-privacy" class="btn-reset btn-close-modal" style="margin-top: 1.5em;">Close Privacy Policy</button>
+        <div class="modal-content">
+            <h2>Data Privacy Policy</h2>
+            <p><strong>1. Local Storage Only:</strong> All workout data, completion dates, and preferences are stored exclusively in your device's Local Storage. The author does not collect, transmit, track, or store any of your personal information, health data, or location data. Some static visual assets (the logo and workout badge artwork) may load from a fallback hosting location if the local copy fails to load — this is image delivery only and involves no transmission of your data.</p>
+            <p><strong>2. Third-Party Hosting:</strong> This application is hosted via GitHub Pages and Cloudflare. While the application itself does not track you, GitHub and Cloudflare may collect standard web server logs (including IP addresses, browser types, and referring pages) as part of their standard hosting infrastructure. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub's</a> and <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare's</a> privacy policy for more details.</p>
+            <p><strong>3. GDPR, CCPA, &amp; Compliance:</strong> Because we do not collect, process, sell, or control your personal data or Personally Identifiable Information (PII), we inherently align with data minimization principles. You retain 100% control over your data. To permanently delete all your data, simply clear your browser's local storage or cache.</p>
+            <button id="btn-close-privacy" class="btn-reset btn-close-modal">Close Privacy Policy</button>
         </div>
     </div>
 

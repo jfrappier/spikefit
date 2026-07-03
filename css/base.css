@@ -60,6 +60,9 @@ h1, h2, h3 {
     text-align: left;
 }
 
+/* Utilities */
+.u-hidden { display: none; }
+
 /* Utility Animations */
 .step { animation: fadeUp 0.25s cubic-bezier(0.16,1,0.3,1); }
 
