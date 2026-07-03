@@ -167,3 +167,5 @@ function setLoading(btn, on) {
   btn.disabled = on;
   btn.classList.toggle('loading', on);
 }
+
+showStep('step-email');
