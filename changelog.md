@@ -5,6 +5,11 @@
 This release fixes three bugs introduced or exposed during the inline-style extraction and CSS refactor: a missing layout rule on the landing hero preview, broken avatar image paths in the landing stylesheet, and a timing-dependent auth step initialization.
 
 ---
+## 🔒 Security
+
+### Refactor unsafe-inline
+
+Remove dependencies requiring unsafe-inline in CSP.
 
 ## 🐞 Bug Fixes
 
