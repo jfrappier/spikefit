@@ -176,6 +176,38 @@ function formatValue(val, unit) {
     return String(val);
 }
 
+// ─── Summary card helpers ─────────────────────────────────────────────────────
+
+function buildDeltaEl(m, latestVal, baselineVal) {
+    if (baselineVal == null) return null;
+    if (latestVal !== baselineVal) {
+        const diff     = latestVal - baselineVal;
+        const improved = m.higherIsBetter ? diff > 0 : diff < 0;
+        const sign     = diff > 0 ? '+' : '';
+        const el       = document.createElement('div');
+        el.className   = 'combine-metric-delta ' + (improved ? 'up' : 'down');
+        el.textContent = `${sign}${formatValue(Math.abs(diff), m.unit)} vs baseline`;
+        return el;
+    }
+    if (getCombineResults().length > 1) {
+        const el       = document.createElement('div');
+        el.className   = 'combine-metric-delta same';
+        el.textContent = '= baseline';
+        return el;
+    }
+    return null;
+}
+
+function buildBestEl(m, latestVal, bestVal) {
+    if (bestVal == null || bestVal === latestVal) return null;
+    const isBest = m.higherIsBetter ? latestVal >= bestVal : latestVal <= bestVal;
+    if (isBest) return null;
+    const el       = document.createElement('div');
+    el.className   = 'combine-metric-delta same';
+    el.textContent = `Best: ${formatValue(bestVal, m.unit)} ${m.unit}`;
+    return el;
+}
+
 function renderCombineSummary() {
     const container = document.getElementById('combine-summary');
     if (!container) return;
@@ -227,7 +259,9 @@ function renderCombineSummary() {
             baselineVal = verticalBaseline;
             bestVal     = verticalBest;
         } else {
+            // eslint-disable-next-line security/detect-object-injection -- m.id is always a key from COMBINE_METRICS
             latestVal   = latest.metrics[m.id];
+            // eslint-disable-next-line security/detect-object-injection -- m.id is always a key from COMBINE_METRICS
             baselineVal = baseline ? baseline.metrics[m.id] : null;
             bestVal     = getBest(m.id);
         }
@@ -252,30 +286,11 @@ function renderCombineSummary() {
         cell.appendChild(labelEl);
         cell.appendChild(valueEl);
 
-        if (baselineVal != null && latestVal !== baselineVal) {
-            const diff = latestVal - baselineVal;
-            const improved = m.higherIsBetter ? diff > 0 : diff < 0;
-            const deltaEl = document.createElement('div');
-            deltaEl.className = 'combine-metric-delta ' + (improved ? 'up' : 'down');
-            const sign = diff > 0 ? '+' : '';
-            deltaEl.textContent = `${sign}${formatValue(Math.abs(diff), m.unit)} vs baseline`;
-            cell.appendChild(deltaEl);
-        } else if (baselineVal != null && latestVal === baselineVal && getCombineResults().length > 1) {
-            const deltaEl = document.createElement('div');
-            deltaEl.className = 'combine-metric-delta same';
-            deltaEl.textContent = '= baseline';
-            cell.appendChild(deltaEl);
-        }
+        const deltaEl = buildDeltaEl(m, latestVal, baselineVal);
+        if (deltaEl) cell.appendChild(deltaEl);
 
-        if (bestVal != null && bestVal !== latestVal) {
-            const isBest = m.higherIsBetter ? latestVal >= bestVal : latestVal <= bestVal;
-            if (!isBest) {
-                const bestEl = document.createElement('div');
-                bestEl.className = 'combine-metric-delta same';
-                bestEl.textContent = `Best: ${formatValue(bestVal, m.unit)} ${m.unit}`;
-                cell.appendChild(bestEl);
-            }
-        }
+        const bestEl = buildBestEl(m, latestVal, bestVal);
+        if (bestEl) cell.appendChild(bestEl);
 
         grid.appendChild(cell);
     });
