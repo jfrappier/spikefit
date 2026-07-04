@@ -219,6 +219,8 @@ These agents run automatically — do not wait to be asked. Each has a defined t
 
 **What it does:** Audits all browser-shipped JS and HTML against the Hard Constraints listed above. Checks for: ES module syntax, bare `JSON.parse(localStorage.getItem())` calls, localStorage writes without try/catch, `target="_blank"` without `rel="noopener noreferrer"`, inline event handlers, hardcoded workout level suffixes, and CDN/npm imports. Reports PASS or VIOLATION with file:line for each constraint.
 
+Also checks: every `<script src="...">` and `<link rel="stylesheet" href="...">` in `app.html` and `auth.html` has a matching entry in `STATIC_FILES` in `cloudflare/worker.js`. A file referenced in HTML but absent from `STATIC_FILES` will be auth-gated by the Worker and break the hosted instance.
+
 ### Privacy Boundary Auditor
 
 **Trigger:** Any change to a `fetch()` call, `navigator.*` usage, URL construction, or anything in `cloudflare/worker.js`.
