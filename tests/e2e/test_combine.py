@@ -32,8 +32,7 @@ def sample_result(ts=None, plank=90, vertical=24):
 
 
 def test_fresh_user_sees_disclaimer_before_combine(app_page):
-    """On truly first load (no localStorage at all), disclaimer modal shows first.
-    Combine modal must not appear until after TOS is accepted."""
+    """Disclaimer appears before combine modal on first load; combine appears only after TOS accepted."""
     p = app_page
     # Splash takes ~3s; disclaimer check fires 600ms after that
     p.wait_for_timeout(4500)

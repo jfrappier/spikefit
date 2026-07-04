@@ -143,6 +143,7 @@ function combineRetestDue() {
 
 // ─── Onboarding / retest prompts ─────────────────────────────────────────────
 
+// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 function checkCombineBaseline() {
     if (getCombineResults().length > 0) return;
     if (localStorage.getItem('combineSkipped')) return;
@@ -151,6 +152,7 @@ function checkCombineBaseline() {
     document.getElementById('combine-onboard-modal').style.display = 'flex';
 }
 
+// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 function checkCombineRetest() {
     if (getCombineResults().length === 0) return;
     if (!combineRetestDue()) return;
