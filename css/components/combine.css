@@ -1,0 +1,268 @@
+/* css/components/combine.css — Combine baseline testing feature */
+
+/* ── Summary card ─────────────────────────────────────────────────────── */
+
+.combine-summary {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5em;
+    margin-bottom: 2em;
+}
+
+.combine-summary h3 {
+    color: var(--text-main);
+    font-size: 1em;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 1em 0;
+    padding: 0;
+    border: none;
+}
+
+.combine-summary-empty {
+    color: var(--text-muted);
+    font-size: 0.9em;
+    text-align: center;
+    padding: 0.5em 0;
+}
+
+.combine-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.75em;
+}
+
+.combine-metric-cell {
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.75em;
+    min-width: 0;
+}
+
+.combine-metric-label {
+    font-size: 0.7em;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.3em;
+}
+
+.combine-metric-value {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.1;
+}
+
+.combine-metric-unit {
+    font-size: 0.75em;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 0.2em;
+}
+
+.combine-metric-delta {
+    font-size: 0.75em;
+    font-weight: 700;
+    margin-top: 0.25em;
+}
+
+.combine-metric-delta.up   { color: #4CAF50; }
+.combine-metric-delta.down { color: var(--accent); }
+.combine-metric-delta.same { color: var(--text-muted); }
+
+.combine-meta {
+    font-size: 0.78em;
+    color: var(--text-muted);
+    margin-top: 1em;
+    text-align: right;
+}
+
+/* ── Test input cards ─────────────────────────────────────────────────── */
+
+.combine-test-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    padding: 1.25em 1.5em;
+    margin-bottom: 1em;
+    display: flex;
+    align-items: flex-start;
+    gap: 1em;
+}
+
+.combine-test-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.combine-test-name {
+    font-weight: 700;
+    color: var(--text-main);
+    font-size: 0.95em;
+    margin-bottom: 0.2em;
+}
+
+.combine-test-notes {
+    font-size: 0.82em;
+    color: var(--text-muted);
+    margin: 0.25em 0 0.5em 0;
+}
+
+.combine-test-links {
+    display: flex;
+    gap: 1em;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.combine-video-link {
+    font-size: 0.78em;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+}
+
+.combine-video-link:hover { text-decoration: underline; }
+
+/* ── Timer ────────────────────────────────────────────────────────────── */
+
+.combine-timer-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4em;
+    min-width: 90px;
+}
+
+.combine-timer-display {
+    font-size: 1.6em;
+    font-weight: 700;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.05em;
+    min-width: 70px;
+    text-align: center;
+}
+
+.combine-timer-display.running { color: #4CAF50; }
+.combine-timer-display.countdown { color: var(--accent); }
+
+.combine-timer-btn {
+    appearance: none;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    cursor: pointer;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.75em;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 0.4em 0.9em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+}
+
+.combine-timer-btn:disabled { opacity: 0.4; cursor: default; }
+.combine-timer-btn.stop-btn { background: #555; }
+
+/* ── Numeric input (reach, touch, agility, rep counts) ───────────────── */
+
+.combine-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3em;
+    min-width: 90px;
+}
+
+.combine-input-label {
+    font-size: 0.7em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.combine-input {
+    appearance: none;
+    background: var(--bg-body);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 1.1em;
+    font-weight: 700;
+    padding: 0.3em 0.4em;
+    text-align: center;
+    width: 80px;
+    transition: border-color 0.15s;
+}
+
+.combine-input:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+/* ── Rep entry prompt (shown after toe-tap timer ends) ───────────────── */
+
+.combine-rep-entry {
+    display: none;
+    align-items: center;
+    gap: 0.4em;
+    flex-wrap: wrap;
+}
+
+.combine-rep-entry.visible { display: flex; }
+
+/* ── Save button ─────────────────────────────────────────────────────── */
+
+.combine-save-wrap {
+    text-align: center;
+    margin: 2em 0 1em;
+}
+
+.combine-save-btn {
+    appearance: none;
+    background: var(--accent);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius-sm);
+    color: #fff;
+    cursor: pointer;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 1em;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    padding: 0.85em 2.5em;
+    text-transform: uppercase;
+    transition: opacity 0.2s;
+}
+
+.combine-save-btn:hover   { opacity: 0.85; }
+.combine-save-btn.saved   { background: #4CAF50; border-color: #4CAF50; }
+
+/* ── Vertical jump pair ───────────────────────────────────────────────── */
+
+.combine-vj-pair {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4em;
+    min-width: 90px;
+}
+
+.combine-vj-computed {
+    font-size: 0.78em;
+    color: #4CAF50;
+    font-weight: 700;
+    text-align: center;
+    min-height: 1.2em;
+}
