@@ -1,8 +1,8 @@
 """E2E tests for the Combine baseline testing feature."""
 import json
 import time
-from datetime import date, timedelta
-from playwright.sync_api import Page, expect
+from datetime import date
+from playwright.sync_api import expect
 
 
 def today():
@@ -31,6 +31,22 @@ def sample_result(ts=None, plank=90, vertical=24):
     }
 
 
+def test_fresh_user_sees_disclaimer_before_combine(app_page):
+    """On truly first load (no localStorage at all), disclaimer modal shows first.
+    Combine modal must not appear until after TOS is accepted."""
+    p = app_page
+    # Splash takes ~3s; disclaimer check fires 600ms after that
+    p.wait_for_timeout(4500)
+    # Disclaimer must be visible; combine must be hidden
+    expect(p.locator("#disclaimer-modal")).to_be_visible(timeout=3000)
+    expect(p.locator("#combine-onboard-modal")).to_be_hidden(timeout=1000)
+    # Accept the TOS
+    p.locator("#btn-accept-disclaimer").click()
+    # Now combine modal should appear (afterDisclaimerChecks fires after 500ms)
+    expect(p.locator("#combine-onboard-modal")).to_be_visible(timeout=3000)
+    expect(p.locator("#disclaimer-modal")).to_be_hidden(timeout=1000)
+
+
 def test_new_user_sees_onboarding_modal(seeded_page):
     """After disclaimer, onboarding modal appears for a user with no combine data."""
     p = seeded_page({"disclaimerAgreed": "true"})
@@ -40,7 +56,7 @@ def test_new_user_sees_onboarding_modal(seeded_page):
 
 
 def test_onboard_go_switches_to_combine_tab(seeded_page):
-    """'Measure My Baseline' button navigates to the Combine tab."""
+    """Clicking 'Measure My Baseline' switches to the Combine tab."""
     p = seeded_page({"disclaimerAgreed": "true"})
     p.wait_for_timeout(4000)
     p.locator("#btn-combine-onboard-go").click()
@@ -48,7 +64,7 @@ def test_onboard_go_switches_to_combine_tab(seeded_page):
 
 
 def test_onboard_later_dismisses_modal(seeded_page):
-    """'Maybe Later' closes the modal without navigating away."""
+    """Clicking 'Maybe Later' closes the modal without navigating away."""
     p = seeded_page({"disclaimerAgreed": "true"})
     p.wait_for_timeout(4000)
     p.locator("#btn-combine-onboard-later").click()
@@ -81,11 +97,11 @@ def test_saving_result_writes_to_localstorage(seeded_page):
     p.locator("#btn-save-combine").click()
 
     results = json.loads(p.evaluate("localStorage.getItem('combineResults') || '[]'"))
-    assert len(results) == 1
-    assert results[0]["metrics"]["standingReach"] == 84
-    assert results[0]["metrics"]["jumpTouch"] == 108
-    assert results[0]["metrics"]["vertical"] == 24
-    assert results[0]["metrics"]["plankSec"] == 90
+    assert len(results) == 1  # nosemgrep: python.lang.security.audit.assert-used
+    assert results[0]["metrics"]["standingReach"] == 84  # nosemgrep: python.lang.security.audit.assert-used
+    assert results[0]["metrics"]["jumpTouch"] == 108  # nosemgrep: python.lang.security.audit.assert-used
+    assert results[0]["metrics"]["vertical"] == 24  # nosemgrep: python.lang.security.audit.assert-used
+    assert results[0]["metrics"]["plankSec"] == 90  # nosemgrep: python.lang.security.audit.assert-used
 
 
 def test_vertical_computed_on_input(seeded_page):
@@ -149,13 +165,13 @@ def test_retest_toast_after_28_days(seeded_page):
 
 
 def test_dont_ask_again_suppresses_modal_permanently(seeded_page):
-    """'Don't ask again' sets combineSkipped and suppresses the modal on subsequent loads."""
+    """Clicking 'Don't ask again' sets combineSkipped and permanently suppresses the modal."""
     p = seeded_page({"disclaimerAgreed": "true"})
     p.wait_for_timeout(4000)
     # Click "Don't ask again" — should write combineSkipped to localStorage
     p.locator("#btn-combine-onboard-skip").click()
     skipped = p.evaluate("localStorage.getItem('combineSkipped')")
-    assert skipped == 'true'
+    assert skipped == 'true'  # nosemgrep: python.lang.security.audit.assert-used
     # Reload — modal must not appear even in a fresh session
     p.reload()
     p.wait_for_timeout(4000)

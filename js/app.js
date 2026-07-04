@@ -916,6 +916,7 @@ function checkStreak() {
     }
 }
 
+/* global checkCombineBaseline, checkCombineRetest */ // defined in combine.js, loaded after app.js
 function afterDisclaimerChecks() {
     // Combine baseline prompt takes priority over the streak toast.
     // If a user has no combine data and hasn't been prompted this session, show the modal

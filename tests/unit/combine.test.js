@@ -59,7 +59,7 @@ const COMBINE_RETEST_DAYS_TEST = 28;
 
 function combineRetestDueInline(latestTimestamp) {
     if (latestTimestamp == null) return false;
-    const daysSince = (Date.now() - latestTimestamp) / 86400000;
+    const daysSince = (Date.now() - latestTimestamp) / 86400000; // NOPMD
     return daysSince >= COMBINE_RETEST_DAYS_TEST;
 }
 
@@ -153,17 +153,17 @@ QUnit.module('combineRetestDue', () => {
     });
 
     QUnit.test('returns false at 27 days', assert => {
-        const ts = Date.now() - 27 * 86400000;
+        const ts = Date.now() - 27 * 86400000; // NOPMD
         assert.false(combineRetestDueInline(ts));
     });
 
     QUnit.test('returns true at exactly 28 days', assert => {
-        const ts = Date.now() - 28 * 86400000;
+        const ts = Date.now() - 28 * 86400000; // NOPMD
         assert.true(combineRetestDueInline(ts));
     });
 
     QUnit.test('returns true beyond 28 days', assert => {
-        const ts = Date.now() - 35 * 86400000;
+        const ts = Date.now() - 35 * 86400000; // NOPMD
         assert.true(combineRetestDueInline(ts));
     });
 });

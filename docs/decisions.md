@@ -115,6 +115,7 @@ Lightweight ADR format: **Status → Context → Decision → Consequences**
 **Context:** SpikeFit had no way to establish a starting point for users or track raw athletic growth. A Combine — a short battery of self-administered tests — was needed to anchor the training program with measurable baselines. The most meaningful volleyball metric is vertical jump height, but measuring it automatically (accelerometer hang-time, camera-based analysis) requires HTTPS sensor permissions, video processing dependencies, or platform-specific APIs. These conflict with the app's core constraints: zero runtime dependencies, works over `file://` protocol, no external APIs, privacy-first.
 
 **Decision:** The Combine uses manual wall/reach entry for vertical jump: the user enters their standing reach height (arm fully extended) and their jump-touch height; the app computes `vertical = jumpTouch − standingReach`. All seven metrics in the v1 battery are self-measured and manually entered:
+
 - Standing reach (in)
 - Jump touch (in) → vertical computed automatically
 - Plank hold (seconds) — count-up timer in the UI

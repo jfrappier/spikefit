@@ -1,5 +1,8 @@
 // js/combine.js — Combine baseline testing feature
-// Depends on globals from app.js: safeParseJSON, showToast, switchTab, formatDateStr, getTodayDateStr
+// Globals consumed from app.js (loaded before this file via script load order):
+/* global safeParseJSON, showToast, getTodayDateStr */
+// Functions exposed as globals for app.js to call after this file loads:
+/* exported checkCombineBaseline, checkCombineRetest */
 
 const COMBINE_RETEST_DAYS = 28;
 
@@ -119,6 +122,7 @@ function getBest(metricId) {
 
     let best = null;
     for (const r of results) {
+        // eslint-disable-next-line security/detect-object-injection -- metricId is always a known string from COMBINE_METRICS, not user input
         const val = r.metrics[metricId];
         if (val == null || isNaN(val)) continue;
         if (best === null) {
@@ -133,7 +137,7 @@ function getBest(metricId) {
 function combineRetestDue() {
     const latest = getLatest();
     if (!latest) return false;
-    const daysSince = (Date.now() - latest.timestamp) / 86400000;
+    const daysSince = (Date.now() - latest.timestamp) / 86400000; // NOPMD -- 86400000 ms/day is exact and within JS safe integer range
     return daysSince >= COMBINE_RETEST_DAYS;
 }
 

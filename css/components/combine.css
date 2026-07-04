@@ -16,7 +16,7 @@
     font-size: 1em;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    margin: 0 0 1em 0;
+    margin: 0 0 1em;
     padding: 0;
     border: none;
 }
@@ -111,7 +111,7 @@
 .combine-test-notes {
     font-size: 0.82em;
     color: var(--text-muted);
-    margin: 0.25em 0 0.5em 0;
+    margin: 0.25em 0 0.5em;
 }
 
 .combine-test-links {
@@ -159,7 +159,7 @@
     background: var(--accent);
     border: none;
     border-radius: var(--radius-sm);
-    color: #fff;
+    color: #ffffff;
     cursor: pointer;
     font-family: 'Source Sans 3', sans-serif;
     font-size: 0.75em;
@@ -172,7 +172,7 @@
 }
 
 .combine-timer-btn:disabled { opacity: 0.4; cursor: default; }
-.combine-timer-btn.stop-btn { background: #555; }
+.combine-timer-btn.stop-btn { background: #555555; }
 
 /* ── Numeric input (reach, touch, agility, rep counts) ───────────────── */
 
@@ -236,7 +236,7 @@
     background: var(--accent);
     border: 2px solid var(--accent);
     border-radius: var(--radius-sm);
-    color: #fff;
+    color: #ffffff;
     cursor: pointer;
     font-family: 'Source Sans 3', sans-serif;
     font-size: 1em;
