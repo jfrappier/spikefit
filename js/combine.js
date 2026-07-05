@@ -122,7 +122,8 @@ function getBest(metricId) {
 
     let best = null;
     for (const r of results) {
-        const val = r.metrics[metricId]; // metricId is always a known string from COMBINE_METRICS, not user input
+        // eslint-disable-next-line security/detect-object-injection -- metricId is always a known string from COMBINE_METRICS, not user input
+        const val = r.metrics[metricId];
         if (val == null || isNaN(val)) continue;
         if (best === null) {
             best = val;
@@ -256,7 +257,9 @@ function renderCombineSummary() {
             baselineVal = verticalBaseline;
             bestVal     = verticalBest;
         } else {
-            latestVal   = latest.metrics[m.id];   // m.id is always a key from COMBINE_METRICS
+            // eslint-disable-next-line security/detect-object-injection -- m.id is always a key from COMBINE_METRICS
+            latestVal   = latest.metrics[m.id];
+            // eslint-disable-next-line security/detect-object-injection -- m.id is always a key from COMBINE_METRICS
             baselineVal = baseline ? baseline.metrics[m.id] : null;
             bestVal     = getBest(m.id);
         }

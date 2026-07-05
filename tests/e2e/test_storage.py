@@ -155,7 +155,7 @@ def test_restore_confirm_cancel_clears_pending_data(seeded_page, tmp_path):
     # Inject the backup data directly (simulates file picker result)
     p.evaluate(f"""
         const data = JSON.parse({json.dumps(good_backup)}).data;
-        window.pendingRestoreData = data;
+        pendingRestoreData = data;
         document.getElementById('restore-confirm-modal').style.display = 'flex';
     """)
     expect(p.locator("#restore-confirm-modal")).to_be_visible(timeout=2000)
@@ -185,7 +185,7 @@ def test_restore_confirm_writes_data_and_reloads(seeded_page):
 
     # Inject pending restore data and show the confirm modal
     p.evaluate(f"""
-        window.pendingRestoreData = JSON.parse({json.dumps(good_backup_data)});
+        pendingRestoreData = JSON.parse({json.dumps(good_backup_data)});
         document.getElementById('restore-confirm-modal').style.display = 'flex';
     """)
     expect(p.locator("#restore-confirm-modal")).to_be_visible(timeout=2000)

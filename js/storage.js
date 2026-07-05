@@ -43,7 +43,7 @@ function exportData() {
     const json     = JSON.stringify(bundle, null, 2);
     const file     = new File([json], filename, { type: 'application/json' });
 
-    (async () => {
+    (async () => { // NOPMD -- async IIFE is the correct pattern for top-level await in a non-module script
         try {
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 await navigator.share({ files: [file], title: 'SpikeFit Backup', text: 'My SpikeFit training data backup.' });
@@ -74,7 +74,7 @@ function exportData() {
 
 // ─── Import (Restore) ─────────────────────────────────────────────────────────
 
-var pendingRestoreData = null;
+let pendingRestoreData = null;
 
 function importData() {
     const input  = document.createElement('input');
@@ -83,12 +83,12 @@ function importData() {
     input.addEventListener('change', () => {
         const file = input.files[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.addEventListener('load', () => {
+        file.text().then(text => {
             let parsed;
             try {
-                parsed = JSON.parse(reader.result);
+                parsed = JSON.parse(text);
             } catch (err) {
+                console.error('Failed to parse backup JSON:', err);
                 showToast('⚠️ Restore Failed', 'The file could not be read as valid JSON.', '⚠️', 8000);
                 return;
             }
@@ -98,8 +98,9 @@ function importData() {
             }
             pendingRestoreData = parsed.data;
             document.getElementById('restore-confirm-modal').style.display = 'flex';
+        }).catch(() => {
+            showToast('⚠️ Restore Failed', 'The file could not be read.', '⚠️', 8000);
         });
-        reader.readAsText(file);
     });
     input.click();
 }
@@ -114,7 +115,7 @@ function confirmRestore() {
         if (val === null || val === undefined) return;
         try { localStorage.setItem(key, JSON.stringify(val)); }
         catch (err) {
-            console.error('Failed to restore key "' + key + '".', err);
+            console.error('Failed to restore key "' + key + '".', err); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring -- key is always a hardcoded localStorage key, not user input
             showToast('⚠️ Restore Error', "Couldn't write all data — storage may be full or restricted.", '⚠️', 8000);
         }
     };
@@ -122,7 +123,7 @@ function confirmRestore() {
         if (val === null || val === undefined) return;
         try { localStorage.setItem(key, val); }
         catch (err) {
-            console.error('Failed to restore key "' + key + '".', err);
+            console.error('Failed to restore key "' + key + '".', err); // nosemgrep: javascript.lang.security.audit.unsafe-formatstring -- key is always a hardcoded localStorage key, not user input
             showToast('⚠️ Restore Error', "Couldn't write all data — storage may be full or restricted.", '⚠️', 8000);
         }
     };
