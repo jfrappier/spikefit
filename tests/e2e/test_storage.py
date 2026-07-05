@@ -67,7 +67,7 @@ def test_settings_modal_shows_current_preference(seeded_page):
     p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "drive"})
     p.wait_for_timeout(4000)
     p.locator("#btn-storage-settings").click()
-    expect(p.locator("#storage-pref-current")).to_contain_text("Drive", timeout=2000)
+    expect(p.locator("#storage-pref-current")).to_contain_text("Cloud backup", timeout=2000)
 
 
 def test_toggle_changes_preference(seeded_page):

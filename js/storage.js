@@ -203,7 +203,7 @@ function closeStorageModal() {
 function updateStorageSettingsUI() {
     const pref  = getStoragePreference();
     const el    = document.getElementById('storage-pref-current');
-    if (el) el.textContent = pref === 'drive' ? 'Google Drive (manual)' : 'Local only';
+    if (el) el.textContent = pref === 'drive' ? 'Cloud backup' : 'Local only';
 
     const lastEl = document.getElementById('storage-last-backup');
     if (lastEl) {
@@ -216,7 +216,7 @@ function updateStorageSettingsUI() {
     const warnEl = document.getElementById('storage-warning-copy');
     if (warnEl) {
         warnEl.textContent = pref === 'drive'
-            ? "You'll save a backup file into your Google Drive app so it's available on your other devices. SpikeFit never connects to Google — you choose Drive from your device's share menu."
+            ? "Saves a backup file to any cloud app on your device (Google Drive, iCloud, Dropbox, Box, and more). SpikeFit never connects to these services — you pick where to save it from your device's share menu."
             : "Your data stays on this device. If you clear your browser storage or switch devices, it's gone. You can back up manually any time using the button above.";
     }
 }
