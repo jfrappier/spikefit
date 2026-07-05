@@ -46,6 +46,7 @@ function exportData() {
     (async () => { // NOPMD -- async IIFE is the correct pattern for top-level await in a non-module script
         try {
             let saved = false;
+            let usedFolderPicker = false;
 
             if (window.showSaveFilePicker) {
                 // File System Access API: opens a folder picker (Android SAF, desktop Chrome/Edge).
@@ -60,6 +61,7 @@ function exportData() {
                     await writable.write(json);
                     await writable.close();
                     saved = true;
+                    usedFolderPicker = true;
                 } catch (err) {
                     if (err.name === 'AbortError' && (Date.now() - t0) > 300) return; // user cancelled visible picker
                     // Quick abort (browser blocked API silently) or other error: fall through.
@@ -93,7 +95,11 @@ function exportData() {
                 showToast('⚠️ Save Failed', "Couldn't record backup timestamp — storage may be full or restricted.", '⚠️', 8000);
             }
             updateStorageSettingsUI();
-            showToast('Backup Saved', `Your data was saved as ${filename}.`, '💾', 6000);
+            if (usedFolderPicker) {
+                showToast('Backup Saved', `Your data was saved as ${filename}.`, '💾', 6000);
+            } else {
+                showToast('Backup Saved', `${filename} was saved to your Downloads folder. Move it to Google Drive or Dropbox to keep it accessible across devices.`, '💾', 10000);
+            }
         } catch (err) {
             console.error('Export failed:', err);
             showToast('⚠️ Backup Failed', 'Something went wrong exporting your data. Try again.', '⚠️', 8000);
@@ -247,6 +253,11 @@ function updateStorageSettingsUI() {
         warnEl.textContent = pref === 'drive'
             ? "Saves a backup file to any cloud app on your device (Google Drive, iCloud, Dropbox, Box, and more). SpikeFit never connects to these services — you pick where to save it from your device's share menu."
             : "Your data stays on this device. If you clear your browser storage or switch devices, it's gone. You can back up manually any time using the button above.";
+    }
+
+    const hintEl = document.getElementById('storage-backup-hint');
+    if (hintEl) {
+        hintEl.textContent = "In the file picker, navigate to a Google Drive, iCloud, Dropbox, or Box folder to keep your backup accessible across devices. For the best experience on Android, use Chrome.";
     }
 }
 
