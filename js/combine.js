@@ -122,8 +122,7 @@ function getBest(metricId) {
 
     let best = null;
     for (const r of results) {
-        // eslint-disable-next-line security/detect-object-injection -- metricId is always a known string from COMBINE_METRICS, not user input
-        const val = r.metrics[metricId];
+        const val = r.metrics[metricId]; // metricId is always a known string from COMBINE_METRICS, not user input
         if (val == null || isNaN(val)) continue;
         if (best === null) {
             best = val;
@@ -143,7 +142,6 @@ function combineRetestDue() {
 
 // ─── Onboarding / retest prompts ─────────────────────────────────────────────
 
-// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 function checkCombineBaseline() {
     if (getCombineResults().length > 0) return;
     if (localStorage.getItem('combineSkipped')) return;
@@ -152,7 +150,6 @@ function checkCombineBaseline() {
     document.getElementById('combine-onboard-modal').style.display = 'flex';
 }
 
-// eslint-disable-next-line no-unused-vars, @typescript-eslint/no-unused-vars
 function checkCombineRetest() {
     if (getCombineResults().length === 0) return;
     if (!combineRetestDue()) return;
@@ -259,9 +256,7 @@ function renderCombineSummary() {
             baselineVal = verticalBaseline;
             bestVal     = verticalBest;
         } else {
-            // eslint-disable-next-line security/detect-object-injection -- m.id is always a key from COMBINE_METRICS
-            latestVal   = latest.metrics[m.id];
-            // eslint-disable-next-line security/detect-object-injection -- m.id is always a key from COMBINE_METRICS
+            latestVal   = latest.metrics[m.id];   // m.id is always a key from COMBINE_METRICS
             baselineVal = baseline ? baseline.metrics[m.id] : null;
             bestVal     = getBest(m.id);
         }

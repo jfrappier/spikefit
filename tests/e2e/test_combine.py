@@ -32,23 +32,29 @@ def sample_result(ts=None, plank=90, vertical=24):
 
 
 def test_fresh_user_sees_disclaimer_before_combine(app_page):
-    """Disclaimer appears before combine modal on first load; combine appears only after TOS accepted."""
+    """Disclaimer → storage-choice wizard → combine modal for a brand-new user."""
     p = app_page
     # Splash takes ~3s; disclaimer check fires 600ms after that
     p.wait_for_timeout(4500)
-    # Disclaimer must be visible; combine must be hidden
+    # Disclaimer must be visible; storage-choice and combine must be hidden
     expect(p.locator("#disclaimer-modal")).to_be_visible(timeout=3000)
+    expect(p.locator("#storage-choice-modal")).to_be_hidden(timeout=1000)
     expect(p.locator("#combine-onboard-modal")).to_be_hidden(timeout=1000)
     # Accept the TOS
     p.locator("#btn-accept-disclaimer").click()
-    # Now combine modal should appear (afterDisclaimerChecks fires after 500ms)
+    # Storage-choice modal should appear next (storagePreference not yet set)
+    expect(p.locator("#storage-choice-modal")).to_be_visible(timeout=3000)
+    expect(p.locator("#combine-onboard-modal")).to_be_hidden(timeout=1000)
+    # Choose local storage
+    p.locator("#btn-choose-local").click()
+    # Now combine modal should appear
     expect(p.locator("#combine-onboard-modal")).to_be_visible(timeout=3000)
-    expect(p.locator("#disclaimer-modal")).to_be_hidden(timeout=1000)
+    expect(p.locator("#storage-choice-modal")).to_be_hidden(timeout=1000)
 
 
 def test_new_user_sees_onboarding_modal(seeded_page):
     """After disclaimer, onboarding modal appears for a user with no combine data."""
-    p = seeded_page({"disclaimerAgreed": "true"})
+    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local"})
     p.wait_for_timeout(4000)  # splash (3s) + 500ms afterDisclaimerChecks delay
     modal = p.locator("#combine-onboard-modal")
     expect(modal).to_be_visible(timeout=3000)
@@ -56,7 +62,7 @@ def test_new_user_sees_onboarding_modal(seeded_page):
 
 def test_onboard_go_switches_to_combine_tab(seeded_page):
     """Clicking 'Measure My Baseline' switches to the Combine tab."""
-    p = seeded_page({"disclaimerAgreed": "true"})
+    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     p.locator("#btn-combine-onboard-go").click()
     expect(p.locator("#combine.active")).to_be_visible(timeout=2000)
@@ -64,7 +70,7 @@ def test_onboard_go_switches_to_combine_tab(seeded_page):
 
 def test_onboard_later_dismisses_modal(seeded_page):
     """Clicking 'Maybe Later' closes the modal without navigating away."""
-    p = seeded_page({"disclaimerAgreed": "true"})
+    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     p.locator("#btn-combine-onboard-later").click()
     modal = p.locator("#combine-onboard-modal")
@@ -75,7 +81,7 @@ def test_onboard_later_dismisses_modal(seeded_page):
 
 def test_combine_tab_renders_test_cards(seeded_page):
     """Combine tab shows all 7 test input cards."""
-    p = seeded_page({"disclaimerAgreed": "true"})
+    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     p.locator("#btn-combine-onboard-go").click()
     cards = p.locator(".combine-test-card")
@@ -84,7 +90,7 @@ def test_combine_tab_renders_test_cards(seeded_page):
 
 def test_saving_result_writes_to_localstorage(seeded_page):
     """Entering values and saving writes a combineResults entry."""
-    p = seeded_page({"disclaimerAgreed": "true"})
+    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     # Use onboarding modal to navigate to the Combine tab (mirrors real first-run flow)
     p.locator("#btn-combine-onboard-go").click()
@@ -105,7 +111,7 @@ def test_saving_result_writes_to_localstorage(seeded_page):
 
 def test_vertical_computed_on_input(seeded_page):
     """Entering reach + touch updates the computed vertical preview."""
-    p = seeded_page({"disclaimerAgreed": "true"})
+    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     p.locator("#btn-combine-onboard-go").click()
 
@@ -120,6 +126,7 @@ def test_summary_shows_baseline_on_second_attempt(seeded_page):
     baseline = sample_result(ts=days_ago_ts(10), plank=60, vertical=20)
     p = seeded_page({
         "disclaimerAgreed": "true",
+        "storagePreference": "local",
         "combineResults": [baseline]
     })
     p.wait_for_timeout(4000)
@@ -143,6 +150,7 @@ def test_existing_combine_data_suppresses_onboard_modal(seeded_page):
     existing = sample_result()
     p = seeded_page({
         "disclaimerAgreed": "true",
+        "storagePreference": "local",
         "combineResults": [existing]
     })
     p.wait_for_timeout(4000)
@@ -155,6 +163,7 @@ def test_retest_toast_after_28_days(seeded_page):
     old_result = sample_result(ts=days_ago_ts(30))
     p = seeded_page({
         "disclaimerAgreed": "true",
+        "storagePreference": "local",
         "combineResults": [old_result]
     })
     p.wait_for_timeout(5000)
@@ -165,7 +174,7 @@ def test_retest_toast_after_28_days(seeded_page):
 
 def test_dont_ask_again_suppresses_modal_permanently(seeded_page):
     """Clicking 'Don't ask again' sets combineSkipped and permanently suppresses the modal."""
-    p = seeded_page({"disclaimerAgreed": "true"})
+    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     # Click "Don't ask again" — should write combineSkipped to localStorage
     p.locator("#btn-combine-onboard-skip").click()
@@ -182,6 +191,7 @@ def test_no_retest_toast_within_28_days(seeded_page):
     recent_result = sample_result(ts=days_ago_ts(10))
     p = seeded_page({
         "disclaimerAgreed": "true",
+        "storagePreference": "local",
         "combineResults": [recent_result]
     })
     p.wait_for_timeout(5000)

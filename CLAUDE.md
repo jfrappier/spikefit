@@ -29,6 +29,8 @@ Current split:
 
 When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in the relevant HTML files, before any file that depends on its globals.
 
+When a function in one JS file is called from another (a cross-file global), add its name to the `appGlobals` object in **both** `eslint.config.mjs` (root) and `.codacy/tools-configs/eslint.config.mjs`. Omitting it causes `no-undef` errors in the consuming file when running `codacy-cli analyze --tool eslint`.
+
 ---
 
 ## File Map
@@ -36,9 +38,10 @@ When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in th
 | File | Purpose |
 |---|---|
 | `index.html` | Marketing landing page. No JavaScript. |
-| `app.html` + `js/workouts.js` + `js/app.js` + `js/combine.js` | Main app shell. `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state; `combine.js` handles the Combine baseline testing feature. |
+| `app.html` + `js/workouts.js` + `js/app.js` + `js/combine.js` + `js/storage.js` | Main app shell. `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state; `combine.js` handles the Combine baseline testing feature; `storage.js` handles BYOS export/import and storage preference. |
 | `auth.html` + `js/auth.js` | OTP auth flow. Only used when the Worker is deployed. |
 | `css/components/combine.css` | Combine-specific styles (summary card, test cards, timers, delta coloring). |
+| `css/components/storage.css` | Storage & Backup UI styles (gear icon, storage-choice wizard, settings modal, backup nudge, restore confirm). |
 | `cloudflare/worker.js` | Optional hosting gate — routing, OTP, sessions. Never touches workout data. |
 | `_config.yml` | Jekyll config. Only purpose: `include` list for dotfile directories that Jekyll would otherwise ignore (e.g. `.well-known/`). |
 | `css/base.css` | All CSS custom properties (design tokens). The only file that defines `:root` variables. |
@@ -65,6 +68,8 @@ When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in th
 | `disclaimerAgreed` | `'true'` | absent | Set once when user accepts the disclaimer modal. |
 | `combineResults` | `Array<{ date, timestamp, metrics: { standingReach, jumpTouch, vertical, plankSec, wallSitSec, toeTaps, jumpingJacks, agilitySec } }>` | `[]` | All Combine attempt records (never pruned). Any metric may be absent. |
 | `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the modal. |
+| `storagePreference` | `'local' \| 'drive'` | `'local'` | Where the user chose to keep data. Set in the first-run wizard. Drives backup nudges and Settings copy. |
+| `lastBackupAt` | ISO timestamp string | absent | Set on each successful export. Powers "Last backed up …" in Settings and throttles the post-workout nudge (~once per 20 hours). |
 
 sessionStorage:
 
@@ -225,7 +230,7 @@ Also checks: every `<script src="...">` and `<link rel="stylesheet" href="...">`
 
 **Trigger:** Any change to a `fetch()` call, `navigator.*` usage, URL construction, or anything in `cloudflare/worker.js`.
 
-**What it does:** Finds every network transmission in `js/app.js`, `js/auth.js`, `js/combine.js`, and `cloudflare/worker.js`. For each, confirms none of the protected keys (`completedDates`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `completedExercises`, `combineResults`) or their values are transmitted. Reports PASS or VIOLATION per call site.
+**What it does:** Finds every network transmission in `js/app.js`, `js/auth.js`, `js/combine.js`, `js/storage.js`, and `cloudflare/worker.js`. For each, confirms none of the protected keys (`completedDates`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `completedExercises`, `combineResults`, `storagePreference`, `lastBackupAt`) or their values are transmitted. Reports PASS or VIOLATION per call site.
 
 ### Test Gap Analyst
 

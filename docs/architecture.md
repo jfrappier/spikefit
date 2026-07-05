@@ -33,7 +33,7 @@ The Worker is a hosting-only access gate. It controls who can reach the hosted i
 | File | JavaScript | Purpose |
 |---|---|---|
 | `index.html` | none | Marketing landing page. Pure HTML/CSS — no JS at all. |
-| `app.html` | `js/workouts.js`, `js/app.js`, `js/combine.js` (all defer) | Main application shell. `workouts.js` defines the workout database; `js/app.js` handles all logic, rendering, and state; `js/combine.js` handles the Combine baseline testing feature. |
+| `app.html` | `js/workouts.js`, `js/app.js`, `js/combine.js`, `js/storage.js` (all defer) | Main application shell. `workouts.js` defines the workout database; `js/app.js` handles all logic, rendering, and state; `js/combine.js` handles the Combine baseline testing feature; `js/storage.js` handles BYOS export/import and storage preference. |
 | `auth.html` | `js/auth.js` (defer) | Two-step OTP flow. Only needed when the Worker is deployed. |
 | `tos.html` | none | Terms of service. Static HTML. |
 
@@ -52,6 +52,7 @@ Current file breakdown:
 - `js/workouts.js` — the workout database (`workouts` object, `schedule` array); loaded first
 - `js/app.js` — all remaining app logic, event handling, rendering, state management
 - `js/combine.js` — Combine baseline testing feature; loaded after `js/app.js`, relies on its globals
+- `js/storage.js` — BYOS export/import, storage preference, and backup nudge; loaded after `js/combine.js`
 
 ### Contents of `js/workouts.js`
 
@@ -120,6 +121,8 @@ The rendering model: there is no incremental diffing. Every state change rebuild
 | `disclaimerAgreed` | `'true'` | absent | Set once when user accepts the disclaimer. |
 | `combineResults` | `Array<{ date, timestamp, metrics: { standingReach, jumpTouch, vertical, plankSec, wallSitSec, toeTaps, jumpingJacks, agilitySec } }>` | `[]` | All Combine attempt records. Not pruned — growth history is the point. Any metric may be absent. |
 | `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the prompt. |
+| `storagePreference` | `'local' \| 'drive'` | `'local'` | Where the user chose to keep data. Set in the first-run wizard. Drives backup nudges and Settings copy. |
+| `lastBackupAt` | ISO timestamp string | absent | Set on each successful export. Powers "Last backed up …" in the Storage Settings modal and throttles the post-workout backup nudge (~once per 20 hours). |
 
 sessionStorage:
 
@@ -128,7 +131,46 @@ sessionStorage:
 | `welcomeToastShown` | `'true'` | Gate to show the streak toast once per browser session. |
 | `combinePromptShown` | `'true'` | Gate to show the Combine baseline onboarding modal once per browser session (until an attempt is logged). |
 
-`saveState()` and `safeParseJSON()` are the intended abstraction boundary for swapping the storage backend. When BYOS (bring-your-own-storage) is built, these are the two functions to make pluggable.
+`saveState()` and `safeParseJSON()` are the intended abstraction boundary for swapping the storage backend.
+
+---
+
+## BYOS — Bring-Your-Own-Storage (Manual Export / Import)
+
+SpikeFit ships a first-class backup/restore feature that lets users keep their data across devices without breaking the privacy model. The design: SpikeFit builds a JSON file in memory and hands it to the OS share sheet; the user's own installed app (e.g. Google Drive) does the cross-device movement. SpikeFit never makes a network call to any storage provider.
+
+### Export data format
+
+```json
+{
+  "app": "SpikeFit",
+  "schemaVersion": 1,
+  "exportedAt": "2026-07-05T12:00:00.000Z",
+  "data": {
+    "completedExercises": {},
+    "completedDates": {},
+    "spikefit_fresh_logs": [],
+    "workoutLevel": "beginner",
+    "activeWorkoutStart": null,
+    "disclaimerAgreed": "true",
+    "combineResults": [],
+    "combineSkipped": null,
+    "storagePreference": "drive"
+  }
+}
+```
+
+Filename: `spikefit-backup-YYYY-MM-DD.json`. On import, `activeWorkoutStart` is always cleared (a restored device must never think a stale workout is mid-progress). Import is replace-all, not a merge.
+
+### Platform behaviour
+
+| Environment | Backup | Restore |
+|---|---|---|
+| iOS / Android (browser) | Share sheet → tap Google Drive / Save to Files | File picker → open from Google Drive / Files |
+| Desktop (Chrome/Edge/FF/Safari) | Download to disk (into Drive-for-desktop folder if present) | File picker → choose file |
+| Raw `file://` fork | Download to disk | File picker → choose file |
+
+SpikeFit makes no network requests; the OS and the user's apps do all cross-device movement.
 
 ---
 
