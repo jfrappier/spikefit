@@ -1,6 +1,6 @@
 # SpikeFit Changelog
 
-## v0.0.705 — Cross-Device Backup / Restore (BYOS)
+## v0.0.706 — Cross-Device Backup / Restore (BYOS)
 
 This release adds a first-class manual backup and restore feature so users can keep their workout history across devices and recover from a browser storage wipe — without any server, OAuth, or Google account integration.
 
