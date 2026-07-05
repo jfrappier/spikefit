@@ -42,7 +42,7 @@ All Combine data is stored exclusively in `combineResults` in browser localStora
 
 ---
 
-## v0.0.703 (prior)
+## v0.0.703
 
 This release fixes three bugs introduced or exposed during the inline-style extraction and CSS refactor: a missing layout rule on the landing hero preview, broken avatar image paths in the landing stylesheet, and a timing-dependent auth step initialization.
 
