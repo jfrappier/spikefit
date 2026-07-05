@@ -105,3 +105,25 @@ Lightweight ADR format: **Status → Context → Decision → Consequences**
 **Decision:** Badges are rendered to an off-screen `<canvas>` element, exported as JPEG blobs, and shared via the Web Share API (files). Clipboard copy and link-based download are fallbacks. The `badge_char.png` character art has a `raw.githubusercontent.com` fallback URL for `file://` scenarios (where local file loads are cross-origin for canvas). `img.crossOrigin = 'anonymous'` is set to prevent canvas tainting over HTTP. Font loading is raced against a 2-second timeout to prevent the badge from hanging if the webfont hasn't loaded.
 
 **Consequences:** Badge generation is timing-dependent — the character art load and font load both race against timeouts. If either loses, the badge generates gracefully without them. Badge text does not wrap for long workout names (intermediate/advanced); acknowledged but not yet fixed.
+
+---
+
+## ADR-009: Combine Baseline Testing — Manual Measurement Over Sensor-Based
+
+**Status:** Accepted
+
+**Context:** SpikeFit had no way to establish a starting point for users or track raw athletic growth. A Combine — a short battery of self-administered tests — was needed to anchor the training program with measurable baselines. The most meaningful volleyball metric is vertical jump height, but measuring it automatically (accelerometer hang-time, camera-based analysis) requires HTTPS sensor permissions, video processing dependencies, or platform-specific APIs. These conflict with the app's core constraints: zero runtime dependencies, works over `file://` protocol, no external APIs, privacy-first.
+
+**Decision:** The Combine uses manual wall/reach entry for vertical jump: the user enters their standing reach height (arm fully extended) and their jump-touch height; the app computes `vertical = jumpTouch − standingReach`. All seven metrics in the v1 battery are self-measured and manually entered:
+
+- Standing reach (in)
+- Jump touch (in) → vertical computed automatically
+- Plank hold (seconds) — count-up timer in the UI
+- Wall sit (seconds) — count-up timer in the UI
+- Toe taps in 30 seconds (reps) — countdown timer, then rep entry
+- Jumping jacks to fatigue (reps) — manual count entry
+- Lateral shuttle time (seconds) — manual stopwatch + entry
+
+Units are **inches** in v1. A cm toggle is deferred.
+
+**Consequences:** Measurement accuracy depends on the user following instructions correctly. The wall/reach method is the same technique used by volleyball scouting programs (SportsRecruits, NCAA programs). No hardware, no permissions, works identically over `file://` and HTTPS. Sensor-based measurement (accelerometer hang-time, `MyJump`-style video frame analysis) is documented as a future option in `docs/decisions.md` once the file://+dependency constraints are revisited.

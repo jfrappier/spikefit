@@ -1,5 +1,47 @@
 # SpikeFit Changelog
 
+## v0.0.705
+
+This release adds the Combine baseline testing feature, a new permanent tab that prompts new users to measure seven volleyball-relevant metrics before they start training, then tracks progress across retests every four weeks.
+
+---
+
+## 🏐 Features
+
+### Add Combine baseline testing tab
+
+New **Combine** tab in the main nav lets users self-administer a battery of seven volleyball-relevant athletic tests and track their progress over time:
+
+- **Standing Reach** — measured in inches against a wall
+- **Vertical Jump** — standing reach + jump-touch entry; app computes the difference automatically and shows a live preview as you type
+- **Plank Hold** — count-up timer (Start → Stop writes the duration)
+- **Wall Sit** — count-up timer (same pattern as plank)
+- **Toe Taps (30s)** — built-in 30-second countdown timer followed by a rep entry prompt
+- **Jumping Jacks to Fatigue** — manual rep count entry
+- **Lateral Shuttle** — manual stopwatch + time entry (seconds)
+
+The summary card shows current vs. baseline (first attempt) vs. personal best for each metric, with ▲/▼ deltas after the first retest.
+
+A **"Set Your Baseline"** modal appears once per browser session for users with no prior Combine data (after the disclaimer is accepted), prompting them to take the tests before starting their first workout. The modal suppresses itself once any result is saved. Returning users with data older than 28 days see a retest toast reminder instead.
+
+All Combine data is stored exclusively in `combineResults` in browser localStorage — it never leaves the device.
+
+## Files Changed
+
+- `app.html`
+- `js/combine.js` *(new)*
+- `css/components/combine.css` *(new)*
+- `css/components/nav.css`
+- `js/app.js`
+- `tests/e2e/test_combine.py` *(new)*
+- `tests/unit/combine.test.js` *(new)*
+- `tests/unit/run.html`
+- `docs/architecture.md`
+- `docs/decisions.md`
+- `CLAUDE.md`
+
+---
+
 ## v0.0.703
 
 This release fixes three bugs introduced or exposed during the inline-style extraction and CSS refactor: a missing layout rule on the landing hero preview, broken avatar image paths in the landing stylesheet, and a timing-dependent auth step initialization.

@@ -25,6 +25,7 @@ Current split:
 
 - `js/workouts.js` — the `workouts` object and `schedule` array (static workout data)
 - `js/app.js` — all remaining logic
+- `js/combine.js` — Combine baseline testing feature (loaded after `js/app.js`; uses its globals)
 
 When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in the relevant HTML files, before any file that depends on its globals.
 
@@ -35,8 +36,9 @@ When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in th
 | File | Purpose |
 |---|---|
 | `index.html` | Marketing landing page. No JavaScript. |
-| `app.html` + `js/workouts.js` + `js/app.js` | Main app shell. `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state. |
+| `app.html` + `js/workouts.js` + `js/app.js` + `js/combine.js` | Main app shell. `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state; `combine.js` handles the Combine baseline testing feature. |
 | `auth.html` + `js/auth.js` | OTP auth flow. Only used when the Worker is deployed. |
+| `css/components/combine.css` | Combine-specific styles (summary card, test cards, timers, delta coloring). |
 | `cloudflare/worker.js` | Optional hosting gate — routing, OTP, sessions. Never touches workout data. |
 | `_config.yml` | Jekyll config. Only purpose: `include` list for dotfile directories that Jekyll would otherwise ignore (e.g. `.well-known/`). |
 | `css/base.css` | All CSS custom properties (design tokens). The only file that defines `:root` variables. |
@@ -61,12 +63,15 @@ When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in th
 | `activeWorkoutStart` | ISO timestamp string | `null` | Set when workout starts; cleared on complete or reset. |
 | `spikefit_fresh_logs` | `Array<{ timestamp, session: { load, rpe, duration, readinessModifier } }>` | `[]` | ACWR training load log. Pruned to 28 days on every write. |
 | `disclaimerAgreed` | `'true'` | absent | Set once when user accepts the disclaimer modal. |
+| `combineResults` | `Array<{ date, timestamp, metrics: { standingReach, jumpTouch, vertical, plankSec, wallSitSec, toeTaps, jumpingJacks, agilitySec } }>` | `[]` | All Combine attempt records (never pruned). Any metric may be absent. |
+| `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the modal. |
 
 sessionStorage:
 
 | Key | Type | Description |
 |---|---|---|
 | `welcomeToastShown` | `'true'` | Shows the streak toast once per browser session. |
+| `combinePromptShown` | `'true'` | Shows the Combine onboarding modal once per browser session (until first attempt is logged). |
 
 Every new localStorage key must be added to this table and to the canonical registry in `docs/architecture.md`.
 
@@ -214,11 +219,13 @@ These agents run automatically — do not wait to be asked. Each has a defined t
 
 **What it does:** Audits all browser-shipped JS and HTML against the Hard Constraints listed above. Checks for: ES module syntax, bare `JSON.parse(localStorage.getItem())` calls, localStorage writes without try/catch, `target="_blank"` without `rel="noopener noreferrer"`, inline event handlers, hardcoded workout level suffixes, and CDN/npm imports. Reports PASS or VIOLATION with file:line for each constraint.
 
+Also checks: every `<script src="...">` and `<link rel="stylesheet" href="...">` in `app.html` and `auth.html` has a matching entry in `STATIC_FILES` in `cloudflare/worker.js`. A file referenced in HTML but absent from `STATIC_FILES` will be auth-gated by the Worker and break the hosted instance.
+
 ### Privacy Boundary Auditor
 
 **Trigger:** Any change to a `fetch()` call, `navigator.*` usage, URL construction, or anything in `cloudflare/worker.js`.
 
-**What it does:** Finds every network transmission in `js/app.js`, `js/auth.js`, and `cloudflare/worker.js`. For each, confirms none of the protected keys (`completedDates`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `completedExercises`) or their values are transmitted. Reports PASS or VIOLATION per call site.
+**What it does:** Finds every network transmission in `js/app.js`, `js/auth.js`, `js/combine.js`, and `cloudflare/worker.js`. For each, confirms none of the protected keys (`completedDates`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `completedExercises`, `combineResults`) or their values are transmitted. Reports PASS or VIOLATION per call site.
 
 ### Test Gap Analyst
 

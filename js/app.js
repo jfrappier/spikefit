@@ -675,7 +675,7 @@ function acceptDisclaimer() {
         showToast('⚠️ Save Failed', "Your browser couldn't save this update — storage may be full or restricted (e.g. private browsing).", '⚠️', 8000);
     }
     document.getElementById('disclaimer-modal').style.display = 'none';
-    setTimeout(checkStreak, 500);
+    setTimeout(afterDisclaimerChecks, 500);
 }
 function openPrivacyModal()     { document.getElementById('privacy-modal').style.display = 'flex'; }
 function closePrivacyModal()    { document.getElementById('privacy-modal').style.display = 'none'; }
@@ -916,11 +916,29 @@ function checkStreak() {
     }
 }
 
+/* global checkCombineBaseline, checkCombineRetest */ // defined in combine.js, loaded after app.js
+function afterDisclaimerChecks() {
+    // Combine baseline prompt takes priority over the streak toast.
+    // If a user has no combine data and hasn't been prompted this session, show the modal
+    // and skip the streak toast (which would be redundant noise).
+    // safeParseJSON is safe to call here; combine.js loads after app.js but both have
+    // fired before this 500ms timeout resolves.
+    const hasCombineData  = safeParseJSON('combineResults', []).length > 0;
+    const combineSkipped  = !!localStorage.getItem('combineSkipped');
+    const combineShown    = !!sessionStorage.getItem('combinePromptShown');
+    if (!hasCombineData && !combineSkipped && !combineShown) {
+        if (typeof checkCombineBaseline === 'function') checkCombineBaseline();
+    } else {
+        checkStreak();
+        if (typeof checkCombineRetest === 'function') checkCombineRetest();
+    }
+}
+
 function checkDisclaimer() {
     if (!localStorage.getItem('disclaimerAgreed')) {
         openDisclaimerModal();
     } else {
-        setTimeout(checkStreak, 500);
+        setTimeout(afterDisclaimerChecks, 500);
     }
 }
 

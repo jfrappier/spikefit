@@ -33,7 +33,7 @@ The Worker is a hosting-only access gate. It controls who can reach the hosted i
 | File | JavaScript | Purpose |
 |---|---|---|
 | `index.html` | none | Marketing landing page. Pure HTML/CSS — no JS at all. |
-| `app.html` | `js/workouts.js` then `js/app.js` (both defer) | Main application shell. `workouts.js` defines the workout database; `js/app.js` handles all logic, rendering, and state. |
+| `app.html` | `js/workouts.js`, `js/app.js`, `js/combine.js` (all defer) | Main application shell. `workouts.js` defines the workout database; `js/app.js` handles all logic, rendering, and state; `js/combine.js` handles the Combine baseline testing feature. |
 | `auth.html` | `js/auth.js` (defer) | Two-step OTP flow. Only needed when the Worker is deployed. |
 | `tos.html` | none | Terms of service. Static HTML. |
 
@@ -51,6 +51,7 @@ Current file breakdown:
 
 - `js/workouts.js` — the workout database (`workouts` object, `schedule` array); loaded first
 - `js/app.js` — all remaining app logic, event handling, rendering, state management
+- `js/combine.js` — Combine baseline testing feature; loaded after `js/app.js`, relies on its globals
 
 ### Contents of `js/workouts.js`
 
@@ -102,8 +103,8 @@ State exists in three layers:
 | Layer | What it holds | Written by | Read by |
 |---|---|---|---|
 | Module-level JS variables | In-memory working copy | State mutations throughout app.js | All render functions |
-| localStorage | Persistent workout data | `saveState()`, `FRESH_SYSTEM.saveLog()` | `safeParseJSON()` on page load |
-| sessionStorage | `welcomeToastShown` only | `checkStreak()` | `checkStreak()` |
+| localStorage | Persistent workout data | `saveState()`, `FRESH_SYSTEM.saveLog()`, `saveCombineResult()` | `safeParseJSON()` on page load |
+| sessionStorage | Per-session flags | `checkStreak()`, `checkCombineBaseline()` | `checkStreak()`, `checkCombineBaseline()` |
 
 The rendering model: there is no incremental diffing. Every state change rebuilds the affected UI from scratch via `renderDaily()`, `renderSchedule()`, or `renderHistoryCalendar()`. This is fast because the card counts are small.
 
@@ -117,12 +118,15 @@ The rendering model: there is no incremental diffing. Every state change rebuild
 | `activeWorkoutStart` | ISO timestamp string | `null` | Set when workout starts; cleared on complete or reset. |
 | `spikefit_fresh_logs` | `Array<{ timestamp, session: { load, rpe, duration, readinessModifier } }>` | `[]` | ACWR training load log. Pruned to 28 days on every write. |
 | `disclaimerAgreed` | `'true'` | absent | Set once when user accepts the disclaimer. |
+| `combineResults` | `Array<{ date, timestamp, metrics: { standingReach, jumpTouch, vertical, plankSec, wallSitSec, toeTaps, jumpingJacks, agilitySec } }>` | `[]` | All Combine attempt records. Not pruned — growth history is the point. Any metric may be absent. |
+| `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the prompt. |
 
 sessionStorage:
 
 | Key | Type | Description |
 |---|---|---|
 | `welcomeToastShown` | `'true'` | Gate to show the streak toast once per browser session. |
+| `combinePromptShown` | `'true'` | Gate to show the Combine baseline onboarding modal once per browser session (until an attempt is logged). |
 
 `saveState()` and `safeParseJSON()` are the intended abstraction boundary for swapping the storage backend. When BYOS (bring-your-own-storage) is built, these are the two functions to make pluggable.
 

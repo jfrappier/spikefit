@@ -17,6 +17,12 @@ engines:
   stylelint:
     enabled: false
 
+engines:
+  semgrep:
+    enabled: true
+    exclude_paths:
+      - "tests/**"   # assert-used rule is a false positive in test code; pytest relies on assert
+
 exclude_paths:
   - "tests/unit/qunit/**"   # vendored QUnit library — not our code
   - "fonts/**"              # binary font files
