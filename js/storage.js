@@ -45,9 +45,38 @@ function exportData() {
 
     (async () => { // NOPMD -- async IIFE is the correct pattern for top-level await in a non-module script
         try {
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({ files: [file], title: 'SpikeFit Backup', text: 'My SpikeFit training data backup.' });
-            } else {
+            let saved = false;
+
+            if (window.showSaveFilePicker) {
+                // File System Access API: opens a folder picker (Android SAF, desktop Chrome/Edge).
+                // User can navigate to Google Drive, SD card, any registered storage provider.
+                try {
+                    const fileHandle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [{ description: 'SpikeFit Backup', accept: { 'application/json': ['.json'] } }]
+                    });
+                    const writable = await fileHandle.createWritable();
+                    await writable.write(json);
+                    await writable.close();
+                    saved = true;
+                } catch (err) {
+                    if (err.name === 'AbortError') return;
+                    // Any other error (SecurityError, etc.): fall through to next method.
+                }
+            }
+
+            if (!saved && navigator.canShare && navigator.canShare({ files: [file] })) {
+                // Web Share API: iOS native share sheet surfaces iCloud Drive, AirDrop, etc.
+                try {
+                    await navigator.share({ files: [file], title: 'SpikeFit Backup', text: 'My SpikeFit training data backup.' });
+                    saved = true;
+                } catch (err) {
+                    if (err.name === 'AbortError') return;
+                    // Fall through to download.
+                }
+            }
+
+            if (!saved) {
                 const blob = new Blob([json], { type: 'application/json' });
                 const link = document.createElement('a');
                 link.href     = URL.createObjectURL(blob);
@@ -55,6 +84,7 @@ function exportData() {
                 link.click();
                 setTimeout(() => URL.revokeObjectURL(link.href), 60000);
             }
+
             try {
                 localStorage.setItem('lastBackupAt', new Date().toISOString());
             } catch (err) {
@@ -64,10 +94,8 @@ function exportData() {
             updateStorageSettingsUI();
             showToast('Backup Saved', `Your data was saved as ${filename}.`, '💾', 6000);
         } catch (err) {
-            if (err.name !== 'AbortError') {
-                console.error('Export failed:', err);
-                showToast('⚠️ Backup Failed', 'Something went wrong exporting your data. Try again.', '⚠️', 8000);
-            }
+            console.error('Export failed:', err);
+            showToast('⚠️ Backup Failed', 'Something went wrong exporting your data. Try again.', '⚠️', 8000);
         }
     })();
 }
