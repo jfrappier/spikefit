@@ -1,6 +1,6 @@
 # SpikeFit Changelog
 
-## v0.0.703
+## v0.0.705
 
 This release adds the Combine baseline testing feature, a new permanent tab that prompts new users to measure seven volleyball-relevant metrics before they start training, then tracks progress across retests every four weeks.
 
