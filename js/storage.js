@@ -50,6 +50,7 @@ function exportData() {
             if (window.showSaveFilePicker) {
                 // File System Access API: opens a folder picker (Android SAF, desktop Chrome/Edge).
                 // User can navigate to Google Drive, SD card, any registered storage provider.
+                const t0 = Date.now();
                 try {
                     const fileHandle = await window.showSaveFilePicker({
                         suggestedName: filename,
@@ -60,8 +61,8 @@ function exportData() {
                     await writable.close();
                     saved = true;
                 } catch (err) {
-                    if (err.name === 'AbortError') return;
-                    // Any other error (SecurityError, etc.): fall through to next method.
+                    if (err.name === 'AbortError' && (Date.now() - t0) > 300) return; // user cancelled visible picker
+                    // Quick abort (browser blocked API silently) or other error: fall through.
                 }
             }
 
