@@ -47,6 +47,7 @@ function exportData() {
         try {
             let saved = false;
             let usedFolderPicker = false;
+            let usedShareApi = false;
 
             if (window.showSaveFilePicker) {
                 // File System Access API: opens a folder picker (Android SAF, desktop Chrome/Edge).
@@ -73,6 +74,7 @@ function exportData() {
                 try {
                     await navigator.share({ files: [file], title: 'SpikeFit Backup', text: 'My SpikeFit training data backup.' });
                     saved = true;
+                    usedShareApi = true;
                 } catch (err) {
                     if (err.name === 'AbortError') return;
                     // Fall through to download.
@@ -95,10 +97,11 @@ function exportData() {
                 showToast('⚠️ Save Failed', "Couldn't record backup timestamp — storage may be full or restricted.", '⚠️', 8000);
             }
             updateStorageSettingsUI();
-            if (usedFolderPicker) {
-                showToast('Backup Saved', `Your data was saved as ${filename}.`, '💾', 6000);
-            } else {
-                showToast('Backup Saved', `${filename} was saved to your Downloads folder. Move it to Google Drive or Dropbox to keep it accessible across devices.`, '💾', 10000);
+            if (!usedShareApi) {
+                const msg = usedFolderPicker
+                    ? `Your data was saved as ${filename}.`
+                    : `${filename} was saved to your Downloads folder. Move it to Google Drive or Dropbox to keep it accessible across devices.`;
+                showToast('Backup Saved', msg, '💾', usedFolderPicker ? 6000 : 10000);
             }
         } catch (err) {
             console.error('Export failed:', err);
