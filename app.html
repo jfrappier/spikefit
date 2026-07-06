@@ -17,10 +17,12 @@
   <link rel="stylesheet" href="css/components/calendar.css">
   <link rel="stylesheet" href="css/components/splash.css">
   <link rel="stylesheet" href="css/components/combine.css">
+  <link rel="stylesheet" href="css/components/storage.css">
 
   <script src="js/workouts.js" defer></script>
   <script src="js/app.js" defer></script>
   <script src="js/combine.js" defer></script>
+  <script src="js/storage.js" defer></script>
 </head>
 <body>
 
@@ -34,6 +36,9 @@
 
     <div id="wrapper">
         <header id="header">
+            <button id="btn-storage-settings" aria-label="Storage &amp; backup settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
             <h1><img id="header-logo-img" src="logo.png" alt="SpikeFit" class="header-logo"></h1>
             <p id="current-workout-title">30-Min Power Program</p>
 
@@ -226,10 +231,70 @@
     <div id="privacy-modal" class="modal-overlay">
         <div class="modal-content">
             <h2>Data Privacy Policy</h2>
-            <p><strong>1. Local Storage Only:</strong> All workout data, completion dates, and preferences are stored exclusively in your device's Local Storage. The author does not collect, transmit, track, or store any of your personal information, health data, or location data. Some static visual assets (the logo and workout badge artwork) may load from a fallback hosting location if the local copy fails to load — this is image delivery only and involves no transmission of your data.</p>
+            <p><strong>1. Local Storage Only:</strong> All workout data, completion dates, and preferences are stored exclusively in your device's Local Storage. The author does not collect, transmit, track, or store any of your personal information, health data, or location data. Some static visual assets (the logo and workout badge artwork) may load from a fallback hosting location if the local copy fails to load — this is image delivery only and involves no transmission of your data. You may choose to export a backup of your data to your own storage (such as Google Drive) using the built-in backup feature — SpikeFit never connects to any storage service on your behalf; the OS share sheet and your own installed apps handle that transfer.</p>
             <p><strong>2. Third-Party Hosting:</strong> This application is hosted via GitHub Pages and Cloudflare. While the application itself does not track you, GitHub and Cloudflare may collect standard web server logs (including IP addresses, browser types, and referring pages) as part of their standard hosting infrastructure. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub's</a> and <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare's</a> privacy policy for more details.</p>
             <p><strong>3. GDPR, CCPA, &amp; Compliance:</strong> Because we do not collect, process, sell, or control your personal data or Personally Identifiable Information (PII), we inherently align with data minimization principles. You retain 100% control over your data. To permanently delete all your data, simply clear your browser's local storage or cache.</p>
             <button id="btn-close-privacy" class="btn-reset btn-close-modal">Close Privacy Policy</button>
+        </div>
+    </div>
+
+    <div id="storage-choice-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Where Should Your Progress Live?</h2>
+            <div class="storage-choice-options">
+                <button id="btn-choose-local" class="storage-choice-btn">
+                    <span class="choice-title">Keep on this device only</span>
+                    <span class="choice-warning">Your data stays on this device. If you clear your browser storage or switch devices, it's gone. You can back up manually any time from Settings.</span>
+                </button>
+                <div>
+                    <button id="btn-choose-drive" class="storage-choice-btn">
+                        <span class="choice-title">Back up to cloud</span>
+                        <span class="choice-warning">Saves a backup file to any cloud app on your device. Works with Google Drive, iCloud Drive, Dropbox, Box, and more. SpikeFit never connects to these services — you pick the destination from your device's share menu.</span>
+                        <span class="cloud-app-chips" aria-hidden="true">
+                            <span class="cloud-chip">Google Drive</span>
+                            <span class="cloud-chip">iCloud Drive</span>
+                            <span class="cloud-chip">Dropbox</span>
+                            <span class="cloud-chip">Box</span>
+                        </span>
+                    </button>
+                    <button id="btn-wizard-restore" class="storage-restore-link">Already have a backup? Restore it now &rarr;</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="storage-settings-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Storage &amp; Backup</h2>
+            <div class="storage-pref-row">
+                <span class="storage-pref-label">Storage</span>
+                <span id="storage-pref-current" class="storage-pref-value">Local only</span>
+                <button id="btn-toggle-storage-pref" class="storage-change-btn">Change</button>
+            </div>
+            <p id="storage-warning-copy" class="storage-warning-text"></p>
+            <p id="storage-last-backup" class="storage-last-backup">No backup recorded yet.</p>
+            <button id="btn-backup-now" class="btn-reset btn-start storage-action-btn">Back Up Now</button>
+            <p id="storage-backup-hint" class="storage-backup-hint"></p>
+            <button id="btn-restore-file" class="btn-reset storage-action-btn">Restore from a File</button>
+            <button id="btn-close-storage-settings" class="btn-reset btn-close-modal">Close</button>
+        </div>
+    </div>
+
+    <div id="backup-nudge-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Back Up Your Progress?</h2>
+            <p>You just logged a workout. Save a backup now so your progress is safe across devices.</p>
+            <button id="btn-nudge-backup" class="btn-reset btn-start">Back Up Now</button>
+            <button id="btn-nudge-dismiss" class="btn-reset btn-close-modal">Skip for Now</button>
+        </div>
+    </div>
+
+    <div id="restore-confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Replace Your Data?</h2>
+            <p>This will replace all workout history, F.R.E.S.H. logs, Combine results, and settings on this device with the data from the backup file. This cannot be undone.</p>
+            <button id="btn-confirm-restore" class="btn-reset btn-start">Yes, Restore My Data</button>
+            <button id="btn-cancel-restore" class="btn-reset btn-close-modal">Cancel</button>
         </div>
     </div>
 

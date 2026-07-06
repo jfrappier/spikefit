@@ -1,5 +1,43 @@
 # SpikeFit Changelog
 
+## v0.0.706 — Cross-Device Backup / Restore (BYOS)
+
+This release adds a first-class manual backup and restore feature so users can keep their workout history across devices and recover from a browser storage wipe — without any server, OAuth, or Google account integration.
+
+---
+
+## 💾 Data / Backup
+
+### Add BYOS export / import via OS share sheet
+
+New **Storage & Backup** feature (gear icon in the header) lets users:
+
+- **Back Up Now** — bundles all workout data, F.R.E.S.H. logs, Combine results, level, and settings into a versioned JSON file (`spikefit-backup-YYYY-MM-DD.json`) and offers it via the OS share sheet on mobile (tap Google Drive / Save to Files) or a download on desktop.
+- **Restore from a File** — picks a backup file, validates it, shows a replace-all confirmation, writes every key back to localStorage, and reloads.
+
+SpikeFit never connects to Google or any storage service — the OS and the user's own apps do the file movement.
+
+### Add first-run storage-choice wizard step
+
+New users see a "Where should your progress live?" modal after accepting the disclaimer and before the Combine onboarding. They can choose **Local only** or **Google Drive backup**. The Drive branch also surfaces an **"Already have a backup? Restore it now"** link for new-device recovery at first launch.
+
+### Add post-workout backup nudge
+
+Users who chose the Drive preference see a lightweight "Back Up Your Progress?" prompt after completing a workout (~once per day, dismissible). Dismissing or backing up proceeds to the normal badge/share flow.
+
+## Files Changed
+
+- `app.html`
+- `js/storage.js` *(new)*
+- `js/app.js`
+- `css/components/storage.css` *(new)*
+- `cloudflare/worker.js`
+- `docs/architecture.md`
+- `docs/decisions.md`
+- `CLAUDE.md`
+
+---
+
 ## v0.0.705
 
 This release adds the Combine baseline testing feature, a new permanent tab that prompts new users to measure seven volleyball-relevant metrics before they start training, then tracks progress across retests every four weeks.

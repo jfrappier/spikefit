@@ -459,7 +459,12 @@ function markWorkoutComplete() {
     }
 
     generateShareImage(document.getElementById('current-workout-title').innerText, displayDate, mins);
-    document.getElementById('badge-modal').style.display = 'flex';
+    /* global shouldShowBackupNudge, showBackupNudge */ // defined in storage.js
+    if (typeof shouldShowBackupNudge === 'function' && shouldShowBackupNudge()) {
+        showBackupNudge();
+    } else {
+        openBadgeModal();
+    }
 }
 
 // ─── Badge / Share ────────────────────────────────────────────────────────────
@@ -639,6 +644,10 @@ async function shareBadge() {
     }
 
     setTimeout(() => { shareBtn.innerText = origTxt; }, 3000);
+}
+
+function openBadgeModal() {
+    document.getElementById('badge-modal').style.display = 'flex';
 }
 
 function closeBadgeModal() {
@@ -917,12 +926,18 @@ function checkStreak() {
 }
 
 /* global checkCombineBaseline, checkCombineRetest */ // defined in combine.js, loaded after app.js
+/* global checkStorageChoice */                       // defined in storage.js, loaded after combine.js
 function afterDisclaimerChecks() {
+    if (!localStorage.getItem('storagePreference')) {
+        if (typeof checkStorageChoice === 'function') { checkStorageChoice(); return; }
+    }
+    runPostOnboardingChecks();
+}
+
+function runPostOnboardingChecks() {
     // Combine baseline prompt takes priority over the streak toast.
-    // If a user has no combine data and hasn't been prompted this session, show the modal
-    // and skip the streak toast (which would be redundant noise).
-    // safeParseJSON is safe to call here; combine.js loads after app.js but both have
-    // fired before this 500ms timeout resolves.
+    // safeParseJSON is safe to call here; all deferred scripts have fired before
+    // the 500ms timeout resolves.
     const hasCombineData  = safeParseJSON('combineResults', []).length > 0;
     const combineSkipped  = !!localStorage.getItem('combineSkipped');
     const combineShown    = !!sessionStorage.getItem('combinePromptShown');

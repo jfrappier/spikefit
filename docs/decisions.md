@@ -127,3 +127,24 @@ Lightweight ADR format: **Status → Context → Decision → Consequences**
 Units are **inches** in v1. A cm toggle is deferred.
 
 **Consequences:** Measurement accuracy depends on the user following instructions correctly. The wall/reach method is the same technique used by volleyball scouting programs (SportsRecruits, NCAA programs). No hardware, no permissions, works identically over `file://` and HTTPS. Sensor-based measurement (accelerometer hang-time, `MyJump`-style video frame analysis) is documented as a future option in `docs/decisions.md` once the file://+dependency constraints are revisited.
+
+---
+
+## ADR-010: BYOS via Manual OS-Mediated Export/Import; Google Drive OAuth Auto-Sync Deferred
+
+**Status:** Accepted
+
+**Context:** Users who clear browser storage or switch devices permanently lose all workout history. SpikeFit needed a cross-device data continuity story that does not break the privacy model (data never touches a server SpikeFit controls), does not require new runtime dependencies, and does not require OAuth app registration or Google's verification/review process.
+
+The full Google Drive OAuth path was evaluated. It requires: a `client_secret` stored somewhere (Worker KV or environment), a token-exchange endpoint in the Worker, Google's OAuth consent-screen review process (which blocks new apps pending manual Google approval), and ongoing token refresh. This is disproportionate to the problem and conflicts with the project's zero-dependency, zero-server-data principles.
+
+**Decision:** Ship a first-class **manual export / import** feature. SpikeFit builds a versioned JSON bundle of all user data in memory and offers it via the OS Web Share API (mobile share sheet → user picks Google Drive / Files) or a synthetic download link (desktop / `file://`). The user's own installed Google Drive app, iCloud Drive, or file manager performs the actual cross-device transfer. SpikeFit makes zero network requests in this flow.
+
+- Export reads all localStorage keys into a `{ app, schemaVersion, exportedAt, data }` envelope and hands the resulting file to the OS.
+- Import triggers a file picker, parses and validates the envelope (`app === 'SpikeFit'`, `schemaVersion === 1`), shows a replace-all confirmation, then writes each key back in `try/catch` and reloads.
+- `activeWorkoutStart` is always cleared on import — a restored device must never resume a stale in-flight workout.
+- A first-run wizard (inserted between disclaimer acceptance and the Combine onboarding step) asks users to choose "local only" or "Google Drive backup," sets `storagePreference` in localStorage, and offers an immediate "Restore from backup" path for new-device recovery.
+- A gear icon in the app header opens a Storage & Backup settings modal for existing users.
+- A post-workout backup nudge appears ~once per day for users who chose the Drive preference.
+
+**Consequences:** Backup and restore are user-initiated, not silent/automatic. A user must remember to back up before switching devices or clearing storage. The `storagePreference` key drives nudge frequency and settings copy but does not change how data is actually stored (still localStorage). Google Drive OAuth auto-sync remains a documented future enhancement once the verification-wall constraint is revisited.
