@@ -41,7 +41,7 @@ function exportData() {
     const dateStr  = now.toISOString().slice(0, 10);
     const filename = `spikefit-backup-${dateStr}.json`;
     const json     = JSON.stringify(bundle, null, 2);
-    const file     = new File([json], filename, { type: 'application/json' });
+    const file     = new File([json], filename, { type: 'text/plain' });
 
     (async () => { // NOPMD -- async IIFE is the correct pattern for top-level await in a non-module script
         try {
