@@ -10,7 +10,7 @@
 // this early so failures are console-only (documented deviation from the
 // canonical saveState() pattern in app.js).
 
-var TEAMS = {
+const TEAMS = {
     tigers: { css: 'css/themes/tigers.css', logo: 'img/teams/tigers-logo.svg' },
     lions:  { css: 'css/themes/lions.css',  logo: 'img/teams/lions-logo.png'  }
 };
@@ -22,18 +22,18 @@ function resolveTeam(hostname, storedTeam, paramTeam) {
     // 1. Hostname: left-most label only when hostname is a direct *.spikefit.app subdomain.
     //    Suffix check prevents spikefit.app.evil.com from matching.
     //    'www' and unregistered labels fall through to the whitelist check and produce null.
-    if (hostname && hostname.endsWith('.spikefit.app')) {
-        var label = hostname.split('.')[0];
-        if (label && Object.prototype.hasOwnProperty.call(TEAMS, label)) {
+    if (hostname?.endsWith('.spikefit.app')) {
+        const label = hostname.split('.')[0];
+        if (label && Object.hasOwn(TEAMS, label)) {
             return label;
         }
     }
     // 2. ?team= seed link — coach-shared URL
-    if (paramTeam && Object.prototype.hasOwnProperty.call(TEAMS, paramTeam)) {
+    if (paramTeam && Object.hasOwn(TEAMS, paramTeam)) {
         return paramTeam;
     }
     // 3. localStorage — persisted from a previous seed link (or future settings picker)
-    if (storedTeam && Object.prototype.hasOwnProperty.call(TEAMS, storedTeam)) {
+    if (storedTeam && Object.hasOwn(TEAMS, storedTeam)) {
         return storedTeam;
     }
     // 4. Default — no team (standard SpikeFit colors)
@@ -41,14 +41,14 @@ function resolveTeam(hostname, storedTeam, paramTeam) {
 }
 
 (function applyTeam() {
-    var params    = new URLSearchParams(location.search);
-    var paramTeam = params.get('team');
-    var stored    = localStorage.getItem('spikefit_team');
-    var team      = resolveTeam(location.hostname, stored, paramTeam);
+    const params    = new URLSearchParams(location.search);
+    const paramTeam = params.get('team');
+    const stored    = localStorage.getItem('spikefit_team');
+    const team      = resolveTeam(location.hostname, stored, paramTeam);
 
     // Persist a valid ?team= seed to localStorage so it survives navigation.
     // Strip the param from the URL via replaceState (no page reload).
-    if (paramTeam && Object.prototype.hasOwnProperty.call(TEAMS, paramTeam)) {
+    if (paramTeam && Object.hasOwn(TEAMS, paramTeam)) {
         if (paramTeam !== stored) {
             try {
                 localStorage.setItem('spikefit_team', paramTeam);
@@ -57,7 +57,7 @@ function resolveTeam(hostname, storedTeam, paramTeam) {
             }
         }
         params.delete('team');
-        var newSearch = params.toString();
+        const newSearch = params.toString();
         history.replaceState(
             null,
             '',
@@ -70,9 +70,9 @@ function resolveTeam(hostname, storedTeam, paramTeam) {
     // Insert the theme stylesheet immediately after base.css.
     // Dynamic <link> is covered by CSP style-src 'self' (same-origin file).
     // No inline style — keeps the 'unsafe-inline' removal unblocked.
-    var link = document.createElement('link');
+    const link = document.createElement('link');
     link.rel  = 'stylesheet';
-    // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via hasOwnProperty
+    // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via Object.hasOwn
     link.href = TEAMS[team].css;
     document.head.appendChild(link);
 
@@ -80,10 +80,10 @@ function resolveTeam(hostname, storedTeam, paramTeam) {
     // team.js runs in <head> before <body> exists, so logo swaps must wait for
     // DOMContentLoaded. Targets any <img src="logo.png"> across all pages
     // (app.html, index.html, auth.html) without enumerating page-specific IDs.
-    // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via hasOwnProperty
+    // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via Object.hasOwn
     if (TEAMS[team].logo) {
-        // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via hasOwnProperty
-        var teamLogo = TEAMS[team].logo;
+        // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via Object.hasOwn
+        const teamLogo = TEAMS[team].logo;
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('img').forEach(function(img) {
                 if (img.getAttribute('src') === 'logo.png') {
