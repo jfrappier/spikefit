@@ -51,7 +51,7 @@ function resolveTeam(hostname, storedTeam, paramTeam) {
     if (paramTeam && Object.hasOwn(TEAMS, paramTeam)) {
         if (paramTeam !== stored) {
             try {
-                localStorage.setItem('spikefit_team', paramTeam);
+                localStorage.setItem('spikefit_team', paramTeam); // NOSONAR -- paramTeam is whitelisted by Object.hasOwn(TEAMS) before this block
             } catch (err) {
                 console.error('Failed to persist spikefit_team to localStorage.', err);
             }
