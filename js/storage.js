@@ -34,7 +34,8 @@ function exportData() {
             disclaimerAgreed:    localStorage.getItem('disclaimerAgreed'),
             combineResults:      safeParseJSON('combineResults', []),
             combineSkipped:      localStorage.getItem('combineSkipped'),
-            storagePreference:   localStorage.getItem('storagePreference')
+            storagePreference:   localStorage.getItem('storagePreference'),
+            spikefit_team:       localStorage.getItem('spikefit_team')
         }
     };
 
@@ -175,6 +176,7 @@ function confirmRestore() {
     writeJSON('combineResults',      data.combineResults);
     writeStr('combineSkipped',      data.combineSkipped);
     writeStr('storagePreference',   data.storagePreference);
+    writeStr('spikefit_team',       data.spikefit_team);
 
     showToast('Restored!', 'Your data has been restored. Reloading...', '💾', 3000);
     setTimeout(() => location.reload(), 1500);

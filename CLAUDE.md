@@ -23,11 +23,12 @@ JS is being split into multiple files by responsibility. Each file uses global s
 
 Current split:
 
+- `js/team.js` — team resolver, TEAMS registry, and early theme loader (non-deferred; runs before first paint in all HTML pages)
 - `js/workouts.js` — the `workouts` object and `schedule` array (static workout data)
 - `js/app.js` — all remaining logic
 - `js/combine.js` — Combine baseline testing feature (loaded after `js/app.js`; uses its globals)
 
-When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in the relevant HTML files, before any file that depends on its globals.
+When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in the relevant HTML files, before any file that depends on its globals. Exception: early loaders that must run before first paint use `<script src="...">` (no defer) placed immediately after `<link rel="stylesheet" href="css/base.css">`.
 
 When a function in one JS file is called from another (a cross-file global), add its name to the `appGlobals` object in **both** `eslint.config.mjs` (root) and `.codacy/tools-configs/eslint.config.mjs`. Omitting it causes `no-undef` errors in the consuming file when running `codacy-cli analyze --tool eslint`.
 
@@ -37,9 +38,11 @@ When a function in one JS file is called from another (a cross-file global), add
 
 | File | Purpose |
 |---|---|
-| `index.html` | Marketing landing page. No JavaScript. |
-| `app.html` + `js/workouts.js` + `js/app.js` + `js/combine.js` + `js/storage.js` | Main app shell. `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state; `combine.js` handles the Combine baseline testing feature; `storage.js` handles BYOS export/import and storage preference. |
-| `auth.html` + `js/auth.js` | OTP auth flow. Only used when the Worker is deployed. |
+| `index.html` + `js/team.js` | Marketing landing page. `team.js` is an early non-deferred loader that applies the team theme before first paint. (Zero-JS constraint deliberately relaxed per ADR-011.) |
+| `app.html` + `js/team.js` + `js/workouts.js` + `js/app.js` + `js/combine.js` + `js/storage.js` | Main app shell. `team.js` is the early theme loader; `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state; `combine.js` handles the Combine baseline testing feature; `storage.js` handles BYOS export/import and storage preference. |
+| `auth.html` + `js/team.js` + `js/auth.js` | OTP auth flow. `team.js` is the early theme loader; `auth.js` handles the OTP flow. Only used when the Worker is deployed. |
+| `js/team.js` | Team resolver, TEAMS registry, and early theme loader. Non-deferred; runs before first paint. |
+| `css/themes/tigers.css` | Tigers team color override. Re-declares `:root` tokens from `base.css` only. |
 | `css/components/combine.css` | Combine-specific styles (summary card, test cards, timers, delta coloring). |
 | `css/components/storage.css` | Storage & Backup UI styles (gear icon, storage-choice wizard, settings modal, backup nudge, restore confirm). |
 | `cloudflare/worker.js` | Optional hosting gate — routing, OTP, sessions. Never touches workout data. |
@@ -70,6 +73,7 @@ When a function in one JS file is called from another (a cross-file global), add
 | `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the modal. |
 | `storagePreference` | `'local' \| 'drive'` | `'local'` | Where the user chose to keep data. Set in the first-run wizard. Drives backup nudges and Settings copy. |
 | `lastBackupAt` | ISO timestamp string | absent | Set on each successful export. Powers "Last backed up …" in Settings and throttles the post-workout nudge (~once per 20 hours). |
+| `spikefit_team` | team slug string | absent | Team identity for theming (later: workout packs). Set by `?team=` seed link or future settings picker. Hostname resolver takes priority. Never transmitted; included in BYOS export. |
 
 sessionStorage:
 
@@ -135,7 +139,12 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count.
 
 **Codacy** and **SonarCloud** run automatically on every GitHub push and PR. Config files: `.codacy.yml` and `sonar-project.properties`.
 
-**Codacy** runs automatically on GitHub push. To fetch what it flagged for a file (Docker CLI doesn't work on macOS — use the API):
+**Codacy CLI** is installed locally and should be run before reporting any task complete. Run it and flag findings in the chat session so any issues can be reviewed and fixed before pushing:
+```bash
+codacy-cli analyze --tool eslint
+```
+
+To fetch what Codacy flagged post-push via the API:
 ```bash
 source ~/.zshrc
 FILE_ID=$(curl -s -H "api-token: $CODACY_API_TOKEN" \

@@ -32,9 +32,9 @@ The Worker is a hosting-only access gate. It controls who can reach the hosted i
 
 | File | JavaScript | Purpose |
 |---|---|---|
-| `index.html` | none | Marketing landing page. Pure HTML/CSS — no JS at all. |
-| `app.html` | `js/workouts.js`, `js/app.js`, `js/combine.js`, `js/storage.js` (all defer) | Main application shell. `workouts.js` defines the workout database; `js/app.js` handles all logic, rendering, and state; `js/combine.js` handles the Combine baseline testing feature; `js/storage.js` handles BYOS export/import and storage preference. |
-| `auth.html` | `js/auth.js` (defer) | Two-step OTP flow. Only needed when the Worker is deployed. |
+| `index.html` | `js/team.js` (non-deferred early loader) | Marketing landing page. `team.js` inserts the team theme `<link>` before first paint if a team is resolved. |
+| `app.html` | `js/team.js` (non-deferred) + `js/workouts.js`, `js/app.js`, `js/combine.js`, `js/storage.js` (all defer) | Main application shell. `workouts.js` defines the workout database; `js/app.js` handles all logic, rendering, and state; `js/combine.js` handles the Combine baseline testing feature; `js/storage.js` handles BYOS export/import and storage preference. |
+| `auth.html` | `js/team.js` (non-deferred early loader) + `js/auth.js` (defer) | Two-step OTP flow. Only needed when the Worker is deployed. |
 | `tos.html` | none | Terms of service. Static HTML. |
 
 ---
@@ -49,7 +49,8 @@ The app is being split into multiple files by responsibility. Each file declares
 
 Current file breakdown:
 
-- `js/workouts.js` — the workout database (`workouts` object, `schedule` array); loaded first
+- `js/team.js` — team resolver, TEAMS registry, and early theme loader; non-deferred, runs before first paint
+- `js/workouts.js` — the workout database (`workouts` object, `schedule` array); loaded first (deferred)
 - `js/app.js` — all remaining app logic, event handling, rendering, state management
 - `js/combine.js` — Combine baseline testing feature; loaded after `js/app.js`, relies on its globals
 - `js/storage.js` — BYOS export/import, storage preference, and backup nudge; loaded after `js/combine.js`
@@ -77,6 +78,41 @@ Custom workout sets for coaches/teams follow the same shape and variable names. 
 12. Modal helpers — disclaimer, privacy, readiness check-in, RPE survey, FRESH dashboard
 13. Event listeners — all delegation-based, set up at page load
 14. Init sequence + splash screen
+
+---
+
+## Team Resolver and Theming
+
+### Overview
+
+`js/team.js` resolves which team (if any) is active for the current page load and injects the team's CSS theme before first paint. It is a non-deferred synchronous `<script>` placed immediately after `<link rel="stylesheet" href="css/base.css">` in every HTML page.
+
+### Resolution priority (first match wins)
+
+1. **Hostname** — left-most subdomain label if hostname ends with `.spikefit.app`. E.g. `tigers.spikefit.app` → `tigers`. Suffix check prevents `tigers.spikefit.app.evil.com` from matching. Unknown labels (e.g. `www`) or the apex domain (`spikefit.app`) produce no match.
+2. **`?team=` seed link** — coach-shared URL like `spikefit.app/?team=tigers`. Loader validates against `TEAMS`, persists to `spikefit_team` in localStorage (try/catch, console-only on failure — `showToast` is not available this early), then strips the param via `history.replaceState`.
+3. **`localStorage['spikefit_team']`** — persisted from a previous seed link or a future settings picker.
+4. **Default** — no match, standard SpikeFit colors. `file://` forks always land here.
+
+Every candidate is validated against the `TEAMS` registry — no arbitrary path construction from user-controlled input.
+
+### Theme file contract
+
+- Theme files live in `css/themes/<slug>.css`.
+- A theme file may only re-declare existing `:root` tokens from `css/base.css`. It must never introduce new custom properties.
+- `css/base.css` remains the sole owner of the canonical token list.
+- Loaded after `base.css` via a dynamically appended `<link>` — cascade wins. No inline styles; compatible with the `unsafe-inline` cleanup path.
+
+### Adding a team
+
+One PR: `css/themes/<slug>.css` + one `TEAMS` entry in `js/team.js` + one `STATIC_FILES` entry in `cloudflare/worker.js`. DNS is already wildcarded (`*.spikefit.app`). No per-team Worker logic required.
+
+### Hosting / DNS wiring (one-time setup)
+
+- **DNS:** one wildcard record `*.spikefit.app` (proxied via Cloudflare) — not one record per team.
+- **Worker route:** add wildcard route `*.spikefit.app/*` in `wrangler.toml`.
+- **Worker code:** no logic change. Redirects already use `url.origin`, which preserves the subdomain, so OTP auth flows correctly on each subdomain with host-only cookies.
+- **Session cookies remain host-only** — `Domain=.spikefit.app` is deliberately NOT set (see ADR-007).
 
 ---
 
@@ -123,6 +159,7 @@ The rendering model: there is no incremental diffing. Every state change rebuild
 | `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the prompt. |
 | `storagePreference` | `'local' \| 'drive'` | `'local'` | Where the user chose to keep data. Set in the first-run wizard. Drives backup nudges and Settings copy. |
 | `lastBackupAt` | ISO timestamp string | absent | Set on each successful export. Powers "Last backed up …" in the Storage Settings modal and throttles the post-workout backup nudge (~once per 20 hours). |
+| `spikefit_team` | team slug string | absent | Team identity for theming (later: workout packs). Set by a `?team=` seed link or future settings picker. Hostname resolver takes priority when present. Never transmitted to any server; included in BYOS export. |
 
 sessionStorage:
 
@@ -155,7 +192,8 @@ SpikeFit ships a first-class backup/restore feature that lets users keep their d
     "disclaimerAgreed": "true",
     "combineResults": [],
     "combineSkipped": null,
-    "storagePreference": "drive"
+    "storagePreference": "drive",
+    "spikefit_team": "tigers"
   }
 }
 ```

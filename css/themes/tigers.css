@@ -1,0 +1,20 @@
+/* css/themes/tigers.css — Tigers team theme
+ *
+ * Override contract:
+ *   - Only re-declare existing :root tokens from css/base.css.
+ *   - Never introduce new custom properties here — base.css is the canonical
+ *     token registry and the only file that defines the :root token list.
+ *   - Loaded after base.css by js/team.js; cascade wins.
+ *
+ * To add a new team: copy this file, rename it <team>.css, adjust the values,
+ * add a TEAMS entry in js/team.js, add the path to STATIC_FILES in
+ * cloudflare/worker.js, and open a PR. DNS is already wildcarded.
+ */
+
+:root {
+    --accent:       #f5a623;
+    --accent-hover: #d48c1a;
+    --accent-light: #fef3dc;
+    --shadow-hover: 0 10px 25px rgba(245, 166, 35, 0.15);
+    --shadow-lg:    0 20px 25px -5px rgba(245, 166, 35, 0.1);
+}

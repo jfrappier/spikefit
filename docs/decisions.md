@@ -148,3 +148,33 @@ The full Google Drive OAuth path was evaluated. It requires: a `client_secret` s
 - A post-workout backup nudge appears ~once per day for users who chose the Drive preference.
 
 **Consequences:** Backup and restore are user-initiated, not silent/automatic. A user must remember to back up before switching devices or clearing storage. The `storagePreference` key drives nudge frequency and settings copy but does not change how data is actually stored (still localStorage). Google Drive OAuth auto-sync remains a documented future enhancement once the verification-wall constraint is revisited.
+
+---
+
+## ADR-011: Team Resolver — Subdomain + Seed Link, Not KV team_id
+
+**Status:** Accepted
+
+**Context:** Coaches need custom color schemes (and eventually custom workout packs) for their teams without every athlete needing a separate installation. Several approaches were evaluated.
+
+**Decision:**
+
+(a) **KV `team_id` mapping rejected.** Storing a per-user `team_id` in the Worker's ALLOWLIST KV would require manual KV edits per athlete, a review trail for changes, and ongoing bookkeeping per team. More critically, workout pack content must ship as static client-side JS anyway (the Worker must never handle workout content to preserve the privacy model), so KV adds bookkeeping for something the client can already know from the URL. Rejected.
+
+(b) **Team resolved client-side by a non-deferred `js/team.js`** with this priority order:
+  1. Hostname subdomain (`tigers.spikefit.app` → `tigers`)
+  2. `?team=` seed link (coach-shared URL; validated against `TEAMS`, persisted to localStorage, param stripped)
+  3. `localStorage['spikefit_team']` (persisted from a previous seed link or future picker)
+  4. Default (no team)
+
+(c) **Session cookies remain host-only.** `Domain=.spikefit.app` is deliberately NOT set. Setting it would send the session token to every present and future `*.spikefit.app` subdomain — permanently exposing it to subdomain-takeover risk. Each team subdomain does an independent OTP login once per 30 days. Accepted tradeoff.
+
+(d) **Team packs are world-readable.** GitHub Pages serves everything regardless of the Worker gate. Colors and workout content in `TEAMS` are public. This is a deliberate tradeoff: no workout is considered proprietary at current scale.
+
+(e) **No per-team data namespacing.** `completedDates`, ACWR logs, and leveling history are not scoped by team. Players switch teams at most once a season; history carries across packs. Stale `completedExercises` keys are date-scoped and never re-rendered — harmless.
+
+(f) **`spikefit_team` in BYOS export.** Team identity is a preference, not workout data. Following the athlete to a new device is the useful behavior. The hostname resolver takes priority when present, so a restored `spikefit_team` on the wrong subdomain is overridden.
+
+(g) **`index.html` zero-JS constraint relaxed.** `index.html` gains the small `team.js` early loader script so the landing page renders in team colors on a team subdomain. Recorded here as a deliberate relaxation of the original "index.html has no JS" rule.
+
+**Consequences:** All theme CSS files are public (GitHub Pages bypasses the Worker gate regardless). Theming requires no Worker logic changes per team — only `STATIC_FILES` entries. Adding a new team is a single PR. The `TEAMS` registry in `team.js` is the canonical list of valid team slugs; arbitrary hostnames or `?team=` values that are not in `TEAMS` are ignored (whitelist-only, no injection surface).
