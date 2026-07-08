@@ -10,8 +10,6 @@
 // this early so failures are console-only (documented deviation from the
 // canonical saveState() pattern in app.js).
 
-/* global history */
-
 var TEAMS = {
     tigers: { css: 'css/themes/tigers.css', logo: 'img/teams/tigers-logo.svg' },
     lions:  { css: 'css/themes/lions.css',  logo: 'img/teams/lions-logo.png'  }
@@ -74,6 +72,7 @@ function resolveTeam(hostname, storedTeam, paramTeam) {
     // No inline style — keeps the 'unsafe-inline' removal unblocked.
     var link = document.createElement('link');
     link.rel  = 'stylesheet';
+    // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via hasOwnProperty
     link.href = TEAMS[team].css;
     document.head.appendChild(link);
 
@@ -81,7 +80,9 @@ function resolveTeam(hostname, storedTeam, paramTeam) {
     // team.js runs in <head> before <body> exists, so logo swaps must wait for
     // DOMContentLoaded. Targets any <img src="logo.png"> across all pages
     // (app.html, index.html, auth.html) without enumerating page-specific IDs.
+    // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via hasOwnProperty
     if (TEAMS[team].logo) {
+        // eslint-disable-next-line security/detect-object-injection -- team is validated by resolveTeam() via hasOwnProperty
         var teamLogo = TEAMS[team].logo;
         document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('img').forEach(function(img) {
