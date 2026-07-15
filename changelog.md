@@ -14,11 +14,26 @@ The share flow no longer depends on catching the one-time badge popup right afte
 - Styled to match the app's primary accent buttons (`.btn-start` / `.btn-complete`) so it stands out next to the disabled "Mark Workout Complete" button and the muted "Reset Today's Progress" button.
 - Clicking it calls the new `shareTodaysBadge()`, which regenerates the badge image fresh via `generateShareImage()` and reopens the existing badge modal via `openBadgeModal()` — a clean retry path instead of relying solely on the modal shown once immediately after `markWorkoutComplete()`.
 
+## ⚙️ Code Quality / Architecture
+
+### Add cache-busting to JS/CSS assets
+
+The app is mobile-first with no reliable "hard refresh" path, so a stale JS/CSS file served from a phone's cache or the CDN could persist indefinitely after a deploy with no way for the user to force a fresh fetch.
+
+- Every `<script src="js/...">` and `<link rel="stylesheet" href="css/...">` tag in `app.html`, `auth.html`, and `index.html` now carries a `?v=0.0.715` query string.
+- `cloudflare/worker.js` sets `Cache-Control: public, max-age=31536000, immutable` on `.js`/`.css` responses served from `STATIC_FILES`, so the CDN and mobile browsers cache aggressively — the version bump is what forces a fresh fetch on release, not the cache policy.
+- Documented as a Hard Constraint in `CLAUDE.md`: bump the `?v=` on every referencing tag whenever a JS/CSS file changes. The Constraint Enforcer audit now checks for this.
+
 ## Files Changed
 
 - `app.html`
+- `auth.html`
+- `index.html`
 - `css/components/buttons.css`
+- `cloudflare/worker.js`
 - `js/app.js`
+- `CLAUDE.md`
+- `docs/architecture.md`
 
 ---
 

@@ -14,6 +14,7 @@ SpikeFit is a mobile-responsive volleyball training app. It has zero runtime dep
 - **No inline event handlers in HTML** (`onclick=`, `onerror=`, etc.). Use `addEventListener` in JS.
 - **Workout key always derived via `getWorkoutKey(baseKey)`.** Never hardcode level-suffixed keys like `'A2'` or `'A3'` directly.
 - **User workout data must never leave the device.** No fetch/XHR that transmits `completedDates`, `spikefit_fresh_logs`, `workoutLevel`, or any other user-generated data to any server. The Cloudflare Worker must never handle workout data. Any future BYOS (bring-your-own-storage) feature is user-configured — the app never provides or controls the storage backend.
+- **Every JS/CSS `<script src>` and `<link href>` in `app.html`, `auth.html`, and `index.html` carries a `?v=X.X.XXX` query string.** Whenever you edit a JS or CSS file, bump that query string on every tag referencing it, in every HTML file that includes it — not just the one you're editing. See "Cache-Busting JS/CSS Assets" below for why.
 
 ---
 
@@ -31,6 +32,19 @@ Current split:
 When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in the relevant HTML files, before any file that depends on its globals. Exception: early loaders that must run before first paint use `<script src="...">` (no defer) placed immediately after `<link rel="stylesheet" href="css/base.css">`.
 
 When a function in one JS file is called from another (a cross-file global), add its name to the `appGlobals` object in **both** `eslint.config.mjs` (root) and `.codacy/tools-configs/eslint.config.mjs`. Omitting it causes `no-undef` errors in the consuming file when running `codacy-cli analyze --tool eslint`.
+
+---
+
+## Cache-Busting JS/CSS Assets
+
+SpikeFit is mobile-first and there is no reliable "hard refresh" on a phone (no service worker, and users often reach the app via a home-screen icon or PWA-style launch, not a browser tab with dev tools). Without cache-busting, a user's device or the CDN can keep serving a stale JS/CSS file indefinitely after a deploy, with no way for the user to force a fresh fetch.
+
+The fix is a version query string, not a filename change or a no-cache header — we still want the CDN and the phone's browser to cache these files aggressively (`cloudflare/worker.js` sets `Cache-Control: public, max-age=31536000, immutable` on every `.js`/`.css` response in `STATIC_FILES`). The query string is what forces a fresh URL — and therefore a fresh fetch — on release.
+
+- Every `<script src="js/...">` and `<link rel="stylesheet" href="css/...">` tag in `app.html`, `auth.html`, and `index.html` ends in `?v=X.X.XXX`, matching the current `changelog.md` version heading (e.g. `js/app.js?v=0.0.715`).
+- **When you change a JS or CSS file, bump its `?v=` on every tag that references it, in every HTML file that includes it.** Use the version string of the changelog entry you're adding for that change.
+- This is a query string only — never rename the file itself. `STATIC_FILES` in `cloudflare/worker.js` matches on `url.pathname`, which excludes the query string, so bumping `?v=` never requires a `STATIC_FILES` update.
+- Files without a query string (images, fonts, favicons) are intentionally left alone — they're either content-hashed already (the vendored font files) or rarely change, and adding blanket long-cache headers to them without a busting mechanism would risk the exact staleness problem this convention exists to prevent.
 
 ---
 
@@ -234,6 +248,8 @@ These agents run automatically — do not wait to be asked. Each has a defined t
 **What it does:** Audits all browser-shipped JS and HTML against the Hard Constraints listed above. Checks for: ES module syntax, bare `JSON.parse(localStorage.getItem())` calls, localStorage writes without try/catch, `target="_blank"` without `rel="noopener noreferrer"`, inline event handlers, hardcoded workout level suffixes, and CDN/npm imports. Reports PASS or VIOLATION with file:line for each constraint.
 
 Also checks: every `<script src="...">` and `<link rel="stylesheet" href="...">` in `app.html` and `auth.html` has a matching entry in `STATIC_FILES` in `cloudflare/worker.js`. A file referenced in HTML but absent from `STATIC_FILES` will be auth-gated by the Worker and break the hosted instance.
+
+Also checks: any JS/CSS file touched by the PR has its `?v=` query string bumped on every `<script>`/`<link>` tag referencing it, across `app.html`, `auth.html`, and `index.html`. A missed bump means the change won't reach mobile users behind the long-cache header until their cache naturally expires (up to a year).
 
 ### Privacy Boundary Auditor
 

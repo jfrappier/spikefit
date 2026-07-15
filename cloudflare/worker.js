@@ -57,7 +57,13 @@ export default {
     // Static assets — always pass through (logo, favicon, fonts, etc.)
     if (STATIC_FILES.has(url.pathname)) {
       const safeReq = new Request(new URL(url.pathname, ORIGIN), req);
-      return addSecurityHeaders(await fetch(safeReq));
+      const res = addSecurityHeaders(await fetch(safeReq));
+      // JS/CSS are cache-busted via a ?v= query string on the referencing tag (see CLAUDE.md),
+      // so it's safe to cache them aggressively — a version bump changes the URL, not this file.
+      if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
+        res.headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+      return res;
     }
 
     // Public pages: Landing page and Auth page
