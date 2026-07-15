@@ -112,8 +112,10 @@ def test_backup_nudge_shown_for_drive_preference_with_no_prior_backup(seeded_pag
     expect(p.locator("#backup-nudge-modal")).to_be_visible(timeout=2000)
 
 
-def test_nudge_dismiss_shows_badge_modal(seeded_page):
-    """Dismissing the backup nudge opens the badge/share modal."""
+def test_nudge_dismiss_leaves_share_button_available(seeded_page):
+    """Dismissing the backup nudge closes it without auto-opening the badge/share
+    modal — sharing is available via the persistent 'Share Today's Workout' button
+    instead of a forced popup."""
     p = seeded_page({
         "disclaimerAgreed": "true",
         "storagePreference": "drive",
@@ -125,7 +127,8 @@ def test_nudge_dismiss_shows_badge_modal(seeded_page):
     expect(p.locator("#backup-nudge-modal")).to_be_visible(timeout=2000)
     p.locator("#btn-nudge-dismiss").click()
     expect(p.locator("#backup-nudge-modal")).to_be_hidden(timeout=2000)
-    expect(p.locator("#badge-modal")).to_be_visible(timeout=2000)
+    expect(p.locator("#badge-modal")).to_be_hidden()
+    expect(p.locator("#btn-share-today")).to_be_visible(timeout=2000)
 
 
 def test_restore_confirm_cancel_clears_pending_data(seeded_page, tmp_path):

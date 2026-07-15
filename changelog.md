@@ -14,6 +14,10 @@ The share flow no longer depends on catching the one-time badge popup right afte
 - Styled to match the app's primary accent buttons (`.btn-start` / `.btn-complete`) so it stands out next to the disabled "Mark Workout Complete" button and the muted "Reset Today's Progress" button.
 - Clicking it calls the new `shareTodaysBadge()`, which regenerates the badge image fresh via `generateShareImage()` and reopens the existing badge modal via `openBadgeModal()` — a clean retry path instead of relying solely on the modal shown once immediately after `markWorkoutComplete()`.
 
+### Remove auto-opened badge modal on completion (BUG-5)
+
+With the persistent button now covering the "how do I share" need, auto-popping the badge modal immediately after `markWorkoutComplete()` was redundant — two share affordances competing for attention at once. `markWorkoutComplete()` still pre-generates the badge in the background (via `generateShareImage()`) so it's ready the instant the user taps the button, it just no longer forces the modal open. Same for the backup-nudge flow in `js/storage.js`: dismissing the nudge or completing a backup no longer auto-opens the badge modal either — `dismissBackupNudge()` and the renamed `runBackupFromNudge()` (was `backupThenBadge()`) just close the nudge.
+
 ## ⚙️ Code Quality / Architecture
 
 ### Add cache-busting to JS/CSS assets
@@ -32,8 +36,12 @@ The app is mobile-first with no reliable "hard refresh" path, so a stale JS/CSS 
 - `css/components/buttons.css`
 - `cloudflare/worker.js`
 - `js/app.js`
+- `js/storage.js`
 - `CLAUDE.md`
 - `docs/architecture.md`
+- `eslint.config.mjs`
+- `.codacy/tools-configs/eslint.config.mjs`
+- `tests/e2e/test_storage.py`
 
 ---
 

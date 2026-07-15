@@ -461,12 +461,12 @@ function markWorkoutComplete() {
         }, 4000);
     }
 
+    // Pre-generate the badge in the background so it's ready the moment the user
+    // taps the persistent "Share Today's Workout" button — no auto-opened modal.
     generateShareImage(document.getElementById('current-workout-title').innerText, displayDate, mins);
     /* global shouldShowBackupNudge, showBackupNudge */ // defined in storage.js
     if (typeof shouldShowBackupNudge === 'function' && shouldShowBackupNudge()) {
         showBackupNudge();
-    } else {
-        openBadgeModal();
     }
 }
 

@@ -57,7 +57,6 @@ const appGlobals = {
     safeParseJSON: 'readonly',
     showToast: 'readonly',
     runPostOnboardingChecks: 'readonly',
-    openBadgeModal: 'readonly',
     // combine.js → app.js
     checkCombineBaseline: 'readonly',
     checkCombineRetest: 'readonly',
