@@ -1,5 +1,55 @@
 # SpikeFit Changelog
 
+## v0.0.707 — Team Theming via Subdomains and Seed Links
+
+Coaches and teams can now give SpikeFit their own color scheme — accessible via a team subdomain (`tigers.spikefit.app`), a shareable seed link (`spikefit.app/?team=tigers`), or automatically on return visits via stored team identity.
+
+---
+
+## ✨ Features
+
+### Add team resolver and custom theming (FR-14)
+
+A new `js/team.js` early loader resolves which team (if any) is active and injects the team's CSS theme before first paint — no flash of un-themed content. Resolution priority: hostname subdomain → `?team=` seed link → stored `spikefit_team` in localStorage.
+
+- **Subdomain routing:** `tigers.spikefit.app` automatically applies the Tigers color scheme on any page.
+- **Seed links:** Coaches share `spikefit.app/?team=tigers`; the `?team=` param is validated, persisted to `spikefit_team` in localStorage, then stripped from the URL via `history.replaceState`.
+- **Persistent preference:** Stored `spikefit_team` applies the theme on all subsequent visits, even after navigating to the apex domain.
+- **BYOS export / import:** `spikefit_team` is included in the backup bundle so team identity follows the athlete to a new device.
+- **First example team:** Tigers (`css/themes/tigers.css`) ships with the feature.
+
+### Add Tigers team theme
+
+`css/themes/tigers.css` re-declares the relevant `:root` color tokens from `css/base.css` in orange/gold. It serves as the reference template for future team theme PRs; all authoring instructions are in the file comments.
+
+## ⚙️ Code Quality / Architecture
+
+### Add QUnit tests for resolveTeam
+
+`tests/unit/team.test.js` covers hostname resolution, `?team=` param, localStorage fallback, priority order, edge cases (apex domain, `www`, suffix-attack hostname, `file://` empty hostname, invalid values).
+
+### Add Playwright E2E tests for theming
+
+`tests/e2e/test_team.py` asserts theme `<link>` injection, `--accent` computed value, param stripping, localStorage persistence, and no-team default.
+
+## Files Changed
+
+- `js/team.js` *(new)*
+- `css/themes/tigers.css` *(new)*
+- `tests/unit/team.test.js` *(new)*
+- `tests/e2e/test_team.py` *(new)*
+- `app.html`
+- `index.html`
+- `auth.html`
+- `js/storage.js`
+- `cloudflare/worker.js`
+- `tests/unit/run.html`
+- `docs/architecture.md`
+- `docs/decisions.md`
+- `CLAUDE.md`
+
+---
+
 ## v0.0.706 — Cross-Device Backup / Restore (BYOS)
 
 This release adds a first-class manual backup and restore feature so users can keep their workout history across devices and recover from a browser storage wipe — without any server, OAuth, or Google account integration.

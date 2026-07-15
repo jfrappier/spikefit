@@ -22,7 +22,7 @@ def test_corrupted_completed_exercises_does_not_crash(page: Page, request):
     console_errors = []
     page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
     page.goto(f"file://{repo_root / 'app.html'}")
-    expect(page.locator("nav")).to_be_visible(timeout=5000)
+    expect(page.locator("#main-nav")).to_be_visible(timeout=5000)
     assert any("Corrupted localStorage" in e or "completedExercises" in e for e in console_errors), (
         "Expected a console.error about corrupted data, got: " + str(console_errors)
     )
@@ -36,7 +36,7 @@ def test_corrupted_completed_dates_does_not_crash(page: Page):
         localStorage.setItem('completedDates', '{ broken:');
     """)
     page.goto(f"file://{repo_root / 'app.html'}")
-    expect(page.locator("nav")).to_be_visible(timeout=5000)
+    expect(page.locator("#main-nav")).to_be_visible(timeout=5000)
 
 
 def test_exercise_keys_scoped_to_date(seeded_page):
