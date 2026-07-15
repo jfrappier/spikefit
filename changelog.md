@@ -1,5 +1,27 @@
 # SpikeFit Changelog
 
+## v0.0.715 — Persistent Reshare Button for Completed Workouts
+
+The share flow no longer depends on catching the one-time badge popup right after finishing a workout — a "Share Today's Workout" button now stays available on the daily screen for as long as today's workout is marked complete, so a failed or skipped share can be retried anytime.
+
+---
+
+## ✨ Features
+
+### Add persistent reshare button (BUG-5)
+
+- New `#btn-share-today` button renders below "Reset Today's Progress" whenever `completedDates` has an entry for today's date; hidden otherwise. Visibility is recalculated on every `renderDaily()`, so it persists across reloads, not just right after completion.
+- Styled to match the app's primary accent buttons (`.btn-start` / `.btn-complete`) so it stands out next to the disabled "Mark Workout Complete" button and the muted "Reset Today's Progress" button.
+- Clicking it calls the new `shareTodaysBadge()`, which regenerates the badge image fresh via `generateShareImage()` and reopens the existing badge modal via `openBadgeModal()` — a clean retry path instead of relying solely on the modal shown once immediately after `markWorkoutComplete()`.
+
+## Files Changed
+
+- `app.html`
+- `css/components/buttons.css`
+- `js/app.js`
+
+---
+
 ## v0.0.707 — Team Theming via Subdomains and Seed Links
 
 Coaches and teams can now give SpikeFit their own color scheme — accessible via a team subdomain (`tigers.spikefit.app`), a shareable seed link (`spikefit.app/?team=tigers`), or automatically on return visits via stored team identity.

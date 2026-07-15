@@ -46,6 +46,9 @@
 /* Modal specific buttons */
 .btn-share { background: var(--accent); color: white; border-color: var(--accent); margin-bottom: 1em; width: 100%; margin-top: 0; padding: 1.25em;}
 .btn-share:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: white;}
+
+.btn-share-today { background: var(--accent); color: #ffffff; border-color: var(--accent); margin-top: 1em; box-shadow: var(--shadow-md); }
+.btn-share-today:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: #ffffff; }
 .btn-close-modal { background: transparent; color: var(--text-muted); border-color: var(--text-muted); width: 100%; padding: 1em; margin-top: 0; }
 .btn-close-modal:hover { border-color: var(--text-main); color: var(--text-main); }
 .btn-agree { flex-shrink: 0; appearance: none; border: none; border-radius: var(--radius-sm); background: var(--text-main); color: #ffffff; margin-top: 0.5em; width: 100%; padding: 1.25em; font-size: 1em; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; transition: all 0.2s ease;}
