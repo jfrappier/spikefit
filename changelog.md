@@ -1,5 +1,50 @@
 # SpikeFit Changelog
 
+## v0.0.715 — Persistent Reshare Button for Completed Workouts
+
+The share flow no longer depends on catching the one-time badge popup right after finishing a workout — a "Share Today's Workout" button now stays available on the daily screen for as long as today's workout is marked complete, so a failed or skipped share can be retried anytime.
+
+---
+
+## ✨ Features
+
+### Add persistent reshare button (BUG-5)
+
+- New `#btn-share-today` button renders below "Reset Today's Progress" whenever `completedDates` has an entry for today's date; hidden otherwise. Visibility is recalculated on every `renderDaily()`, so it persists across reloads, not just right after completion.
+- Styled to match the app's primary accent buttons (`.btn-start` / `.btn-complete`) so it stands out next to the disabled "Mark Workout Complete" button and the muted "Reset Today's Progress" button.
+- Clicking it calls the new `shareTodaysBadge()`, which regenerates the badge image fresh via `generateShareImage()` and reopens the existing badge modal via `openBadgeModal()` — a clean retry path instead of relying solely on the modal shown once immediately after `markWorkoutComplete()`.
+
+### Remove auto-opened badge modal on completion (BUG-5)
+
+With the persistent button now covering the "how do I share" need, auto-popping the badge modal immediately after `markWorkoutComplete()` was redundant — two share affordances competing for attention at once. `markWorkoutComplete()` still pre-generates the badge in the background (via `generateShareImage()`) so it's ready the instant the user taps the button, it just no longer forces the modal open. Same for the backup-nudge flow in `js/storage.js`: dismissing the nudge or completing a backup no longer auto-opens the badge modal either — `dismissBackupNudge()` and the renamed `runBackupFromNudge()` (was `backupThenBadge()`) just close the nudge.
+
+## ⚙️ Code Quality / Architecture
+
+### Add cache-busting to JS/CSS assets
+
+The app is mobile-first with no reliable "hard refresh" path, so a stale JS/CSS file served from a phone's cache or the CDN could persist indefinitely after a deploy with no way for the user to force a fresh fetch.
+
+- Every `<script src="js/...">` and `<link rel="stylesheet" href="css/...">` tag in `app.html`, `auth.html`, and `index.html` now carries a `?v=0.0.715` query string.
+- `cloudflare/worker.js` sets `Cache-Control: public, max-age=31536000, immutable` on `.js`/`.css` responses served from `STATIC_FILES`, so the CDN and mobile browsers cache aggressively — the version bump is what forces a fresh fetch on release, not the cache policy.
+- Documented as a Hard Constraint in `CLAUDE.md`: bump the `?v=` on every referencing tag whenever a JS/CSS file changes. The Constraint Enforcer audit now checks for this.
+
+## Files Changed
+
+- `app.html`
+- `auth.html`
+- `index.html`
+- `css/components/buttons.css`
+- `cloudflare/worker.js`
+- `js/app.js`
+- `js/storage.js`
+- `CLAUDE.md`
+- `docs/architecture.md`
+- `eslint.config.mjs`
+- `.codacy/tools-configs/eslint.config.mjs`
+- `tests/e2e/test_storage.py`
+
+---
+
 ## v0.0.707 — Team Theming via Subdomains and Seed Links
 
 Coaches and teams can now give SpikeFit their own color scheme — accessible via a team subdomain (`tigers.spikefit.app`), a shareable seed link (`spikefit.app/?team=tigers`), or automatically on return visits via stored team identity.

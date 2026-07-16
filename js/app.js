@@ -366,7 +366,10 @@ function updateWorkoutStatus() {
     const controlsDiv = document.getElementById('workout-controls');
     const startBtn    = document.getElementById('btn-start-workout');
     const completeBtn = document.getElementById('btn-mark-complete');
+    const shareBtn    = document.getElementById('btn-share-today');
     const workout     = workouts[getWorkoutKey(schedule[currentDayIndex].workout)];
+
+    if (shareBtn) shareBtn.style.display = completedDates[formatDateStr(new Date())] ? 'block' : 'none';
 
     if (!workout) {
         if (controlsDiv) controlsDiv.style.display = 'block';
@@ -458,12 +461,12 @@ function markWorkoutComplete() {
         }, 4000);
     }
 
+    // Pre-generate the badge in the background so it's ready the moment the user
+    // taps the persistent "Share Today's Workout" button — no auto-opened modal.
     generateShareImage(document.getElementById('current-workout-title').innerText, displayDate, mins);
     /* global shouldShowBackupNudge, showBackupNudge */ // defined in storage.js
     if (typeof shouldShowBackupNudge === 'function' && shouldShowBackupNudge()) {
         showBackupNudge();
-    } else {
-        openBadgeModal();
     }
 }
 
@@ -648,6 +651,23 @@ async function shareBadge() {
 
 function openBadgeModal() {
     document.getElementById('badge-modal').style.display = 'flex';
+}
+
+/** Regenerates today's badge and reopens the share modal, so a failed or skipped share can be retried anytime today's workout stays completed. */
+function shareTodaysBadge() {
+    const dateStr = formatDateStr(new Date());
+    const entry   = completedDates[dateStr];
+    if (!entry) return;
+
+    const workoutName = document.getElementById('current-workout-title').innerText;
+    const displayDate  = new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    let mins = 0;
+    if (entry.startTime && entry.endTime) {
+        mins = Math.max(1, Math.floor((new Date(entry.endTime) - new Date(entry.startTime)) / 60000));
+    }
+
+    generateShareImage(workoutName, displayDate, mins);
+    openBadgeModal();
 }
 
 function closeBadgeModal() {
@@ -1039,6 +1059,7 @@ document.getElementById('btn-save-rpe').addEventListener('click', () => {
 });
 
 document.getElementById('btn-reset-day').addEventListener('click',      resetDay);
+document.getElementById('btn-share-today').addEventListener('click',    shareTodaysBadge);
 
 // Level toggle
 document.getElementById('btn-level-beginner').addEventListener('click',     () => setLevel('beginner'));

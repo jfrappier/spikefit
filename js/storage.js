@@ -216,17 +216,13 @@ function showBackupNudge() {
     document.getElementById('backup-nudge-modal').style.display = 'flex';
 }
 
-function backupThenBadge() {
+function runBackupFromNudge() {
     document.getElementById('backup-nudge-modal').style.display = 'none';
     exportData();
-    setTimeout(() => {
-        if (typeof openBadgeModal === 'function') openBadgeModal();
-    }, 800);
 }
 
 function dismissBackupNudge() {
     document.getElementById('backup-nudge-modal').style.display = 'none';
-    if (typeof openBadgeModal === 'function') openBadgeModal();
 }
 
 // ─── Settings Modal ───────────────────────────────────────────────────────────
@@ -309,7 +305,7 @@ function toggleStoragePref() {
     });
 
     const btnNudgeBackup = document.getElementById('btn-nudge-backup');
-    if (btnNudgeBackup) btnNudgeBackup.addEventListener('click', backupThenBadge);
+    if (btnNudgeBackup) btnNudgeBackup.addEventListener('click', runBackupFromNudge);
 
     const btnNudgeDismiss = document.getElementById('btn-nudge-dismiss');
     if (btnNudgeDismiss) btnNudgeDismiss.addEventListener('click', dismissBackupNudge);
