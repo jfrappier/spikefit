@@ -40,7 +40,7 @@ The system waits until you have 14 days of logged workouts before showing a rati
 
 Because SpikeFit is a static application, you do not need a package manager, build tools, or a local server.
 
-**To run locally:** Download or clone the repository and open `index.html` in any modern browser. The app initializes immediately. All your data is stored in your browser's local storage.
+**To run locally:** Download or clone the repository and open `app.html` in any modern browser. The app initializes immediately. All your data is stored in your browser's local storage.
 
 **To host on GitHub Pages:**
 
