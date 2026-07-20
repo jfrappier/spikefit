@@ -1,5 +1,49 @@
 # SpikeFit Changelog
 
+## v0.0.720 — Versioned Disclaimer Acceptance and Guardian Consent Tracking
+
+The disclaimer/ToS now carries an age-of-majority and Massachusetts governing-law clause, re-prompts existing users when the wording changes, and — on the hosted instance — records acceptance server-side and verifies parent/guardian consent by email for self-declared minors.
+
+---
+
+## ⚖️ Legal
+
+### Add age-of-majority and governing-law clauses (FR-15)
+
+- The disclaimer modal (`app.html`) and `tos.html` now state that users must be 18+ to accept on their own behalf, and that the terms are governed by the laws of the Commonwealth of Massachusetts, with exclusive jurisdiction in MA state/federal courts.
+- Added a footer link to `tos.html` on the landing page (`index.html`) so the terms are visible before a user ever logs in.
+
+### Version-gate disclaimer acceptance (FR-15)
+
+- `disclaimerAgreed` now stores a `DISCLAIMER_VERSION` string instead of `'true'`. `checkDisclaimer()` re-shows the modal whenever the stored value doesn't match the current version — including everyone who already accepted the old, unversioned text. Bump `DISCLAIMER_VERSION` in `js/app.js` whenever the wording changes materially.
+
+### Minor/guardian consent flow (FR-15)
+
+- The disclaimer modal gains an "I am under 18" checkbox that reveals a parent/guardian email field. On the hosted instance, submitting it calls a new `POST /consent/send` Worker endpoint, which emails the guardian a confirmation link via Resend — consent is only recorded once the guardian clicks it (`GET /consent/confirm`), not when the athlete types an email.
+- Adult (non-minor) acceptance now also calls a new `POST /consent/accept` endpoint to log `{ tosAcceptedAt, tosVersion }` server-side.
+- Both endpoints extend the Worker's existing `ALLOWLIST` KV value from a bare `'true'` to a JSON record, and a new `CONSENTS` KV namespace holds pending guardian-confirmation tokens (7-day TTL). Deploying the hosted Worker now requires an additional `CONSENTS` KV namespace binding in `wrangler.toml`.
+- None of this applies to locally-run forks — there's no server to email a guardian through, so that path falls back to an unverified, client-side-only attestation, same as the disclaimer always has been for local forks.
+- See `docs/decisions.md` ADR-012 for the full rationale.
+
+## Files Changed
+
+- `app.html`
+- `tos.html`
+- `index.html`
+- `auth.html`
+- `js/app.js`
+- `css/components/modals.css`
+- `cloudflare/worker.js`
+- `CLAUDE.md`
+- `docs/architecture.md`
+- `docs/decisions.md`
+- `changelog.md`
+- `tests/e2e/test_workout_flow.py`
+- `tests/e2e/test_storage.py`
+- `tests/e2e/test_combine.py`
+
+---
+
 ## v0.0.715 — Persistent Reshare Button for Completed Workouts
 
 The share flow no longer depends on catching the one-time badge popup right after finishing a workout — a "Share Today's Workout" button now stays available on the daily screen for as long as today's workout is marked complete, so a failed or skipped share can be retried anytime.

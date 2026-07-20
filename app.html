@@ -14,14 +14,14 @@
   <link rel="stylesheet" href="css/components/buttons.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/forms.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/cards.css?v=0.0.715">
-  <link rel="stylesheet" href="css/components/modals.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/modals.css?v=0.0.720">
   <link rel="stylesheet" href="css/components/calendar.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/splash.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/combine.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/storage.css?v=0.0.715">
 
   <script src="js/workouts.js?v=0.0.715" defer></script>
-  <script src="js/app.js?v=0.0.715" defer></script>
+  <script src="js/app.js?v=0.0.720" defer></script>
   <script src="js/combine.js?v=0.0.715" defer></script>
   <script src="js/storage.js?v=0.0.715" defer></script>
 </head>
@@ -225,6 +225,20 @@
                 <p><strong>Always consult with a qualified healthcare provider or physician</strong> before beginning any new exercise program or fitness regimen. You should be in good physical condition and be able to participate safely in the exercises.</p>
                 <p>By using this application, you understand and agree that there is an inherent risk of injury associated with participating in any physical activity. You assume all risks and voluntarily choose to participate at your own free will.</p>
                 <p>The creator(s), host(s), and authors of this page explicitly disclaim any liability, loss, or risk, personal or otherwise, which is incurred as a consequence, directly or indirectly, of the use and application of any of the contents herein. <strong>You agree to indemnify and hold harmless the creator(s) from any and all claims, demands, or causes of action arising out of your use of this site.</strong></p>
+                <p>You must be at least 18 years old to agree to these terms on your own behalf. If you are under 18, a parent or legal guardian must review and confirm these terms before you continue.</p>
+                <p>These terms are governed by the laws of the Commonwealth of Massachusetts, without regard to its conflict-of-law principles, and any dispute arising out of or relating to these terms or your use of this application shall be brought exclusively in the state or federal courts located in Massachusetts.</p>
+            </div>
+            <div class="disclaimer-minor-check">
+                <input type="checkbox" id="chk-under-18">
+                <label for="chk-under-18">I am under 18 years old</label>
+            </div>
+            <div id="guardian-consent-section" style="display:none;">
+                <p class="scroll-note">Enter a parent or legal guardian's email address — they'll receive an email to confirm these terms on your behalf. If this copy of SpikeFit isn't connected to a server, review the terms above together with them instead.</p>
+                <label for="guardian-email-input">Parent/guardian email</label>
+                <input type="email" id="guardian-email-input" placeholder="parent@example.com" autocomplete="email">
+                <div class="error" id="guardian-email-error"></div>
+                <button id="btn-send-guardian-consent" class="btn-reset" type="button">Send Confirmation Email</button>
+                <p id="guardian-consent-status" class="scroll-note"></p>
             </div>
             <button id="btn-accept-disclaimer" class="btn-agree">I Understand and Agree</button>
         </div>

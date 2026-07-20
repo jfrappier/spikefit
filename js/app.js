@@ -695,13 +695,67 @@ function closeToast() {
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
 
+const DISCLAIMER_VERSION = '0.0.720'; // bump alongside changelog when the disclaimer/ToS wording changes materially
+let guardianConsentSubmitted = false;
+
 function openDisclaimerModal()  { document.getElementById('disclaimer-modal').style.display = 'flex'; }
-function acceptDisclaimer() {
+
+function toggleGuardianSection() {
+    const isMinor = document.getElementById('chk-under-18').checked;
+    document.getElementById('guardian-consent-section').style.display = isMinor ? 'block' : 'none';
+    updateAcceptButtonState();
+}
+
+function updateAcceptButtonState() {
+    const isMinor = document.getElementById('chk-under-18').checked;
+    document.getElementById('btn-accept-disclaimer').disabled = isMinor && !guardianConsentSubmitted;
+}
+
+async function sendGuardianConsent() {
+    const email    = document.getElementById('guardian-email-input').value.trim();
+    const errorEl  = document.getElementById('guardian-email-error');
+    const statusEl = document.getElementById('guardian-consent-status');
+    if (!email) {
+        errorEl.textContent = 'Please enter a parent/guardian email address.';
+        return;
+    }
+    errorEl.textContent = '';
+
     try {
-        localStorage.setItem('disclaimerAgreed', 'true');
+        const res = await fetch('/consent/send', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ guardianEmail: email, tosVersion: DISCLAIMER_VERSION })
+        });
+        if (!res.ok) throw new Error(`consent/send responded ${res.status}`);
+        statusEl.textContent = "Confirmation email sent — your parent/guardian needs to click the link in that email.";
+    } catch (err) {
+        console.error('Guardian consent request failed (this copy of SpikeFit may not be connected to a server).', err);
+        statusEl.textContent = "This copy of SpikeFit isn't connected to a server, so we can't email your parent/guardian automatically. Please review the terms above together with them.";
+    }
+    try {
+        localStorage.setItem('guardianConsentEmail', email);
+    } catch (err) {
+        console.error('Failed to save guardian consent email to localStorage.', err);
+    }
+    guardianConsentSubmitted = true;
+    updateAcceptButtonState();
+}
+
+function acceptDisclaimer() {
+    const isMinor = document.getElementById('chk-under-18').checked;
+    try {
+        localStorage.setItem('disclaimerAgreed', DISCLAIMER_VERSION);
     } catch (err) {
         console.error('Failed to save disclaimer agreement to localStorage.', err);
         showToast('⚠️ Save Failed', "Your browser couldn't save this update — storage may be full or restricted (e.g. private browsing).", '⚠️', 8000);
+    }
+    if (!isMinor) {
+        fetch('/consent/accept', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ tosVersion: DISCLAIMER_VERSION })
+        }).catch(err => console.error('Server-side ToS acceptance log failed (this copy of SpikeFit may not be connected to a server).', err));
     }
     document.getElementById('disclaimer-modal').style.display = 'none';
     setTimeout(afterDisclaimerChecks, 500);
@@ -970,7 +1024,7 @@ function runPostOnboardingChecks() {
 }
 
 function checkDisclaimer() {
-    if (!localStorage.getItem('disclaimerAgreed')) {
+    if (localStorage.getItem('disclaimerAgreed') !== DISCLAIMER_VERSION) {
         openDisclaimerModal();
     } else {
         setTimeout(afterDisclaimerChecks, 500);
@@ -1080,6 +1134,8 @@ document.getElementById('btn-close-badge').addEventListener('click',  closeBadge
 
 // Disclaimer modal
 document.getElementById('btn-accept-disclaimer').addEventListener('click', acceptDisclaimer);
+document.getElementById('chk-under-18').addEventListener('change', toggleGuardianSection);
+document.getElementById('btn-send-guardian-consent').addEventListener('click', sendGuardianConsent);
 
 // Privacy modal
 document.getElementById('btn-close-privacy').addEventListener('click', closePrivacyModal);

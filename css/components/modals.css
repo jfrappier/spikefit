@@ -59,6 +59,11 @@
 .disclaimer-text-scroll { overflow-y: auto; flex-grow: 1; padding-right: 0.5em; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 1em; padding-top: 1em; }
 #disclaimer-modal p { font-size: 0.95em; margin-bottom: 1em; color: var(--text-main); line-height: 1.6; }
 #disclaimer-modal .strong-disclaimer { font-weight: 700; text-transform: uppercase; font-size: 0.85em; color: var(--text-muted); text-align: center; margin-bottom: 2em; letter-spacing: 0.05em; }
+.disclaimer-minor-check { display: flex; align-items: center; gap: 0.75em; margin-bottom: 1em; flex-shrink: 0; }
+.disclaimer-minor-check label { margin: 0; }
+#guardian-consent-section { flex-shrink: 0; margin-bottom: 1em; }
+#guardian-consent-status { color: var(--text-muted); }
+#btn-accept-disclaimer:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* --- Toast Notifications --- */
 .toast-container {
