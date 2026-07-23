@@ -17,8 +17,8 @@ Browser (user device)
         │  fetches static files from ORIGIN = https://spikefit.app
         ↓
   GitHub Pages             ← actual static file host (CNAME → spikefit.app)
-    ├── Routes: GET /  /app.html  /auth.html  /auth/send  /auth/verify  /auth/logout
-    ├── KV: SESSIONS · OTPS · RATELIMIT · ALLOWLIST
+    ├── Routes: GET /  /app.html  /auth.html  /auth/send  /auth/verify  /auth/logout  /consent/accept  /consent/send  /consent/confirm
+    ├── KV: SESSIONS · OTPS · RATELIMIT · ALLOWLIST · CONSENTS
     └── Secret: RESEND_API_KEY → Resend API → user's email
 ```
 
@@ -154,7 +154,8 @@ The rendering model: there is no incremental diffing. Every state change rebuild
 | `workoutLevel` | `'beginner' \| 'intermediate' \| 'advanced'` | `'beginner'` | Current tier. Read directly, not via `safeParseJSON`. |
 | `activeWorkoutStart` | ISO timestamp string | `null` | Set when workout starts; cleared on complete or reset. |
 | `spikefit_fresh_logs` | `Array<{ timestamp, session: { load, rpe, duration, readinessModifier } }>` | `[]` | ACWR training load log. Pruned to 28 days on every write. |
-| `disclaimerAgreed` | `'true'` | absent | Set once when user accepts the disclaimer. |
+| `disclaimerAgreed` | version string (e.g. `'0.0.720'`) | absent | Set to `DISCLAIMER_VERSION` when the user accepts the disclaimer. Compared against the current `DISCLAIMER_VERSION` on load — a mismatch (including the old pre-versioning value `'true'`) re-shows the modal. |
+| `guardianConsentEmail` | email string | absent | Set when a self-declared minor submits a parent/guardian email in the disclaimer modal. Local record only; the authoritative, verified record (once the guardian confirms) lives server-side in the hosted instance's `ALLOWLIST` KV — see Cloudflare Worker Architecture. |
 | `combineResults` | `Array<{ date, timestamp, metrics: { standingReach, jumpTouch, vertical, plankSec, wallSitSec, toeTaps, jumpingJacks, agilitySec } }>` | `[]` | All Combine attempt records. Not pruned — growth history is the point. Any metric may be absent. |
 | `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the prompt. |
 | `storagePreference` | `'local' \| 'drive'` | `'local'` | Where the user chose to keep data. Set in the first-run wizard. Drives backup nudges and Settings copy. |
@@ -189,7 +190,8 @@ SpikeFit ships a first-class backup/restore feature that lets users keep their d
     "spikefit_fresh_logs": [],
     "workoutLevel": "beginner",
     "activeWorkoutStart": null,
-    "disclaimerAgreed": "true",
+    "disclaimerAgreed": "0.0.720",
+    "guardianConsentEmail": null,
     "combineResults": [],
     "combineSkipped": null,
     "storagePreference": "drive",
@@ -282,9 +284,10 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 **Routing logic:**
 
 1. `/auth/send`, `/auth/verify`, `/auth/logout` — always pass through (no session check)
-2. Assets in `STATIC_FILES` set — pass through with security headers
-3. `/`, `/index.html`, `/auth.html` — serve the page, but redirect authenticated users to `/app.html`
-4. Everything else — requires a valid `sf_session` cookie; redirects to `/auth.html?redirect=<path>` if absent
+2. `/consent/accept`, `/consent/send`, `/consent/confirm` — always pass through (no session check on `/consent/confirm`, since the guardian clicking the emailed link has no SpikeFit session of their own)
+3. Assets in `STATIC_FILES` set — pass through with security headers
+4. `/`, `/index.html`, `/auth.html` — serve the page, but redirect authenticated users to `/app.html`
+5. Everything else — requires a valid `sf_session` cookie; redirects to `/auth.html?redirect=<path>` if absent
 
 **KV namespaces:**
 
@@ -293,7 +296,16 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 | `SESSIONS` | `token → email` | 30 days |
 | `OTPS` | `email → { code, email }` | 10 minutes |
 | `RATELIMIT` | `send:<ip>` and `verify:<ip>:<email>` counters | 10 minutes |
-| `ALLOWLIST` | `email → 'true'` | permanent |
+| `ALLOWLIST` | `email → { allowed, tosAcceptedAt?, tosVersion?, guardianEmail?, guardianAcceptedAt?, minor? }` (legacy admin-set entries may still be a bare non-JSON-object string like `'true'` or `'1'` — `readAllowlistRecord()` treats anything that doesn't parse to an object as `{ allowed: true }`) | permanent |
+| `CONSENTS` | `token → { email, guardianEmail, tosVersion, requestedAt }` | 7 days |
+
+**ToS/consent tracking (`cloudflare/worker.js`, "ToS/consent tracking" section):** `ALLOWLIST` already gates hosted access by email, so its value was extended from a bare `'true'` to a JSON record to keep a durable, server-side log of ToS acceptance — separate from the client-side `disclaimerAgreed` localStorage flag, which a user can clear at will.
+
+- `POST /consent/accept` — called by `js/app.js`'s `acceptDisclaimer()` for adult (non-minor) acceptances. Requires an existing session; records `{ tosAcceptedAt, tosVersion }` into the caller's `ALLOWLIST` entry.
+- `POST /consent/send` — called by `js/app.js`'s `sendGuardianConsent()` when a self-declared minor submits a guardian email. Requires an existing session; stores a random token in `CONSENTS` and emails the guardian a confirmation link via Resend (see `sendConsentEmail()`).
+- `GET /consent/confirm?token=...` — the link the guardian clicks. No session required (the guardian isn't logged into SpikeFit). Looks up the token in `CONSENTS`, and on success records `{ guardianEmail, tosVersion, guardianAcceptedAt, minor: true }` into the athlete's `ALLOWLIST` entry, then deletes the token. Returns a small self-contained HTML confirmation page.
+
+This mechanism only exists for the hosted instance. A locally-run fork has no server to email a guardian through, so `sendGuardianConsent()` falls back to a client-side-only attestation (the fetch fails, is caught, and the UI tells the user to review the terms with their guardian directly) — there is no verification in that path, same as the disclaimer modal itself.
 
 **Rate limits:** 3 OTP sends per IP per 10 min (`send:<ip>`); 5 OTP verify attempts per IP+email per 10 min (`verify:<ip>:<email>`).
 
@@ -317,7 +329,7 @@ Referrer-Policy: strict-origin-when-cross-origin
 
 **Gap: wrangler.toml is not in the repo.** Anyone deploying the Worker must create `cloudflare/wrangler.toml` manually. Required bindings:
 
-- KV namespace bindings for `SESSIONS`, `OTPS`, `RATELIMIT`, `ALLOWLIST`
+- KV namespace bindings for `SESSIONS`, `OTPS`, `RATELIMIT`, `ALLOWLIST`, `CONSENTS`
 - Secret binding for `RESEND_API_KEY`
 - `main = "worker.js"`, `compatibility_date`, and `name` fields
 

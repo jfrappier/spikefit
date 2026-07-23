@@ -54,6 +54,11 @@ export default {
     if (url.pathname === '/auth/verify')   return handleVerify(req, env);
     if (url.pathname === '/auth/logout')   return handleLogout(req, env);
 
+    // ToS/consent endpoints — always pass through
+    if (url.pathname === '/consent/accept')  return handleConsentAccept(req, env);
+    if (url.pathname === '/consent/send')    return handleConsentSend(req, env);
+    if (url.pathname === '/consent/confirm') return handleConsentConfirm(req, env);
+
     // Static assets — always pass through (logo, favicon, fonts, etc.)
     if (STATIC_FILES.has(url.pathname)) {
       const safeReq = new Request(new URL(url.pathname, ORIGIN), req);
@@ -201,6 +206,98 @@ async function handleLogout(req, env) {
   });
 }
 
+// ─── ToS/consent tracking ──────────────────────────────────────────────────────
+//
+// ALLOWLIST already gates hosted access by email (see handleSend above); these
+// endpoints extend its value from the bare string 'true' to a JSON record so we
+// have a durable, non-repudiable log of when/what version of the terms a user
+// (or their guardian) accepted — separate from the client-side disclaimerAgreed
+// localStorage flag, which the user can clear at will.
+
+const CONSENT_TTL = 60 * 60 * 24 * 7; // 7 days to click the guardian confirmation link
+
+async function handleConsentAccept(req, env) {
+  if (req.method !== 'POST') return respond({ error: 'method_not_allowed' }, 405);
+
+  const email = await getSession(req, env);
+  if (!email) return respond({ error: 'not_authenticated' }, 401);
+
+  let tosVersion;
+  try { ({ tosVersion } = await req.json()); } catch { return respond({ error: 'bad_request' }, 400); }
+  if (!tosVersion) return respond({ error: 'bad_request' }, 400);
+
+  const record = await readAllowlistRecord(env, email);
+  record.tosAcceptedAt = new Date().toISOString();
+  record.tosVersion    = tosVersion;
+  await env.ALLOWLIST.put(email, JSON.stringify(record));
+
+  return respond({ ok: true });
+}
+
+async function handleConsentSend(req, env) {
+  if (req.method !== 'POST') return respond({ error: 'method_not_allowed' }, 405);
+
+  const email = await getSession(req, env);
+  if (!email) return respond({ error: 'not_authenticated' }, 401);
+
+  let guardianEmail, tosVersion;
+  try { ({ guardianEmail, tosVersion } = await req.json()); } catch { return respond({ error: 'bad_request' }, 400); }
+  guardianEmail = (guardianEmail || '').trim().toLowerCase();
+  if (!guardianEmail || !tosVersion) return respond({ error: 'bad_request' }, 400);
+
+  const token = crypto.randomUUID();
+  await env.CONSENTS.put(token, JSON.stringify({ email, guardianEmail, tosVersion, requestedAt: new Date().toISOString() }), { expirationTtl: CONSENT_TTL });
+
+  const sent = await sendConsentEmail(env.RESEND_API_KEY, guardianEmail, token);
+  if (!sent) return respond({ error: 'email_failed' }, 500);
+
+  return respond({ ok: true });
+}
+
+async function handleConsentConfirm(req, env) {
+  const url   = new URL(req.url);
+  const token = url.searchParams.get('token') || '';
+  const stored = token && await env.CONSENTS.get(token);
+
+  if (!stored) return htmlResponse('This confirmation link is invalid or has expired.');
+
+  const { email, guardianEmail, tosVersion } = JSON.parse(stored);
+  await env.CONSENTS.delete(token);
+
+  const record = await readAllowlistRecord(env, email);
+  record.guardianEmail       = guardianEmail;
+  record.tosVersion          = tosVersion;
+  record.guardianAcceptedAt  = new Date().toISOString();
+  record.minor               = true;
+  await env.ALLOWLIST.put(email, JSON.stringify(record));
+
+  return htmlResponse('Thank you — your consent has been recorded.');
+}
+
+async function readAllowlistRecord(env, email) {
+  const stored = await env.ALLOWLIST.get(email);
+  if (!stored) return { allowed: true };
+  try {
+    const parsed = JSON.parse(stored);
+    // Legacy admin-set values are bare strings like 'true' or '1' — both parse
+    // successfully as JSON (a boolean/number), so guard for an actual object
+    // rather than just checking JSON.parse didn't throw.
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {
+    // fall through — non-JSON legacy value
+  }
+  return { allowed: true };
+}
+
+function htmlResponse(message) {
+  return new Response(
+    `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SpikeFit</title></head>` +
+    `<body style="font-family:sans-serif;max-width:400px;margin:80px auto;text-align:center;color:#2d3748;">` +
+    `<p>${message}</p></body></html>`,
+    { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } }
+  );
+}
+
 // ─── Resend email ─────────────────────────────────────────────────────────────
 
 async function sendEmail(apiKey, to, code) {
@@ -224,6 +321,38 @@ async function sendEmail(apiKey, to, code) {
               <span style="font-size:40px;font-weight:700;letter-spacing:0.3em;color:#e80a89;">${code}</span>
             </div>
             <p style="color:#718096;font-size:14px;text-align:center;">If you didn't request this, you can safely ignore it.</p>
+          </div>
+        `
+      })
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function sendConsentEmail(apiKey, to, token) {
+  try {
+    const confirmUrl = `${ORIGIN}/consent/confirm?token=${token}`;
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization:  `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from:    'SpikeFit <noreply@spikefit.app>',
+        to,
+        subject: `Please confirm: your child wants to use SpikeFit`,
+        html:    `
+          <div style="font-family:'Source Sans Pro',Helvetica,sans-serif;max-width:400px;margin:0 auto;padding:40px 24px;">
+            <img src="https://spikefit.app/logo.png" alt="SpikeFit" style="width:160px;display:block;margin:0 auto 32px;">
+            <h2 style="color:#2d3748;text-align:center;margin-bottom:8px;">Parent/guardian confirmation</h2>
+            <p style="color:#718096;text-align:center;margin-bottom:32px;">A student athlete has listed you as their parent or legal guardian to use SpikeFit, a volleyball training app. Please review the app's <a href="${ORIGIN}/tos.html">Terms &amp; Disclaimer</a> and confirm below.</p>
+            <p style="text-align:center;margin-bottom:32px;">
+              <a href="${confirmUrl}" style="background:#e80a89;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:700;">I Confirm</a>
+            </p>
+            <p style="color:#718096;font-size:14px;text-align:center;">If you don't recognize this request, you can safely ignore it — the link expires in 7 days.</p>
           </div>
         `
       })

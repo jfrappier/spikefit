@@ -178,3 +178,25 @@ The full Google Drive OAuth path was evaluated. It requires: a `client_secret` s
 (g) **`index.html` zero-JS constraint relaxed.** `index.html` gains the small `team.js` early loader script so the landing page renders in team colors on a team subdomain. Recorded here as a deliberate relaxation of the original "index.html has no JS" rule.
 
 **Consequences:** All theme CSS files are public (GitHub Pages bypasses the Worker gate regardless). Theming requires no Worker logic changes per team — only `STATIC_FILES` entries. Adding a new team is a single PR. The `TEAMS` registry in `team.js` is the canonical list of valid team slugs; arbitrary hostnames or `?team=` values that are not in `TEAMS` are ignored (whitelist-only, no injection surface).
+
+---
+
+## ADR-012: Versioned Disclaimer Acceptance + Server-Side Consent Logging
+
+**Status:** Accepted
+
+**Context:** The disclaimer modal (medical disclaimer, assumption of risk, indemnification) was gated by a one-time `disclaimerAgreed` localStorage flag with no version — once accepted, a user never saw the modal again even after the wording materially changed. The flag also only ever existed client-side, meaning a user could clear it (or their browser storage) and there would be no record that acceptance ever happened. Separately, the disclaimer had no age-of-majority or governing-law clause, and no path for handling a user who is legally a minor (e.g. a student athlete using the app for their team) and may lack the contractual capacity to accept a liability waiver on their own.
+
+**Decision:**
+
+(a) **Versioned acceptance.** `disclaimerAgreed` now stores a `DISCLAIMER_VERSION` string (`js/app.js`) instead of `'true'`. `checkDisclaimer()` compares the stored value against the current version and re-shows the modal on any mismatch — including the old unversioned `'true'` value. Bump `DISCLAIMER_VERSION` whenever the disclaimer/ToS wording changes materially.
+
+(b) **Age and jurisdiction clauses added** to the disclaimer modal (`app.html`) and `tos.html`: users must be 18+ to accept on their own behalf, and the terms are governed by the laws of the Commonwealth of Massachusetts.
+
+(c) **Server-side acceptance logging (hosted instance only).** The Cloudflare Worker's `ALLOWLIST` KV, which already gates hosted access by email, had its value extended from a bare `'true'` to a JSON record (`{ allowed, tosAcceptedAt, tosVersion, guardianEmail?, guardianAcceptedAt?, minor? }`). A new `POST /consent/accept` endpoint records `{ tosAcceptedAt, tosVersion }` for adult acceptances. This exists specifically because a client-side-only flag gives no durable evidence that acceptance happened — a user can wipe it at will. Rejected alternative: a separate KV namespace just for acceptance, which would mean checking two KV entries (allowlist status + acceptance) per request instead of one.
+
+(d) **Minor/guardian consent via verified email, not a checkbox.** Rather than trusting a self-declared minor to type in an accurate parent/guardian email (unverifiable, easily faked), the flow reuses the existing OTP email infrastructure (`sendEmail()` pattern, Resend API) to actually send the guardian a confirmation link. A new `CONSENTS` KV namespace (`token → { email, guardianEmail, tosVersion, requestedAt }`, 7-day TTL) holds pending requests; `GET /consent/confirm?token=...` — reachable without a SpikeFit session, since the guardian has none — finalizes consent into the athlete's `ALLOWLIST` entry. This does not verify guardian *identity*, only that someone with access to that inbox clicked the link — a deliberately lightweight bar, chosen because full identity verification (ID checks, video calls) is disproportionate for a free, zero-dependency app. Access itself is not gated on confirmation completing — `ALLOWLIST`'s existing `allowed` check still governs login; this only affects the consent record.
+
+(e) **Local/offline forks get no verification.** A locally-run fork has no server to email a guardian through. `sendGuardianConsent()` attempts the fetch, catches the failure, and falls back to telling the user to review the terms with their guardian directly — an unverified, client-side-only attestation. This mirrors the pre-existing reality that the whole disclaimer mechanism has always been unverifiable for local forks.
+
+**Consequences:** Existing users (who accepted the pre-versioned disclaimer) will see the modal again once this ships. Deploying the hosted Worker now requires an additional `CONSENTS` KV namespace binding in `wrangler.toml`. None of this is a substitute for a real signed waiver where one is legally required (e.g. school/team athletic participation waivers) — it strengthens the evidentiary trail and adds friction for the minor case, but enforceability of a minor's (or their guardian's) agreement to a liability waiver varies by state and was not itself researched or drafted by a lawyer as part of this change.

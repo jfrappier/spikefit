@@ -21,7 +21,7 @@ def test_daily_tab_shows_exercises(app_page):
 
 def test_start_workout_enables_exercise_toggle(seeded_page):
     """Clicking Start Workout, confirming the readiness check-in, makes exercise cards interactive."""
-    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local", "combineSkipped": "true"})
+    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local", "combineSkipped": "true"})
     p.locator("#btn-start-workout").click()
     p.locator("#btn-save-readiness").click()
     card = p.locator(".exercise-card").first
@@ -33,7 +33,7 @@ def test_reset_day_clears_active_workout_state(seeded_page):
     # resetDay() clears exercises from the current day's workout only, so
     # we test the state change that is always reliable: activeWorkoutStart → null.
     p = seeded_page({
-        "disclaimerAgreed": "true",
+        "disclaimerAgreed": "0.0.720",
         "storagePreference": "local",
         "combineSkipped": "true",
         "activeWorkoutStart": "2024-01-01T10:00:00.000Z",
@@ -47,7 +47,7 @@ def test_reset_day_clears_active_workout_state(seeded_page):
 
 def test_schedule_tab_renders(seeded_page):
     """Schedule tab shows 7 day entries."""
-    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local", "combineSkipped": "true"})
+    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local", "combineSkipped": "true"})
     p.locator("button", has_text="Schedule").click()
     days = p.locator("#schedule-content .calendar-day")
     expect(days).to_have_count(7, timeout=3000)
@@ -55,7 +55,7 @@ def test_schedule_tab_renders(seeded_page):
 
 def test_history_tab_renders_calendar(seeded_page):
     """History tab renders a monthly calendar grid."""
-    p = seeded_page({"disclaimerAgreed": "true", "storagePreference": "local"})
+    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local"})
     p.locator("button", has_text="Calendar").click()
     expect(p.locator(".month-grid")).to_be_visible(timeout=3000)
 
@@ -64,7 +64,7 @@ def test_completed_workout_appears_in_history(seeded_page):
     """A date marked complete in completedDates shows as filled in the calendar."""
     today_str = today()
     p = seeded_page({
-        "disclaimerAgreed": "true",
+        "disclaimerAgreed": "0.0.720",
         "storagePreference": "local",
         "completedDates": {today_str: {"completed": True, "level": "beginner"}},
     })
