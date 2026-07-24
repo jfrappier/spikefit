@@ -1,5 +1,39 @@
 # SpikeFit Changelog
 
+## v0.0.723 — Required Physician-Consultation Checkbox
+
+The disclaimer modal now requires an affirmative "I have consulted with my physician or PCP" checkbox before it can be accepted, and fixes a bug where a real server error during guardian-consent requests was misreported as "not connected to a server."
+
+---
+
+## ⚖️ Legal
+
+### Add required PCP-consultation checkbox (FR-16)
+
+- New checkbox in the disclaimer modal (`app.html`): "I have consulted with my physician or primary care provider before starting this program." `#btn-accept-disclaimer` now starts `disabled` and only enables once this box is checked (and, for self-declared minors, once guardian consent has also been submitted).
+- `DISCLAIMER_VERSION` bumped to `0.0.723` in `js/app.js` so existing users are re-prompted, per the versioning mechanism from `v0.0.720`.
+- See `docs/decisions.md` ADR-013.
+
+## 🐛 Fixes
+
+### Distinguish "no server" from "server errored" in guardian-consent flow (FR-16)
+
+- `sendGuardianConsent()` in `js/app.js` previously caught every failure — a genuine network error (no server reachable, e.g. a local/offline fork) and a real server-side error (missing `CONSENTS` KV binding, Resend failure, etc.) — into the same "isn't connected to a server" message, which was misleading on a working hosted deployment. It now distinguishes the two: a `fetch()` throw still shows the "not connected" fallback, while a non-2xx response logs the HTTP status/body to the console and shows a distinct "something went wrong, try again" message.
+
+## Files Changed
+
+- `app.html`
+- `js/app.js`
+- `CLAUDE.md`
+- `docs/architecture.md`
+- `docs/decisions.md`
+- `changelog.md`
+- `tests/e2e/test_storage.py`
+- `tests/e2e/test_combine.py`
+- `tests/e2e/test_workout_flow.py`
+
+---
+
 ## v0.0.720 — Versioned Disclaimer Acceptance and Guardian Consent Tracking
 
 The disclaimer/ToS now carries an age-of-majority and Massachusetts governing-law clause, re-prompts existing users when the wording changes, and — on the hosted instance — records acceptance server-side and verifies parent/guardian consent by email for self-declared minors.

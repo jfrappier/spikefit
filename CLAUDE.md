@@ -82,7 +82,7 @@ The fix is a version query string, not a filename change or a no-cache header â€
 | `workoutLevel` | `'beginner' \| 'intermediate' \| 'advanced'` | `'beginner'` | Current tier. |
 | `activeWorkoutStart` | ISO timestamp string | `null` | Set when workout starts; cleared on complete or reset. |
 | `spikefit_fresh_logs` | `Array<{ timestamp, session: { load, rpe, duration, readinessModifier } }>` | `[]` | ACWR training load log. Pruned to 28 days on every write. |
-| `disclaimerAgreed` | version string (e.g. `'0.0.720'`) | absent | Set to `DISCLAIMER_VERSION` when user accepts the disclaimer modal. A stored value that doesn't match the current `DISCLAIMER_VERSION` (including the legacy `'true'`) re-shows the modal. |
+| `disclaimerAgreed` | version string (e.g. `'0.0.723'`) | absent | Set to `DISCLAIMER_VERSION` when user accepts the disclaimer modal. A stored value that doesn't match the current `DISCLAIMER_VERSION` (including the legacy `'true'`) re-shows the modal. |
 | `guardianConsentEmail` | email string | absent | Set when a self-declared minor submits a parent/guardian email in the disclaimer modal. Local record only â€” the verified record lives server-side in the hosted instance's `ALLOWLIST` KV once the guardian confirms via emailed link. |
 | `combineResults` | `Array<{ date, timestamp, metrics: { standingReach, jumpTouch, vertical, plankSec, wallSitSec, toeTaps, jumpingJacks, agilitySec } }>` | `[]` | All Combine attempt records (never pruned). Any metric may be absent. |
 | `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the modal. |

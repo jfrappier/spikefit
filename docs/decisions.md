@@ -200,3 +200,15 @@ The full Google Drive OAuth path was evaluated. It requires: a `client_secret` s
 (e) **Local/offline forks get no verification.** A locally-run fork has no server to email a guardian through. `sendGuardianConsent()` attempts the fetch, catches the failure, and falls back to telling the user to review the terms with their guardian directly — an unverified, client-side-only attestation. This mirrors the pre-existing reality that the whole disclaimer mechanism has always been unverifiable for local forks.
 
 **Consequences:** Existing users (who accepted the pre-versioned disclaimer) will see the modal again once this ships. Deploying the hosted Worker now requires an additional `CONSENTS` KV namespace binding in `wrangler.toml`. None of this is a substitute for a real signed waiver where one is legally required (e.g. school/team athletic participation waivers) — it strengthens the evidentiary trail and adds friction for the minor case, but enforceability of a minor's (or their guardian's) agreement to a liability waiver varies by state and was not itself researched or drafted by a lawyer as part of this change.
+
+---
+
+## ADR-013: Required PCP-Consultation Checkbox on the Disclaimer
+
+**Status:** Accepted
+
+**Context:** The disclaimer already instructs users to consult a physician before starting ("Always consult with a qualified healthcare provider or physician…"), but an instruction is not the same as a representation. A user simply reading that sentence and clicking "I Understand and Agree" hasn't affirmatively stated they did it — only that they were told to.
+
+**Decision:** Add a second required checkbox to the disclaimer modal, alongside the existing "I am under 18" one: "I have consulted with my physician or primary care provider before starting this program." `#btn-accept-disclaimer` (`app.html`) now ships with the `disabled` attribute by default; `updateAcceptButtonState()` (`js/app.js`) only enables it once this checkbox is checked (and, for self-declared minors, once guardian consent has also been submitted). `DISCLAIMER_VERSION` was bumped to re-prompt existing users, per the versioning mechanism established in ADR-012.
+
+**Consequences:** Every user must now take an affirmative action (checking a box making a factual claim) rather than just reading text, which is a stronger record than the pre-existing instructional sentence — mirrors the same reasoning as ADR-012's minor/guardian consent design. This does not verify the claim is true, same as the age checkbox doesn't verify age; it only makes the record harder to disclaim after the fact ("I never even told you I hadn't seen a doctor").

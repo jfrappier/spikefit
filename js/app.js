@@ -695,7 +695,7 @@ function closeToast() {
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
 
-const DISCLAIMER_VERSION = '0.0.720'; // bump alongside changelog when the disclaimer/ToS wording changes materially
+const DISCLAIMER_VERSION = '0.0.723'; // bump alongside changelog when the disclaimer/ToS wording changes materially
 let guardianConsentSubmitted = false;
 
 function openDisclaimerModal()  { document.getElementById('disclaimer-modal').style.display = 'flex'; }
@@ -707,8 +707,9 @@ function toggleGuardianSection() {
 }
 
 function updateAcceptButtonState() {
-    const isMinor = document.getElementById('chk-under-18').checked;
-    document.getElementById('btn-accept-disclaimer').disabled = isMinor && !guardianConsentSubmitted;
+    const isMinor      = document.getElementById('chk-under-18').checked;
+    const pcpConsulted = document.getElementById('chk-pcp-consulted').checked;
+    document.getElementById('btn-accept-disclaimer').disabled = !pcpConsulted || (isMinor && !guardianConsentSubmitted);
 }
 
 async function sendGuardianConsent() {
@@ -721,18 +722,34 @@ async function sendGuardianConsent() {
     }
     errorEl.textContent = '';
 
+    let res;
     try {
-        const res = await fetch('/consent/send', {
+        res = await fetch('/consent/send', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ guardianEmail: email, tosVersion: DISCLAIMER_VERSION })
         });
-        if (!res.ok) throw new Error(`consent/send responded ${res.status}`);
-        statusEl.textContent = "Confirmation email sent — your parent/guardian needs to click the link in that email.";
     } catch (err) {
-        console.error('Guardian consent request failed (this copy of SpikeFit may not be connected to a server).', err);
+        // fetch itself threw — no server reachable at all (e.g. a local/offline fork over file://)
+        console.error('Guardian consent request could not reach a server.', err);
         statusEl.textContent = "This copy of SpikeFit isn't connected to a server, so we can't email your parent/guardian automatically. Please review the terms above together with them.";
+        finalizeGuardianConsent(email);
+        return;
     }
+
+    if (res.ok) {
+        statusEl.textContent = "Confirmation email sent — your parent/guardian needs to click the link in that email.";
+    } else {
+        // A response came back, so the server is reachable — something server-side failed
+        // (missing CONSENTS KV binding, Resend delivery failure, session expiry, etc).
+        const body = await res.text().catch(() => '');
+        console.error(`Guardian consent request reached the server but failed (HTTP ${res.status}).`, body);
+        statusEl.textContent = "Something went wrong sending the confirmation email. Please try again in a moment, or review the terms above together with your guardian.";
+    }
+    finalizeGuardianConsent(email);
+}
+
+function finalizeGuardianConsent(email) {
     try {
         localStorage.setItem('guardianConsentEmail', email);
     } catch (err) {
@@ -1135,6 +1152,7 @@ document.getElementById('btn-close-badge').addEventListener('click',  closeBadge
 // Disclaimer modal
 document.getElementById('btn-accept-disclaimer').addEventListener('click', acceptDisclaimer);
 document.getElementById('chk-under-18').addEventListener('change', toggleGuardianSection);
+document.getElementById('chk-pcp-consulted').addEventListener('change', updateAcceptButtonState);
 document.getElementById('btn-send-guardian-consent').addEventListener('click', sendGuardianConsent);
 
 // Privacy modal

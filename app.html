@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="css/components/storage.css?v=0.0.715">
 
   <script src="js/workouts.js?v=0.0.715" defer></script>
-  <script src="js/app.js?v=0.0.720" defer></script>
+  <script src="js/app.js?v=0.0.723" defer></script>
   <script src="js/combine.js?v=0.0.715" defer></script>
   <script src="js/storage.js?v=0.0.715" defer></script>
 </head>
@@ -229,6 +229,10 @@
                 <p>These terms are governed by the laws of the Commonwealth of Massachusetts, without regard to its conflict-of-law principles, and any dispute arising out of or relating to these terms or your use of this application shall be brought exclusively in the state or federal courts located in Massachusetts.</p>
             </div>
             <div class="disclaimer-minor-check">
+                <input type="checkbox" id="chk-pcp-consulted">
+                <label for="chk-pcp-consulted">I have consulted with my physician or primary care provider before starting this program</label>
+            </div>
+            <div class="disclaimer-minor-check">
                 <input type="checkbox" id="chk-under-18">
                 <label for="chk-under-18">I am under 18 years old</label>
             </div>
@@ -240,7 +244,7 @@
                 <button id="btn-send-guardian-consent" class="btn-reset" type="button">Send Confirmation Email</button>
                 <p id="guardian-consent-status" class="scroll-note"></p>
             </div>
-            <button id="btn-accept-disclaimer" class="btn-agree">I Understand and Agree</button>
+            <button id="btn-accept-disclaimer" class="btn-agree" disabled>I Understand and Agree</button>
         </div>
     </div>
 
