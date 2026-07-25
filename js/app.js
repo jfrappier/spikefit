@@ -743,7 +743,7 @@ async function sendGuardianConsent() {
         // A response came back, so the server is reachable — something server-side failed
         // (missing CONSENTS KV binding, Resend delivery failure, session expiry, etc).
         const body = await res.text().catch(() => '');
-        console.error(`Guardian consent request reached the server but failed (HTTP ${res.status}).`, body);
+        console.error('Guardian consent request reached the server but failed.', { status: res.status, body });
         statusEl.textContent = "Something went wrong sending the confirmation email. Please try again in a moment, or review the terms above together with your guardian.";
     }
     finalizeGuardianConsent(email);
