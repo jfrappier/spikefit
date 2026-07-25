@@ -39,9 +39,10 @@ const FRESH_SYSTEM = {
         const logs = FRESH_SYSTEM.getLogs();
         const now = Date.now();
         const ONE_DAY = 86400000;
-        let acuteLoad = 0;   
-        let chronicLoad = 0; 
+        let acuteLoad = 0;
+        let chronicLoad = 0;
         let oldestTimestamp = now;
+        const loggedDays = new Set();
 
         if (logs.length === 0) {
             return { ratio: 0, status: 'baseline', acuteLoad: 0, chronicLoad: 0 };
@@ -56,6 +57,7 @@ const FRESH_SYSTEM = {
                 if (log.timestamp < oldestTimestamp) {
                     oldestTimestamp = log.timestamp;
                 }
+                loggedDays.add(new Date(log.timestamp).toDateString());
                 chronicLoad += log.session.load;
                 if (daysOld <= 7) { acuteLoad += log.session.load; }
             }
@@ -66,19 +68,20 @@ const FRESH_SYSTEM = {
         // Proportional division (8 / 7 = 1.14) gives an accurate chronic average for partial weeks.
         const daysActive = (now - oldestTimestamp) / ONE_DAY;
 
-        // BASELINE GATE: With less than 14 days of data, the acute (7-day) and chronic
-        // (28-day) windows substantially overlap, so the ratio is mathematically near-locked
-        // to ~1.0 regardless of actual training variation — it isn't a meaningful signal yet.
-        // Surface "building baseline" instead of a number that looks precise but isn't.
+        // BASELINE GATE: requires 14 distinct logged workout days, not 14 calendar days
+        // elapsed since the first log. A user could otherwise log one workout, wait 14+
+        // days, log a second, and get a "real" ratio computed from just two sparse
+        // sessions — the acute (7-day) and chronic (28-day) windows still wouldn't have
+        // enough actual training data to mean anything, even though calendar time passed.
         const BASELINE_THRESHOLD_DAYS = 14;
-        if (daysActive < BASELINE_THRESHOLD_DAYS) {
+        if (loggedDays.size < BASELINE_THRESHOLD_DAYS) {
             return {
                 ratio: 0,
                 status: 'baseline',
                 acuteLoad: Math.round(acuteLoad),
                 chronicLoad: Math.round(chronicLoad),
                 baseline: true,
-                daysRemaining: Math.ceil(BASELINE_THRESHOLD_DAYS - daysActive)
+                daysRemaining: BASELINE_THRESHOLD_DAYS - loggedDays.size
             };
         }
 
@@ -94,11 +97,12 @@ const FRESH_SYSTEM = {
         const ratio = (acuteLoad / averageWeeklyChronic).toFixed(2);
         const floatRatio = parseFloat(ratio);
         
-        // Status logic with cold-start guardrails
+        // Status logic. There's no separate cold-start guardrail on session count here —
+        // the 14-distinct-logged-day baseline gate above already guarantees logs.length >= 14
+        // by the time this branch runs, so a low-session-count guardrail could never trigger.
         let status = 'optimal';
         if (floatRatio >= 1.5) {
-            // Require at least 3 logged sessions before throwing a hard "Danger" block
-            status = logs.length < 3 ? 'caution' : 'danger';
+            status = 'danger';
         } else if (floatRatio >= 1.3) {
             status = 'caution';
         }
@@ -123,10 +127,10 @@ const FRESH_SYSTEM = {
         const ratioEl = document.getElementById('fresh-ratio');
 
         if (data.baseline) {
-            // Less than 14 days of data — ratio would be a misleading near-1.0 number, so
-            // show progress toward a meaningful baseline instead.
+            // Fewer than 14 distinct logged workout days — ratio would be a misleading
+            // near-1.0 number, so show progress toward a meaningful baseline instead.
             ratioEl.textContent = '—';
-            statusEl.textContent = `Building Baseline (${data.daysRemaining}d left)`;
+            statusEl.textContent = `Building Baseline (${data.daysRemaining} workout${data.daysRemaining === 1 ? '' : 's'} left)`;
         } else {
             ratioEl.textContent = data.ratio > 0 ? data.ratio.toFixed(2) : '0.00';
             statusEl.textContent = data.status;

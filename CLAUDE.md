@@ -127,7 +127,7 @@ Exercises with `impact: 'high'` carry an `alt` object. When `FRESH_SYSTEM.needsR
 - **Readiness modifier** = `1 + (5 - jointFreshness) / 20` (higher fatigue = more costly workout)
 - **Acute load** = sum of session loads in the last 7 days
 - **Chronic load** = weekly average over the active data window (1–4 weeks, proportional)
-- **14-day baseline gate**: ratio is suppressed until 14 days of data exist — before that, the acute and chronic windows substantially overlap and the ratio is not meaningful
+- **14-day baseline gate**: ratio is suppressed until 14 *distinct logged workout days* exist — not 14 calendar days elapsed since the first log. Sparse sessions spread over a long calendar span still don't give the acute/chronic windows enough real data to be meaningful.
 - **28-day prune**: old log entries are pruned on every write, not on read
 - **Regulation**: `needsRegulation()` returns true when ACWR status is `'danger'` OR joint freshness < 5. High-impact exercises are swapped for their `alt` in `renderDaily()`.
 

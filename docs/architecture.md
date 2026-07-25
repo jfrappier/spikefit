@@ -256,11 +256,12 @@ Exercises marked with `impact: 'high'` carry an `alt` object. When `FRESH_SYSTEM
 
 | ACWR | Status | Notes |
 |---|---|---|
-| < 14 days of data | `baseline` | Ratio suppressed; acute and chronic windows overlap too much |
+| < 14 distinct logged workout days | `baseline` | Ratio suppressed regardless of elapsed calendar time; sparse data isn't a meaningful signal even if the oldest log is weeks old |
 | < 1.3 | `optimal` | Normal training range |
 | 1.3–1.5 | `caution` | Elevated load, monitor |
-| ≥ 1.5, < 3 sessions logged | `caution` | Cold-start guardrail — not enough history to call danger |
-| ≥ 1.5, ≥ 3 sessions | `danger` | High-impact exercises regulated |
+| ≥ 1.5 | `danger` | High-impact exercises regulated |
+
+There is no separate low-session-count guardrail on the `danger` threshold — the baseline gate above already guarantees at least 14 logged sessions by the time this branch can run.
 
 ---
 

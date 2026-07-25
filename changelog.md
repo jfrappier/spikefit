@@ -1,5 +1,33 @@
 # SpikeFit Changelog
 
+## v0.0.724 — Fix F.R.E.S.H. Baseline Gate to Count Logged Workout Days, Not Elapsed Time
+
+The 14-day F.R.E.S.H. baseline gate was checking calendar time since the first logged workout instead of counting actual logged workout days, so a user with only a couple of sparse sessions spread across 14+ real days could get a "computed" ACWR ratio from data that was really still too thin to mean anything.
+
+---
+
+## 🐛 Fixes
+
+### Gate the ACWR baseline on distinct logged days, not elapsed calendar time (BUG-6)
+
+- `calculateACWR()` (`js/app.js`) now tracks a `loggedDays` set of distinct calendar dates with at least one logged session (within the 28-day retention window) and requires 14 of those before computing a ratio — previously it only checked `(now - oldestLogTimestamp) / ONE_DAY >= 14`, which passed as soon as 14 calendar days had elapsed since the oldest surviving log, regardless of how many workouts were actually logged in between.
+- The chronic-load averaging denominator (`weeksActive`) is unchanged — it still legitimately uses real elapsed time, since that's the actual ACWR chronic-average window, separate from the "is there enough data yet" readiness check.
+- Removed the now-dead "fewer than 3 sessions → caution not danger" cold-start guardrail: once the baseline gate requires 14 distinct logged days, `logs.length >= 14` is guaranteed by the time that branch would run, so it could never trigger again.
+- "Building Baseline" copy in the F.R.E.S.H. modal now reads workouts remaining instead of days remaining, to match the new gate.
+- Updated `tests/unit/acwr.test.js` (the inline copy of the calculation used for pure-function testing) to match, added a regression test for the exact reported scenario (few sessions spanning 14+ calendar days should stay `baseline`), and updated `docs/decisions.md` ADR-004.
+
+## Files Changed
+
+- `js/app.js`
+- `app.html`
+- `tests/unit/acwr.test.js`
+- `CLAUDE.md`
+- `docs/architecture.md`
+- `docs/decisions.md`
+- `changelog.md`
+
+---
+
 ## v0.0.723 — Required Physician-Consultation Checkbox
 
 The disclaimer modal now requires an affirmative "I have consulted with my physician or PCP" checkbox before it can be accepted, and fixes a bug where a real server error during guardian-consent requests was misreported as "not connected to a server."
