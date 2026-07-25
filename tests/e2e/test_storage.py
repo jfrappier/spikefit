@@ -8,6 +8,7 @@ def test_fresh_user_sees_storage_choice_after_disclaimer(app_page):
     p = app_page
     p.wait_for_timeout(4500)
     expect(p.locator("#disclaimer-modal")).to_be_visible(timeout=3000)
+    p.locator("#chk-pcp-consulted").check()
     p.locator("#btn-accept-disclaimer").click()
     expect(p.locator("#storage-choice-modal")).to_be_visible(timeout=3000)
     expect(p.locator("#disclaimer-modal")).to_be_hidden(timeout=1000)
@@ -17,6 +18,7 @@ def test_choosing_local_persists_preference(app_page):
     """Choosing 'Local only' sets storagePreference='local' and hides the modal."""
     p = app_page
     p.wait_for_timeout(4500)
+    p.locator("#chk-pcp-consulted").check()
     p.locator("#btn-accept-disclaimer").click()
     expect(p.locator("#storage-choice-modal")).to_be_visible(timeout=3000)
     p.locator("#btn-choose-local").click()
@@ -29,6 +31,7 @@ def test_choosing_drive_persists_preference(app_page):
     """Choosing 'Google Drive' sets storagePreference='drive' and hides the modal."""
     p = app_page
     p.wait_for_timeout(4500)
+    p.locator("#chk-pcp-consulted").check()
     p.locator("#btn-accept-disclaimer").click()
     expect(p.locator("#storage-choice-modal")).to_be_visible(timeout=3000)
     p.locator("#btn-choose-drive").click()
@@ -39,14 +42,14 @@ def test_choosing_drive_persists_preference(app_page):
 
 def test_returning_user_skips_storage_choice_modal(seeded_page):
     """A returning user with storagePreference set does NOT see the storage-choice modal."""
-    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local"})
+    p = seeded_page({"disclaimerAgreed": "0.0.723", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     expect(p.locator("#storage-choice-modal")).to_be_hidden(timeout=3000)
 
 
 def test_gear_icon_opens_settings_modal(seeded_page):
     """Clicking the gear icon opens the Storage & Backup modal."""
-    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local"})
+    p = seeded_page({"disclaimerAgreed": "0.0.723", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     p.locator("#btn-storage-settings").click()
     expect(p.locator("#storage-settings-modal")).to_be_visible(timeout=2000)
@@ -54,7 +57,7 @@ def test_gear_icon_opens_settings_modal(seeded_page):
 
 def test_settings_modal_close_button_works(seeded_page):
     """Clicking Close in the settings modal hides it."""
-    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local"})
+    p = seeded_page({"disclaimerAgreed": "0.0.723", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     p.locator("#btn-storage-settings").click()
     expect(p.locator("#storage-settings-modal")).to_be_visible(timeout=2000)
@@ -64,7 +67,7 @@ def test_settings_modal_close_button_works(seeded_page):
 
 def test_settings_modal_shows_current_preference(seeded_page):
     """Settings modal reflects the current storagePreference value."""
-    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "drive"})
+    p = seeded_page({"disclaimerAgreed": "0.0.723", "storagePreference": "drive"})
     p.wait_for_timeout(4000)
     p.locator("#btn-storage-settings").click()
     expect(p.locator("#storage-pref-current")).to_contain_text("Cloud backup", timeout=2000)
@@ -72,7 +75,7 @@ def test_settings_modal_shows_current_preference(seeded_page):
 
 def test_toggle_changes_preference(seeded_page):
     """Clicking Change toggles storagePreference between local and drive."""
-    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local"})
+    p = seeded_page({"disclaimerAgreed": "0.0.723", "storagePreference": "local"})
     p.wait_for_timeout(4000)
     p.locator("#btn-storage-settings").click()
     expect(p.locator("#storage-settings-modal")).to_be_visible(timeout=2000)
@@ -84,7 +87,7 @@ def test_toggle_changes_preference(seeded_page):
 def test_backup_nudge_not_shown_for_local_preference(seeded_page):
     """Post-workout nudge does not appear when preference is 'local'."""
     p = seeded_page({
-        "disclaimerAgreed": "0.0.720",
+        "disclaimerAgreed": "0.0.723",
         "storagePreference": "local",
         "workoutLevel": "beginner"
     })
@@ -102,7 +105,7 @@ def test_backup_nudge_not_shown_for_local_preference(seeded_page):
 def test_backup_nudge_shown_for_drive_preference_with_no_prior_backup(seeded_page):
     """Post-workout nudge appears when preference is 'drive' and no prior backup."""
     p = seeded_page({
-        "disclaimerAgreed": "0.0.720",
+        "disclaimerAgreed": "0.0.723",
         "storagePreference": "drive",
         "workoutLevel": "beginner"
     })
@@ -117,7 +120,7 @@ def test_nudge_dismiss_leaves_share_button_available(seeded_page):
     modal — sharing is available via the persistent 'Share Today's Workout' button
     instead of a forced popup."""
     p = seeded_page({
-        "disclaimerAgreed": "0.0.720",
+        "disclaimerAgreed": "0.0.723",
         "storagePreference": "drive",
         "workoutLevel": "beginner"
     })
@@ -143,7 +146,7 @@ def test_restore_confirm_cancel_clears_pending_data(seeded_page, tmp_path):
             "spikefit_fresh_logs": [],
             "workoutLevel": "intermediate",
             "activeWorkoutStart": None,
-            "disclaimerAgreed": "0.0.720",
+            "disclaimerAgreed": "0.0.723",
             "combineResults": [],
             "combineSkipped": None,
             "storagePreference": "local"
@@ -152,7 +155,7 @@ def test_restore_confirm_cancel_clears_pending_data(seeded_page, tmp_path):
     backup_file = tmp_path / "spikefit-backup-test.json"
     backup_file.write_text(good_backup)
 
-    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local"})
+    p = seeded_page({"disclaimerAgreed": "0.0.723", "storagePreference": "local"})
     p.wait_for_timeout(4000)
 
     # Inject the backup data directly (simulates file picker result)
@@ -177,13 +180,13 @@ def test_restore_confirm_writes_data_and_reloads(seeded_page):
         "spikefit_fresh_logs": [],
         "workoutLevel": "advanced",
         "activeWorkoutStart": "stale-start-should-be-cleared",
-        "disclaimerAgreed": "0.0.720",
+        "disclaimerAgreed": "0.0.723",
         "combineResults": [],
         "combineSkipped": None,
         "storagePreference": "drive"
     })
 
-    p = seeded_page({"disclaimerAgreed": "0.0.720", "storagePreference": "local"})
+    p = seeded_page({"disclaimerAgreed": "0.0.723", "storagePreference": "local"})
     p.wait_for_timeout(4000)
 
     # Inject pending restore data and show the confirm modal

@@ -154,7 +154,7 @@ The rendering model: there is no incremental diffing. Every state change rebuild
 | `workoutLevel` | `'beginner' \| 'intermediate' \| 'advanced'` | `'beginner'` | Current tier. Read directly, not via `safeParseJSON`. |
 | `activeWorkoutStart` | ISO timestamp string | `null` | Set when workout starts; cleared on complete or reset. |
 | `spikefit_fresh_logs` | `Array<{ timestamp, session: { load, rpe, duration, readinessModifier } }>` | `[]` | ACWR training load log. Pruned to 28 days on every write. |
-| `disclaimerAgreed` | version string (e.g. `'0.0.720'`) | absent | Set to `DISCLAIMER_VERSION` when the user accepts the disclaimer. Compared against the current `DISCLAIMER_VERSION` on load — a mismatch (including the old pre-versioning value `'true'`) re-shows the modal. |
+| `disclaimerAgreed` | version string (e.g. `'0.0.723'`) | absent | Set to `DISCLAIMER_VERSION` when the user accepts the disclaimer. Compared against the current `DISCLAIMER_VERSION` on load — a mismatch (including the old pre-versioning value `'true'`) re-shows the modal. |
 | `guardianConsentEmail` | email string | absent | Set when a self-declared minor submits a parent/guardian email in the disclaimer modal. Local record only; the authoritative, verified record (once the guardian confirms) lives server-side in the hosted instance's `ALLOWLIST` KV — see Cloudflare Worker Architecture. |
 | `combineResults` | `Array<{ date, timestamp, metrics: { standingReach, jumpTouch, vertical, plankSec, wallSitSec, toeTaps, jumpingJacks, agilitySec } }>` | `[]` | All Combine attempt records. Not pruned — growth history is the point. Any metric may be absent. |
 | `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the prompt. |
@@ -190,7 +190,7 @@ SpikeFit ships a first-class backup/restore feature that lets users keep their d
     "spikefit_fresh_logs": [],
     "workoutLevel": "beginner",
     "activeWorkoutStart": null,
-    "disclaimerAgreed": "0.0.720",
+    "disclaimerAgreed": "0.0.723",
     "guardianConsentEmail": null,
     "combineResults": [],
     "combineSkipped": null,
@@ -256,11 +256,12 @@ Exercises marked with `impact: 'high'` carry an `alt` object. When `FRESH_SYSTEM
 
 | ACWR | Status | Notes |
 |---|---|---|
-| < 14 days of data | `baseline` | Ratio suppressed; acute and chronic windows overlap too much |
+| < 14 distinct logged workout days | `baseline` | Ratio suppressed regardless of elapsed calendar time; sparse data isn't a meaningful signal even if the oldest log is weeks old |
 | < 1.3 | `optimal` | Normal training range |
 | 1.3–1.5 | `caution` | Elevated load, monitor |
-| ≥ 1.5, < 3 sessions logged | `caution` | Cold-start guardrail — not enough history to call danger |
-| ≥ 1.5, ≥ 3 sessions | `danger` | High-impact exercises regulated |
+| ≥ 1.5 | `danger` | High-impact exercises regulated |
+
+There is no separate low-session-count guardrail on the `danger` threshold — the baseline gate above already guarantees at least 14 logged sessions by the time this branch can run.
 
 ---
 

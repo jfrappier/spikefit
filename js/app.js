@@ -39,9 +39,10 @@ const FRESH_SYSTEM = {
         const logs = FRESH_SYSTEM.getLogs();
         const now = Date.now();
         const ONE_DAY = 86400000;
-        let acuteLoad = 0;   
-        let chronicLoad = 0; 
+        let acuteLoad = 0;
+        let chronicLoad = 0;
         let oldestTimestamp = now;
+        const loggedDays = new Set();
 
         if (logs.length === 0) {
             return { ratio: 0, status: 'baseline', acuteLoad: 0, chronicLoad: 0 };
@@ -56,6 +57,7 @@ const FRESH_SYSTEM = {
                 if (log.timestamp < oldestTimestamp) {
                     oldestTimestamp = log.timestamp;
                 }
+                loggedDays.add(new Date(log.timestamp).toDateString());
                 chronicLoad += log.session.load;
                 if (daysOld <= 7) { acuteLoad += log.session.load; }
             }
@@ -66,19 +68,20 @@ const FRESH_SYSTEM = {
         // Proportional division (8 / 7 = 1.14) gives an accurate chronic average for partial weeks.
         const daysActive = (now - oldestTimestamp) / ONE_DAY;
 
-        // BASELINE GATE: With less than 14 days of data, the acute (7-day) and chronic
-        // (28-day) windows substantially overlap, so the ratio is mathematically near-locked
-        // to ~1.0 regardless of actual training variation — it isn't a meaningful signal yet.
-        // Surface "building baseline" instead of a number that looks precise but isn't.
+        // BASELINE GATE: requires 14 distinct logged workout days, not 14 calendar days
+        // elapsed since the first log. A user could otherwise log one workout, wait 14+
+        // days, log a second, and get a "real" ratio computed from just two sparse
+        // sessions — the acute (7-day) and chronic (28-day) windows still wouldn't have
+        // enough actual training data to mean anything, even though calendar time passed.
         const BASELINE_THRESHOLD_DAYS = 14;
-        if (daysActive < BASELINE_THRESHOLD_DAYS) {
+        if (loggedDays.size < BASELINE_THRESHOLD_DAYS) {
             return {
                 ratio: 0,
                 status: 'baseline',
                 acuteLoad: Math.round(acuteLoad),
                 chronicLoad: Math.round(chronicLoad),
                 baseline: true,
-                daysRemaining: Math.ceil(BASELINE_THRESHOLD_DAYS - daysActive)
+                daysRemaining: BASELINE_THRESHOLD_DAYS - loggedDays.size
             };
         }
 
@@ -94,11 +97,12 @@ const FRESH_SYSTEM = {
         const ratio = (acuteLoad / averageWeeklyChronic).toFixed(2);
         const floatRatio = parseFloat(ratio);
         
-        // Status logic with cold-start guardrails
+        // Status logic. There's no separate cold-start guardrail on session count here —
+        // the 14-distinct-logged-day baseline gate above already guarantees logs.length >= 14
+        // by the time this branch runs, so a low-session-count guardrail could never trigger.
         let status = 'optimal';
         if (floatRatio >= 1.5) {
-            // Require at least 3 logged sessions before throwing a hard "Danger" block
-            status = logs.length < 3 ? 'caution' : 'danger';
+            status = 'danger';
         } else if (floatRatio >= 1.3) {
             status = 'caution';
         }
@@ -123,10 +127,10 @@ const FRESH_SYSTEM = {
         const ratioEl = document.getElementById('fresh-ratio');
 
         if (data.baseline) {
-            // Less than 14 days of data — ratio would be a misleading near-1.0 number, so
-            // show progress toward a meaningful baseline instead.
+            // Fewer than 14 distinct logged workout days — ratio would be a misleading
+            // near-1.0 number, so show progress toward a meaningful baseline instead.
             ratioEl.textContent = '—';
-            statusEl.textContent = `Building Baseline (${data.daysRemaining}d left)`;
+            statusEl.textContent = `Building Baseline (${data.daysRemaining} workout${data.daysRemaining === 1 ? '' : 's'} left)`;
         } else {
             ratioEl.textContent = data.ratio > 0 ? data.ratio.toFixed(2) : '0.00';
             statusEl.textContent = data.status;
@@ -695,7 +699,7 @@ function closeToast() {
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
 
-const DISCLAIMER_VERSION = '0.0.720'; // bump alongside changelog when the disclaimer/ToS wording changes materially
+const DISCLAIMER_VERSION = '0.0.723'; // bump alongside changelog when the disclaimer/ToS wording changes materially
 let guardianConsentSubmitted = false;
 
 function openDisclaimerModal()  { document.getElementById('disclaimer-modal').style.display = 'flex'; }
@@ -707,8 +711,9 @@ function toggleGuardianSection() {
 }
 
 function updateAcceptButtonState() {
-    const isMinor = document.getElementById('chk-under-18').checked;
-    document.getElementById('btn-accept-disclaimer').disabled = isMinor && !guardianConsentSubmitted;
+    const isMinor      = document.getElementById('chk-under-18').checked;
+    const pcpConsulted = document.getElementById('chk-pcp-consulted').checked;
+    document.getElementById('btn-accept-disclaimer').disabled = !pcpConsulted || (isMinor && !guardianConsentSubmitted);
 }
 
 async function sendGuardianConsent() {
@@ -721,18 +726,34 @@ async function sendGuardianConsent() {
     }
     errorEl.textContent = '';
 
+    let res;
     try {
-        const res = await fetch('/consent/send', {
+        res = await fetch('/consent/send', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({ guardianEmail: email, tosVersion: DISCLAIMER_VERSION })
         });
-        if (!res.ok) throw new Error(`consent/send responded ${res.status}`);
-        statusEl.textContent = "Confirmation email sent — your parent/guardian needs to click the link in that email.";
     } catch (err) {
-        console.error('Guardian consent request failed (this copy of SpikeFit may not be connected to a server).', err);
+        // fetch itself threw — no server reachable at all (e.g. a local/offline fork over file://)
+        console.error('Guardian consent request could not reach a server.', err);
         statusEl.textContent = "This copy of SpikeFit isn't connected to a server, so we can't email your parent/guardian automatically. Please review the terms above together with them.";
+        finalizeGuardianConsent(email);
+        return;
     }
+
+    if (res.ok) {
+        statusEl.textContent = "Confirmation email sent — your parent/guardian needs to click the link in that email.";
+    } else {
+        // A response came back, so the server is reachable — something server-side failed
+        // (missing CONSENTS KV binding, Resend delivery failure, session expiry, etc).
+        const body = await res.text().catch(() => '');
+        console.error('Guardian consent request reached the server but failed.', { status: res.status, body });
+        statusEl.textContent = "Something went wrong sending the confirmation email. Please try again in a moment, or review the terms above together with your guardian.";
+    }
+    finalizeGuardianConsent(email);
+}
+
+function finalizeGuardianConsent(email) {
     try {
         localStorage.setItem('guardianConsentEmail', email);
     } catch (err) {
@@ -1135,6 +1156,7 @@ document.getElementById('btn-close-badge').addEventListener('click',  closeBadge
 // Disclaimer modal
 document.getElementById('btn-accept-disclaimer').addEventListener('click', acceptDisclaimer);
 document.getElementById('chk-under-18').addEventListener('change', toggleGuardianSection);
+document.getElementById('chk-pcp-consulted').addEventListener('change', updateAcceptButtonState);
 document.getElementById('btn-send-guardian-consent').addEventListener('click', sendGuardianConsent);
 
 // Privacy modal

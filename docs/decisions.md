@@ -50,13 +50,13 @@ Lightweight ADR format: **Status → Context → Decision → Consequences**
 
 (a) **Chronic load as a proportional weekly average.** `Math.ceil(daysActive / 7)` would round 8 days up to 2 full weeks, halving the chronic average and doubling the ratio. Instead: `weeksActive = max(1, min(4, daysActive / 7))` — proportional division within a 1–4 week range.
 
-(b) **14-day baseline gate.** Before 14 days of data, the acute (7-day) and chronic (28-day) windows substantially overlap. The ratio is mathematically near-locked to ~1.0 regardless of actual training variation. Showing it would look precise but carry no signal. The app shows "Building Baseline" instead.
+(b) **14-day baseline gate — gated on distinct logged workout days, not elapsed calendar time.** ~~Before 14 days of data, the acute (7-day) and chronic (28-day) windows substantially overlap.~~ **Update (2026-07-25):** the gate was originally implemented as `daysActive = (now - oldestTimestamp) / ONE_DAY`, i.e. calendar days since the oldest surviving log entry. This was a bug: a user could log one workout, do nothing for 14+ calendar days, log a second, and get a "real" computed ratio from just two sparse sessions — plenty of elapsed time, but nowhere near enough actual training data for the acute/chronic windows to mean anything. The gate now counts distinct calendar days that have at least one logged session (`loggedDays` in `calculateACWR()`, `js/app.js`) and requires 14 of those, regardless of how much wall-clock time they're spread across. The chronic-load averaging denominator (`weeksActive`, item (a) above) is unaffected — it still legitimately needs real elapsed time, since that's the actual ACWR chronic-average window, not a readiness check.
 
 (c) **Session load formula:** `RPE × durationMinutes × readinessModifier` where `readinessModifier = 1 + (5 - jointFreshness) / 20`. A fatigued athlete's workout costs more load than the same session done fresh. Duration is capped at 180 minutes before multiplication.
 
-(d) **Cold-start danger guardrail.** ACWR ≥ 1.5 with fewer than 3 sessions logged becomes `'caution'`, not `'danger'`. Too few sessions means the ratio can spike without reflecting a genuine overload pattern.
+(d) **Cold-start danger guardrail — removed as dead code (2026-07-25).** ACWR ≥ 1.5 with fewer than 3 sessions logged used to become `'caution'`, not `'danger'`. Once (b) was fixed to require 14 *distinct logged days* to clear the baseline gate, `logs.length >= 14` is guaranteed by the time this branch runs (you cannot have 14 distinct logged days from fewer than 14 log entries) — so `logs.length < 3` could never be true here again. The branch was removed rather than left as unreachable, confusing code.
 
-**Consequences:** Users with fewer than 14 days of data see a baseline indicator rather than a near-1.0 ratio that would look meaningful but isn't. Any change to the formula, thresholds, or guardrails must update this ADR.
+**Consequences:** Users with fewer than 14 distinct logged workout days see a baseline indicator, even if a lot of calendar time has passed since their first workout — this is the correct behavior, since sparse data still isn't a meaningful signal regardless of elapsed time. Any change to the formula, thresholds, or guardrails must update this ADR.
 
 ---
 
@@ -200,3 +200,15 @@ The full Google Drive OAuth path was evaluated. It requires: a `client_secret` s
 (e) **Local/offline forks get no verification.** A locally-run fork has no server to email a guardian through. `sendGuardianConsent()` attempts the fetch, catches the failure, and falls back to telling the user to review the terms with their guardian directly — an unverified, client-side-only attestation. This mirrors the pre-existing reality that the whole disclaimer mechanism has always been unverifiable for local forks.
 
 **Consequences:** Existing users (who accepted the pre-versioned disclaimer) will see the modal again once this ships. Deploying the hosted Worker now requires an additional `CONSENTS` KV namespace binding in `wrangler.toml`. None of this is a substitute for a real signed waiver where one is legally required (e.g. school/team athletic participation waivers) — it strengthens the evidentiary trail and adds friction for the minor case, but enforceability of a minor's (or their guardian's) agreement to a liability waiver varies by state and was not itself researched or drafted by a lawyer as part of this change.
+
+---
+
+## ADR-013: Required PCP-Consultation Checkbox on the Disclaimer
+
+**Status:** Accepted
+
+**Context:** The disclaimer already instructs users to consult a physician before starting ("Always consult with a qualified healthcare provider or physician…"), but an instruction is not the same as a representation. A user simply reading that sentence and clicking "I Understand and Agree" hasn't affirmatively stated they did it — only that they were told to.
+
+**Decision:** Add a second required checkbox to the disclaimer modal, alongside the existing "I am under 18" one: "I have consulted with my physician or primary care provider before starting this program." `#btn-accept-disclaimer` (`app.html`) now ships with the `disabled` attribute by default; `updateAcceptButtonState()` (`js/app.js`) only enables it once this checkbox is checked (and, for self-declared minors, once guardian consent has also been submitted). `DISCLAIMER_VERSION` was bumped to re-prompt existing users, per the versioning mechanism established in ADR-012.
+
+**Consequences:** Every user must now take an affirmative action (checking a box making a factual claim) rather than just reading text, which is a stronger record than the pre-existing instructional sentence — mirrors the same reasoning as ADR-012's minor/guardian consent design. This does not verify the claim is true, same as the age checkbox doesn't verify age; it only makes the record harder to disclaim after the fact ("I never even told you I hadn't seen a doctor").

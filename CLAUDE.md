@@ -82,7 +82,7 @@ The fix is a version query string, not a filename change or a no-cache header �
 | `workoutLevel` | `'beginner' \| 'intermediate' \| 'advanced'` | `'beginner'` | Current tier. |
 | `activeWorkoutStart` | ISO timestamp string | `null` | Set when workout starts; cleared on complete or reset. |
 | `spikefit_fresh_logs` | `Array<{ timestamp, session: { load, rpe, duration, readinessModifier } }>` | `[]` | ACWR training load log. Pruned to 28 days on every write. |
-| `disclaimerAgreed` | version string (e.g. `'0.0.720'`) | absent | Set to `DISCLAIMER_VERSION` when user accepts the disclaimer modal. A stored value that doesn't match the current `DISCLAIMER_VERSION` (including the legacy `'true'`) re-shows the modal. |
+| `disclaimerAgreed` | version string (e.g. `'0.0.723'`) | absent | Set to `DISCLAIMER_VERSION` when user accepts the disclaimer modal. A stored value that doesn't match the current `DISCLAIMER_VERSION` (including the legacy `'true'`) re-shows the modal. |
 | `guardianConsentEmail` | email string | absent | Set when a self-declared minor submits a parent/guardian email in the disclaimer modal. Local record only — the verified record lives server-side in the hosted instance's `ALLOWLIST` KV once the guardian confirms via emailed link. |
 | `combineResults` | `Array<{ date, timestamp, metrics: { standingReach, jumpTouch, vertical, plankSec, wallSitSec, toeTaps, jumpingJacks, agilitySec } }>` | `[]` | All Combine attempt records (never pruned). Any metric may be absent. |
 | `combineSkipped` | `'true'` | absent | Set when user clicks "Don't ask again" on the Combine onboarding modal. Permanently suppresses the modal. |
@@ -127,7 +127,7 @@ Exercises with `impact: 'high'` carry an `alt` object. When `FRESH_SYSTEM.needsR
 - **Readiness modifier** = `1 + (5 - jointFreshness) / 20` (higher fatigue = more costly workout)
 - **Acute load** = sum of session loads in the last 7 days
 - **Chronic load** = weekly average over the active data window (1–4 weeks, proportional)
-- **14-day baseline gate**: ratio is suppressed until 14 days of data exist — before that, the acute and chronic windows substantially overlap and the ratio is not meaningful
+- **14-day baseline gate**: ratio is suppressed until 14 *distinct logged workout days* exist — not 14 calendar days elapsed since the first log. Sparse sessions spread over a long calendar span still don't give the acute/chronic windows enough real data to be meaningful.
 - **28-day prune**: old log entries are pruned on every write, not on read
 - **Regulation**: `needsRegulation()` returns true when ACWR status is `'danger'` OR joint freshness < 5. High-impact exercises are swapped for their `alt` in `renderDaily()`.
 
