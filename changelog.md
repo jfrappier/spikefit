@@ -1,5 +1,28 @@
 # SpikeFit Changelog
 
+## v0.0.729 — Fix Large White Space Below Bottom Nav in DuckDuckGo on Android
+
+The mobile bottom navigation reserved a large empty band below the tab buttons in DuckDuckGo's Android browser (Chrome and desktop were unaffected). The safe-area inset was being added twice, and a recent DuckDuckGo/Android WebView update that started reporting a non-zero `safe-area-inset-bottom` unmasked the long-latent double-count.
+
+---
+
+## 🐛 Fixes
+
+### De-duplicate the safe-area inset on the mobile bottom nav (BUG-6)
+
+- `css/components/nav.css` applied `env(safe-area-inset-bottom)` in two places at once: as `padding-bottom` on the `.nav` container **and** inside each `.nav button`'s `padding` (`calc(0.6em + env(safe-area-inset-bottom))`). The inset is now applied only on the container; button padding is symmetric (`0.6em 0.1em`).
+- The doubling was invisible for months because, with no `viewport-fit=cover` in the viewport meta tag, `env(safe-area-inset-bottom)` resolves to `0` per spec (`0 + 0 = 0`). A DuckDuckGo/Android WebView update began reporting a non-zero inset without `viewport-fit=cover`, so the pre-existing double-count doubled that value into a visible gap. No app-side change had caused it. Chrome still resolves the inset to `0`, which is why it was unaffected.
+
+## Files Changed
+
+- `css/components/nav.css`
+- `app.html`
+- `auth.html`
+- `index.html`
+- `changelog.md`
+
+---
+
 ## v0.0.724 — Fix F.R.E.S.H. Baseline Gate to Count Logged Workout Days, Not Elapsed Time
 
 The 14-day F.R.E.S.H. baseline gate was checking calendar time since the first logged workout instead of counting actual logged workout days, so a user with only a couple of sparse sessions spread across 14+ real days could get a "computed" ACWR ratio from data that was really still too thin to mean anything.
