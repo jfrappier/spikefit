@@ -1,6 +1,6 @@
 # SpikeFit Changelog
 
-## v0.0.729 — Fix Large White Space Below Bottom Nav in DuckDuckGo on Android
+## v0.0.7291 — Fix Large White Space Below Bottom Nav in DuckDuckGo on Android
 
 The mobile bottom navigation showed a large empty white band below the tab buttons in DuckDuckGo's Android browser (Chrome and desktop were unaffected). DuckDuckGo reports a non-zero `env(safe-area-inset-bottom)` — roughly the height of its own bottom toolbar — even though the app never opts into edge-to-edge layout, and that value was being turned into padding below the nav.
 
