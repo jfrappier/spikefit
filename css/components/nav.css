@@ -23,7 +23,7 @@
     .nav { 
         flex-direction: row; position: fixed; bottom: 0; left: 0; width: 100%;
         background: var(--bg-panel); border-top: 1px solid var(--border); box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
-        z-index: 1000; gap: 0; padding-bottom: env(safe-area-inset-bottom); justify-content: space-around;
+        z-index: 1000; gap: 0; justify-content: space-around;
     }
     .nav button {
         width: 20%; padding: 0.6em 0.1em; border-radius: 0;

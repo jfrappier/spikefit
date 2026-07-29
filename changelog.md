@@ -2,16 +2,17 @@
 
 ## v0.0.729 — Fix Large White Space Below Bottom Nav in DuckDuckGo on Android
 
-The mobile bottom navigation reserved a large empty band below the tab buttons in DuckDuckGo's Android browser (Chrome and desktop were unaffected). The safe-area inset was being added twice, and a recent DuckDuckGo/Android WebView update that started reporting a non-zero `safe-area-inset-bottom` unmasked the long-latent double-count.
+The mobile bottom navigation showed a large empty white band below the tab buttons in DuckDuckGo's Android browser (Chrome and desktop were unaffected). DuckDuckGo reports a non-zero `env(safe-area-inset-bottom)` — roughly the height of its own bottom toolbar — even though the app never opts into edge-to-edge layout, and that value was being turned into padding below the nav.
 
 ---
 
 ## 🐛 Fixes
 
-### De-duplicate the safe-area inset on the mobile bottom nav (BUG-6)
+### Remove safe-area-inset padding from the mobile bottom nav (BUG-6)
 
-- `css/components/nav.css` applied `env(safe-area-inset-bottom)` in two places at once: as `padding-bottom` on the `.nav` container **and** inside each `.nav button`'s `padding` (`calc(0.6em + env(safe-area-inset-bottom))`). The inset is now applied only on the container; button padding is symmetric (`0.6em 0.1em`).
-- The doubling was invisible for months because, with no `viewport-fit=cover` in the viewport meta tag, `env(safe-area-inset-bottom)` resolves to `0` per spec (`0 + 0 = 0`). A DuckDuckGo/Android WebView update began reporting a non-zero inset without `viewport-fit=cover`, so the pre-existing double-count doubled that value into a visible gap. No app-side change had caused it. Chrome still resolves the inset to `0`, which is why it was unaffected.
+- `css/components/nav.css` no longer references `env(safe-area-inset-bottom)` anywhere in the mobile bottom-nav block. Previously it was applied twice at once — as `padding-bottom` on the `.nav` container **and** inside each `.nav button`'s `padding` (`calc(0.6em + env(safe-area-inset-bottom))`) — and both are now gone. Button padding is symmetric (`0.6em 0.1em`) and the container reserves no extra bottom space.
+- The app's viewport meta tag does not set `viewport-fit=cover`, so per spec `env(safe-area-inset-bottom)` resolves to `0` on compliant browsers (Chrome, Safari) — meaning this padding was only ever a no-op there, and the nav already sits flush above the system gesture bar. DuckDuckGo's Android browser violates that expectation and reports a non-zero inset (≈ its own bottom toolbar height), which the padding turned into the visible white band. Removing the inset makes DuckDuckGo match Chrome; it changes nothing on spec-compliant browsers.
+- If the app later adopts an intentional edge-to-edge layout via `viewport-fit=cover`, safe-area handling should be re-introduced deliberately (and audited across all fixed/edge elements) rather than relying on the incidental behavior removed here.
 
 ## Files Changed
 
