@@ -1,5 +1,29 @@
 # SpikeFit Changelog
 
+## v0.0.7291 — Fix Large White Space Below Bottom Nav in DuckDuckGo on Android
+
+The mobile bottom navigation showed a large empty white band below the tab buttons in DuckDuckGo's Android browser (Chrome and desktop were unaffected). DuckDuckGo reports a non-zero `env(safe-area-inset-bottom)` — roughly the height of its own bottom toolbar — even though the app never opts into edge-to-edge layout, and that value was being turned into padding below the nav.
+
+---
+
+## 🐛 Fixes
+
+### Remove safe-area-inset padding from the mobile bottom nav (BUG-6)
+
+- `css/components/nav.css` no longer references `env(safe-area-inset-bottom)` anywhere in the mobile bottom-nav block. Previously it was applied twice at once — as `padding-bottom` on the `.nav` container **and** inside each `.nav button`'s `padding` (`calc(0.6em + env(safe-area-inset-bottom))`) — and both are now gone. Button padding is symmetric (`0.6em 0.1em`) and the container reserves no extra bottom space.
+- The app's viewport meta tag does not set `viewport-fit=cover`, so per spec `env(safe-area-inset-bottom)` resolves to `0` on compliant browsers (Chrome, Safari) — meaning this padding was only ever a no-op there, and the nav already sits flush above the system gesture bar. DuckDuckGo's Android browser violates that expectation and reports a non-zero inset (≈ its own bottom toolbar height), which the padding turned into the visible white band. Removing the inset makes DuckDuckGo match Chrome; it changes nothing on spec-compliant browsers.
+- If the app later adopts an intentional edge-to-edge layout via `viewport-fit=cover`, safe-area handling should be re-introduced deliberately (and audited across all fixed/edge elements) rather than relying on the incidental behavior removed here.
+
+## Files Changed
+
+- `css/components/nav.css`
+- `app.html`
+- `auth.html`
+- `index.html`
+- `changelog.md`
+
+---
+
 ## v0.0.724 — Fix F.R.E.S.H. Baseline Gate to Count Logged Workout Days, Not Elapsed Time
 
 The 14-day F.R.E.S.H. baseline gate was checking calendar time since the first logged workout instead of counting actual logged workout days, so a user with only a couple of sparse sessions spread across 14+ real days could get a "computed" ACWR ratio from data that was really still too thin to mean anything.
