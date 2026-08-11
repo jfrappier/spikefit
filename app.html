@@ -14,14 +14,14 @@
   <link rel="stylesheet" href="css/components/buttons.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/forms.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/cards.css?v=0.0.715">
-  <link rel="stylesheet" href="css/components/modals.css?v=0.0.720">
+  <link rel="stylesheet" href="css/components/modals.css?v=0.0.811">
   <link rel="stylesheet" href="css/components/calendar.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/splash.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/combine.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/storage.css?v=0.0.715">
 
   <script src="js/workouts.js?v=0.0.715" defer></script>
-  <script src="js/app.js?v=0.0.724" defer></script>
+  <script src="js/app.js?v=0.0.811" defer></script>
   <script src="js/combine.js?v=0.0.715" defer></script>
   <script src="js/storage.js?v=0.0.715" defer></script>
 </head>
@@ -201,6 +201,21 @@
             </div>
             
             <button id="btn-save-rpe" class="btn-reset btn-complete">Save & Get Badge</button>
+        </div>
+    </div>
+
+    <div id="long-workout-modal" class="modal-overlay">
+        <div class="modal-content fresh-modal-content small">
+            <h2 class="fresh-header">That was a long one!</h2>
+            <p class="fresh-prompt">We clocked <strong><span id="long-workout-detected">0</span> minutes</strong> for this workout. If your timer kept running, set the real length below.</p>
+
+            <div class="fresh-slider-group">
+                <label for="long-workout-input" class="fresh-slider-label">Workout length (minutes)</label>
+                <input type="number" id="long-workout-input" class="long-workout-input" min="1" max="180" value="0" inputmode="numeric">
+            </div>
+
+            <p class="long-workout-note">This time feeds your F.R.E.S.H. training-load score.</p>
+            <button id="btn-long-workout-save" class="btn-reset btn-complete">Save Workout</button>
         </div>
     </div>
 

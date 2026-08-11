@@ -192,3 +192,28 @@
 .fresh-cancel-btn {
     margin-top: 10px;
 }
+
+/* Long-workout confirmation modal */
+.long-workout-input {
+    appearance: none;
+    background: var(--bg-body);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 1.3em;
+    font-weight: 700;
+    padding: 0.35em 0.4em;
+    text-align: center;
+    width: 110px;
+    transition: border-color 0.15s;
+}
+.long-workout-input:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+.long-workout-note {
+    font-size: 0.82em;
+    color: var(--text-muted);
+    margin: 10px 0;
+}

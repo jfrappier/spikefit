@@ -1,5 +1,37 @@
 # SpikeFit Changelog
 
+## v0.0.811 — Confirm Abnormally Long Workout Durations Before Logging (FR-17)
+
+Workout duration is auto-detected from Start → Mark Complete and feeds directly into the F.R.E.S.H. training load (`load = rpe × durationMins × readinessModifier`). A forgotten timer therefore injects one huge phantom session that dominates the acute load and spikes the ACWR for a full 7 days. When a detected duration is abnormally long, the app now prompts the user to confirm or correct it before the session is saved.
+
+---
+
+## ✨ Features
+
+### Long-workout duration confirmation prompt (FR-17)
+
+- Added a `#long-workout-modal` shown after the RPE modal when the auto-detected duration looks abnormal. It reports the detected minutes and lets the user keep or edit the value; the corrected duration (clamped 1–180) is what gets saved to the F.R.E.S.H. log.
+- Detection is a pure function, `isAbnormalDuration(minutes, priorDurations)` in `js/app.js`. A duration is flagged only when it clears **both** a static floor (`LONG_WORKOUT_FLOOR_MINS = 75`) **and** a personalized threshold (`LONG_WORKOUT_MEDIAN_MULT = 2.5` × the median of the user's prior logged durations). With fewer than `LONG_WORKOUT_MIN_HISTORY = 3` prior sessions it falls back to the floor alone. This avoids nagging short/normal sessions, brand-new users, and athletes who legitimately train long.
+- The `btn-save-rpe` flow was refactored so the save/complete step lives in a shared `finalizeWorkout(rpeScore, finalDuration)` helper, called directly for normal sessions or after the modal for flagged ones.
+
+## 🧪 Tests
+
+- `tests/unit/long-workout.test.js` — QUnit coverage for `medianOf` and `isAbnormalDuration` (floor gating, low-history fallback, personalized threshold boundary, garbage-input filtering, and the real-world 131-min case).
+- `tests/e2e/test_long_workout.py` — Playwright coverage for the prompt appearing on a long detected duration and correcting it, and for a normal session saving with no prompt.
+
+## Files Changed
+
+- `js/app.js`
+- `app.html`
+- `css/components/modals.css`
+- `auth.html` (cache-bust bump)
+- `index.html` (cache-bust bump)
+- `tests/unit/long-workout.test.js`
+- `tests/unit/run.html`
+- `tests/e2e/test_long_workout.py`
+
+---
+
 ## v0.0.7291 — Fix Large White Space Below Bottom Nav in DuckDuckGo on Android
 
 The mobile bottom navigation showed a large empty white band below the tab buttons in DuckDuckGo's Android browser (Chrome and desktop were unaffected). DuckDuckGo reports a non-zero `env(safe-area-inset-bottom)` — roughly the height of its own bottom toolbar — even though the app never opts into edge-to-edge layout, and that value was being turned into padding below the nav.
