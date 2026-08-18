@@ -159,6 +159,31 @@ const FRESH_SYSTEM = {
     }
 };
 
+// --- Long-workout duration sanity check ---
+// Duration feeds directly into the F.R.E.S.H. load (load = rpe * durationMins * modifier),
+// so a forgotten timer inflates a single session's load and spikes the ACWR for a full
+// 7 days. Flag a duration as abnormal only when it clears BOTH a static floor AND a
+// personalized threshold (a multiple of the median of the user's own prior durations).
+// The floor stops us nagging short/normal sessions or brand-new users with no history;
+// the personalized multiple stops us nagging athletes who legitimately train long.
+const LONG_WORKOUT_FLOOR_MINS  = 75;
+const LONG_WORKOUT_MEDIAN_MULT = 2.5;
+const LONG_WORKOUT_MIN_HISTORY = 3;
+
+function medianOf(nums) {
+    if (!nums.length) return 0;
+    const sorted = [...nums].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function isAbnormalDuration(minutes, priorDurations) {
+    if (minutes <= LONG_WORKOUT_FLOOR_MINS) return false;           // never nag short/normal sessions
+    const valid = (priorDurations || []).filter(d => typeof d === 'number' && d > 0);
+    if (valid.length < LONG_WORKOUT_MIN_HISTORY) return true;        // over floor + too little history to personalize
+    return minutes > medianOf(valid) * LONG_WORKOUT_MEDIAN_MULT;     // over floor AND well above personal median
+}
+
 // --- State ---
 let currentDayIndex     = (new Date().getDay() + 6) % 7;
 let completedExercises  = safeParseJSON('completedExercises', {});
@@ -1100,15 +1125,13 @@ document.getElementById('btn-mark-complete').addEventListener('click', () => {
     }
 });
 
-document.getElementById('btn-save-rpe').addEventListener('click', () => {
-    const rpeScore = parseInt(document.getElementById('rpe-slider').value, 10);
-    const today = new Date();
-    
-    // Calculate Duration (cap at 3 hours/180 mins to prevent runaway load data)
-    const durationMins = Math.round((today - new Date(activeWorkoutStart)) / 60000);
-    let finalDuration = durationMins > 0 ? durationMins : 45; 
-    if (finalDuration > 180) finalDuration = 180;
+// Holds the in-progress RPE score while the long-workout confirmation modal is open,
+// so finalizeWorkout() can complete the save once the user confirms/adjusts the duration.
+let pendingWorkout = null;
 
+// Persist the session load and complete the workout. Called directly for normal-length
+// sessions, or after the long-workout modal for durations flagged as abnormal.
+function finalizeWorkout(rpeScore, finalDuration) {
     // FIX: Apply a readiness modifier so jointFreshness actually affects the stored load
     // (and therefore future ACWR calculations). Previously freshness was saved to the log
     // but calculateACWR() never read it — it had zero mathematical effect on the ratio.
@@ -1122,15 +1145,52 @@ document.getElementById('btn-save-rpe').addEventListener('click', () => {
 
     FRESH_SYSTEM.saveLog({
         timestamp: Date.now(),
-        dateString: today.toISOString().split('T')[0],
+        dateString: new Date().toISOString().split('T')[0],
         readiness: { jointFreshness: FRESH_SYSTEM.sessionState.jointFreshness || 8 },
         session: { durationMins: finalDuration, rpe: rpeScore, load: sessionLoad }
     });
 
     FRESH_SYSTEM.sessionState.jointFreshness = null;
+    pendingWorkout = null;
     document.getElementById('fresh-rpe-modal').style.display = 'none';
-    
+    document.getElementById('long-workout-modal').style.display = 'none';
+
     markWorkoutComplete();
+}
+
+document.getElementById('btn-save-rpe').addEventListener('click', () => {
+    const rpeScore = parseInt(document.getElementById('rpe-slider').value, 10);
+    const today = new Date();
+
+    // Calculate Duration (cap at 3 hours/180 mins to prevent runaway load data)
+    const durationMins = Math.round((today - new Date(activeWorkoutStart)) / 60000);
+    let finalDuration = durationMins > 0 ? durationMins : 45;
+    if (finalDuration > 180) finalDuration = 180;
+
+    // A forgotten timer produces a duration far above the user's norm. Before it pollutes
+    // the F.R.E.S.H. load, confirm the time (or let them correct it) via the modal.
+    const priorDurations = FRESH_SYSTEM.getLogs()
+        .map(l => l.session && l.session.durationMins)
+        .filter(d => typeof d === 'number' && d > 0);
+    if (isAbnormalDuration(finalDuration, priorDurations)) {
+        pendingWorkout = { rpeScore };
+        document.getElementById('fresh-rpe-modal').style.display = 'none';
+        document.getElementById('long-workout-detected').textContent = finalDuration;
+        const input = document.getElementById('long-workout-input');
+        input.value = finalDuration;
+        document.getElementById('long-workout-modal').style.display = 'flex';
+        return; // save deferred until the user confirms or adjusts the duration
+    }
+
+    finalizeWorkout(rpeScore, finalDuration);
+});
+
+document.getElementById('btn-long-workout-save').addEventListener('click', () => {
+    if (!pendingWorkout) return;
+    let mins = parseInt(document.getElementById('long-workout-input').value, 10);
+    if (!Number.isFinite(mins) || mins < 1) mins = 1;
+    if (mins > 180) mins = 180;
+    finalizeWorkout(pendingWorkout.rpeScore, mins);
 });
 
 document.getElementById('btn-reset-day').addEventListener('click',      resetDay);
