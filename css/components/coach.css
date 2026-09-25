@@ -1,0 +1,128 @@
+/* css/components/coach.css - Coach module (ADR-014): hub, scanner, pickup results */
+
+.coach-body { align-items: flex-start; }
+.coach-container.auth-container { max-width: 480px; padding-top: 2em; padding-bottom: 3em; }
+
+/* --- Team picker / Hub tiles --- */
+.coach-team-list, .coach-tile-grid {
+    display: flex; flex-direction: column; gap: 0.75em; margin: 1.5em 0;
+}
+
+.coach-team-btn, .coach-tile {
+    display: flex; align-items: center; justify-content: space-between; width: 100%;
+    background: var(--bg-panel); border: solid 1px var(--border); border-radius: var(--radius-md);
+    padding: 1.25em 1.5em; cursor: pointer; text-align: left; font-family: 'Source Sans 3', sans-serif;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.coach-team-btn:hover, .coach-tile:hover { border-color: var(--accent); box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.coach-tile-title { color: var(--text-main); font-weight: 700; font-size: 1.1em; letter-spacing: 0.02em; }
+.coach-tile-arrow { color: var(--accent); font-size: 1.3em; }
+
+/* A feature that's "on" but has no Sheet configured yet (ADR-014) — still
+   clickable (shows a "contact your admin" toast), just visually muted so a
+   coach doesn't mistake it for a working tile. */
+.coach-tile.coach-tile-unconfigured { background: #fff7ed; border-color: #f59e0b; }
+.coach-tile.coach-tile-unconfigured:hover { border-color: #f59e0b; box-shadow: none; transform: none; }
+.coach-tile.coach-tile-unconfigured .coach-tile-title { color: #92400e; }
+.coach-tile.coach-tile-unconfigured .coach-tile-arrow { color: #92400e; }
+
+.coach-queue-badge {
+    display: inline-block; margin: 0.75em 0; padding: 0.4em 1em; border-radius: var(--radius-sm);
+    background: var(--accent-light); color: var(--accent); font-weight: 700; font-size: 0.8em;
+    letter-spacing: 0.05em; text-transform: uppercase;
+}
+
+/* --- Pickup view --- */
+.coach-pickup { width: 100%; max-width: 480px; margin: 0 auto; padding: 1.5em 1.25em 3em; }
+
+.coach-pickup-header { display: flex; align-items: center; gap: 0.75em; margin-bottom: 1em; }
+.coach-pickup-header h1 { flex: 1; margin: 0; font-size: 1.4em; }
+.btn-icon {
+    appearance: none; background: var(--bg-panel); border: solid 1px var(--border); border-radius: var(--radius-sm);
+    width: 2.5em; height: 2.5em; font-size: 1.1em; color: var(--text-main); cursor: pointer;
+}
+.btn-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+.coach-offline-banner {
+    background: #fff7ed; border: 2px solid #f59e0b; color: #92400e; border-radius: var(--radius-sm);
+    padding: 0.85em 1em; font-weight: 700; font-size: 0.85em; text-align: center; margin-bottom: 1em;
+    letter-spacing: 0.02em; text-transform: uppercase;
+}
+
+.coach-scanner {
+    position: relative; width: 100%; aspect-ratio: 3 / 4; background: #000; border-radius: var(--radius-md);
+    overflow: hidden; margin-bottom: 1em; box-shadow: var(--shadow-md);
+}
+.coach-scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.coach-scan-flash {
+    position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity 0.15s ease-out;
+}
+.coach-scan-flash.flash-green  { background: rgba(76, 175, 80, 0.55); opacity: 1; }
+.coach-scan-flash.flash-yellow { background: rgba(245, 158, 11, 0.55); opacity: 1; }
+.coach-scan-flash.flash-red    { background: rgba(220, 38, 38, 0.55); opacity: 1; }
+
+.coach-camera-denied {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--bg-panel); padding: 2em; text-align: center; color: var(--text-muted); font-size: 0.9em;
+}
+
+.coach-pickup-status {
+    text-align: center; font-weight: 700; color: var(--text-main); letter-spacing: 0.02em;
+    margin-bottom: 1em; font-size: 1.05em;
+}
+
+.coach-manual-entry {
+    background: var(--bg-panel); border: solid 1px var(--border); border-radius: var(--radius-sm);
+    padding: 0.85em 1em; margin-bottom: 1.5em;
+}
+.coach-manual-entry summary { cursor: pointer; color: var(--text-muted); font-size: 0.85em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.coach-manual-entry input { margin-top: 0.75em; }
+.coach-manual-entry .btn { margin-top: 0.75em; }
+
+/* --- Result cards --- */
+.coach-results { display: flex; flex-direction: column; gap: 1em; margin-bottom: 1.5em; }
+
+.coach-result-card {
+    background: var(--bg-panel); border-radius: var(--radius-md); padding: 1.25em 1.5em;
+    box-shadow: var(--shadow-sm); border-left: 6px solid var(--border);
+}
+.coach-result-card.status-green  { border-left-color: #4CAF50; }
+.coach-result-card.status-yellow { border-left-color: #f59e0b; }
+.coach-result-card.status-red    { border-left-color: #dc2626; }
+
+.coach-result-title { font-weight: 700; font-size: 1.15em; color: var(--text-main); margin-bottom: 0.25em; }
+.coach-result-meta { font-size: 0.85em; color: var(--text-muted); }
+
+.coach-already-out {
+    margin-top: 0.75em; padding: 0.6em 0.85em; border-radius: var(--radius-sm);
+    background: #fff7ed; color: #92400e; font-size: 0.8em; font-weight: 700;
+}
+
+.coach-override-form { margin-top: 1em; padding-top: 1em; border-top: 1px solid var(--border); }
+.coach-override-form .radio-row { display: flex; align-items: flex-start; gap: 0.6em; margin-bottom: 0.6em; font-size: 0.9em; color: var(--text-main); }
+.coach-override-form textarea {
+    width: 100%; min-height: 4em; margin-top: 0.5em; padding: 0.75em; border-radius: var(--radius-sm);
+    border: solid 1px var(--border); font-family: inherit; font-size: 0.9em; resize: vertical;
+}
+.coach-override-actions { display: flex; gap: 0.75em; margin-top: 1em; }
+.coach-override-actions .btn { margin-top: 0; }
+.coach-override-actions .btn-ghost { margin-top: 0; }
+
+.coach-card-queued { margin-top: 0.5em; font-size: 0.75em; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 0.05em; }
+
+#btn-done { margin-top: 0.5em; }
+#btn-done:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 420px) {
+    .coach-pickup { padding: 1em 0.85em 2.5em; }
+}
+
+/* base.css's `.u-hidden { display: none; }` loads first, so on equal
+   specificity a same-named later rule wins the cascade — any class below
+   that sets its own `display` and can co-occur with `.u-hidden` on the same
+   element needs an explicit two-class override here so hidden always wins. */
+.u-hidden.coach-camera-denied,
+.u-hidden.coach-queue-badge,
+.u-hidden.btn {
+    display: none;
+}

@@ -25,5 +25,6 @@ engines:
 
 exclude_paths:
   - "tests/unit/qunit/**"   # vendored QUnit library — not our code
+  - "js/vendor/**"          # vendored jsQR — not our code (ADR-001 exception)
   - "fonts/**"              # binary font files
   - "img/**"                # binary image files

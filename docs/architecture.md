@@ -6,23 +6,31 @@
 Browser (user device)
   ├── index.html          Landing page — pure HTML/CSS, no JavaScript
   ├── auth.html           OTP login flow — js/auth.js
-  └── app.html            Main application — js/app.js
+  ├── app.html            Main application — js/app.js
+  └── coach.html          Coach module (ADR-014) — js/coach.js, opt-in, coach accounts only
         │
-        │  All user data stays here (localStorage).
+        │  All ATHLETE data stays here (localStorage).
         │  Nothing workout-related ever leaves the device.
         │
         ↕  (optional — only if the Cloudflare Worker is deployed)
-  Cloudflare Worker        ← auth gate; deployed at spikefit.app
+  Cloudflare Worker        ← auth gate + coach API; deployed at spikefit.app
         │
         │  fetches static files from ORIGIN = https://spikefit.app
+        │  coach routes also call the Google Sheets API and Resend (ADR-014)
         ↓
   GitHub Pages             ← actual static file host (CNAME → spikefit.app)
-    ├── Routes: GET /  /app.html  /auth.html  /auth/send  /auth/verify  /auth/logout  /consent/accept  /consent/send  /consent/confirm
-    ├── KV: SESSIONS · OTPS · RATELIMIT · ALLOWLIST · CONSENTS
-    └── Secret: RESEND_API_KEY → Resend API → user's email
+    ├── Routes: GET /  /app.html  /auth.html  /auth/send  /auth/verify  /auth/logout
+    │            /consent/accept  /consent/send  /consent/confirm
+    │            /coach  /coach/api/config  /coach/api/pickup/scan
+    │            /coach/api/pickup/confirm  /coach/api/pickup/sync
+    ├── KV: SESSIONS · OTPS · RATELIMIT · ALLOWLIST · CONSENTS · TEAMS
+    ├── Secrets: RESEND_API_KEY → Resend API → user's email
+    │            GOOGLE_SA_KEY → Google Sheets API (coach module only)
+    └── Coach module also writes to: the team's own Google Sheet (owned by the
+        team admin, never Cloudflare-owned — see ADR-014)
 ```
 
-The Worker is a hosting-only access gate. It controls who can reach the hosted instance at spikefit.app. It never touches user workout data. Forks running locally have no need for it.
+The Worker is primarily a hosting-only access gate — it controls who can reach the hosted instance at spikefit.app, and it never touches user *workout* data. As of ADR-014 it also hosts a small, separate coach-facing API (pickup sign-out) that processes a different, opt-in class of data (kid/adult names and adult emails, not athlete data). Forks running locally have no need for either.
 
 **Static file hosting:** The repo is deployed via GitHub Pages. `CNAME` maps `spikefit.app` to the Pages deployment. GitHub Pages runs Jekyll by default; files and directories whose names start with `.` are ignored unless explicitly listed in `_config.yml`'s `include` array.
 
@@ -35,6 +43,7 @@ The Worker is a hosting-only access gate. It controls who can reach the hosted i
 | `index.html` | `js/team.js` (non-deferred early loader) | Marketing landing page. `team.js` inserts the team theme `<link>` before first paint if a team is resolved. |
 | `app.html` | `js/team.js` (non-deferred) + `js/workouts.js`, `js/app.js`, `js/combine.js`, `js/storage.js` (all defer) | Main application shell. `workouts.js` defines the workout database; `js/app.js` handles all logic, rendering, and state; `js/combine.js` handles the Combine baseline testing feature; `js/storage.js` handles BYOS export/import and storage preference. |
 | `auth.html` | `js/team.js` (non-deferred early loader) + `js/auth.js` (defer) | Two-step OTP flow. Only needed when the Worker is deployed. |
+| `coach.html` | `js/team.js` (non-deferred) + `js/vendor/jsQR.js`, `js/coach.js` (defer) | Coach module (ADR-014) — hub, QR scanner, pickup sign-out. Served behind the `/coach` route's session + coach-role gate; not in `STATIC_FILES`. Requires the Worker. |
 | `tos.html` | none | Terms of service. Static HTML. |
 
 ---
@@ -54,6 +63,8 @@ Current file breakdown:
 - `js/app.js` — all remaining app logic, event handling, rendering, state management
 - `js/combine.js` — Combine baseline testing feature; loaded after `js/app.js`, relies on its globals
 - `js/storage.js` — BYOS export/import, storage preference, and backup nudge; loaded after `js/combine.js`
+- `js/coach.js` — Coach module (ADR-014): hub, QR scanner, pickup sign-out. Loaded only on `coach.html`, after `js/vendor/jsQR.js`. Does not load `js/app.js` — carries its own copies of `safeParseJSON`/`showToast` rather than sharing app.js's globals, since coach.html is a separate page with its own markup.
+- `js/vendor/jsQR.js` — vendored third-party QR decoder (Apache-2.0). ADR-001 exception; see `docs/decisions.md`.
 
 ### Contents of `js/workouts.js`
 
@@ -161,6 +172,8 @@ The rendering model: there is no incremental diffing. Every state change rebuild
 | `storagePreference` | `'local' \| 'drive'` | `'local'` | Where the user chose to keep data. Set in the first-run wizard. Drives backup nudges and Settings copy. |
 | `lastBackupAt` | ISO timestamp string | absent | Set on each successful export. Powers "Last backed up …" in the Storage Settings modal and throttles the post-workout backup nudge (~once per 20 hours). |
 | `spikefit_team` | team slug string | absent | Team identity for theming (later: workout packs). Set by a `?team=` seed link or future settings picker. Hostname resolver takes priority when present. Never transmitted to any server; included in BYOS export. |
+| `spikefit_coach_team` | team slug string | absent | `coach.html` only (ADR-014). Last team a multi-team coach selected on a non-team host. Not part of the BYOS export. |
+| `spikefit_coach_queue` | `Array<{eventId, team, adultId, kidId, scannedAt, offline}>` | `[]` | `coach.html` only. Offline pickup scans waiting to sync via `/coach/api/pickup/sync`. IDs only, never names. Not part of the BYOS export. |
 
 sessionStorage:
 
@@ -286,9 +299,10 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 
 1. `/auth/send`, `/auth/verify`, `/auth/logout` — always pass through (no session check)
 2. `/consent/accept`, `/consent/send`, `/consent/confirm` — always pass through (no session check on `/consent/confirm`, since the guardian clicking the emailed link has no SpikeFit session of their own)
-3. Assets in `STATIC_FILES` set — pass through with security headers
-4. `/`, `/index.html`, `/auth.html` — serve the page, but redirect authenticated users to `/app.html`
-5. Everything else — requires a valid `sf_session` cookie; redirects to `/auth.html?redirect=<path>` if absent
+3. `/coach`, `/coach/api/config`, `/coach/api/pickup/scan`, `/coach/api/pickup/confirm`, `/coach/api/pickup/sync` — the coach module (ADR-014), routed above the static/catch-all gate since the API routes need their own auth+CSRF handling. See "Coach Module" below.
+4. Assets in `STATIC_FILES` set — pass through with security headers
+5. `/`, `/index.html`, `/auth.html` — serve the page, but redirect authenticated users to `/app.html`
+6. Everything else — requires a valid `sf_session` cookie; redirects to `/auth.html?redirect=<path>` if absent
 
 **KV namespaces:**
 
@@ -296,9 +310,10 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 |---|---|---|
 | `SESSIONS` | `token → email` | 30 days |
 | `OTPS` | `email → { code, email }` | 10 minutes |
-| `RATELIMIT` | `send:<ip>` and `verify:<ip>:<email>` counters | 10 minutes |
-| `ALLOWLIST` | `email → { allowed, tosAcceptedAt?, tosVersion?, guardianEmail?, guardianAcceptedAt?, minor? }` (legacy admin-set entries may still be a bare non-JSON-object string like `'true'` or `'1'` — `readAllowlistRecord()` treats anything that doesn't parse to an object as `{ allowed: true }`) | permanent |
+| `RATELIMIT` | `send:<ip>`, `verify:<ip>:<email>`, and (ADR-014) `coachapi:<email>`, `evt:<eventId>`, `out:<team>:<date>:<kidId>`, `pending:<eventId>`, `gtoken` — see "Coach Module" below | 10 minutes (auth); coach-module keys vary, see below |
+| `ALLOWLIST` | `email → { allowed, tosAcceptedAt?, tosVersion?, guardianEmail?, guardianAcceptedAt?, minor?, coach? }` (legacy admin-set entries may still be a bare non-JSON-object string like `'true'` or `'1'` — `readAllowlistRecord()` treats anything that doesn't parse to an object as `{ allowed: true }`). `coach: { teams: string[] }` (ADR-014) grants coach access — re-read on every `/coach/api/*` request, not just at session creation, so revoking it cuts access off immediately rather than waiting for the session to expire. | permanent |
 | `CONSENTS` | `token → { email, guardianEmail, tosVersion, requestedAt }` | 7 days |
+| `TEAMS` (ADR-014) | `team:<slug> → { name, timezone, sheetId, features, overrideReasons, adminEmails }` — coach module config, one entry per team. `sheetId` and `adminEmails` never reach the browser; `/coach/api/config` returns only `name`, `features`, `overrideReasons`, and a presence-only `configured` boolean (`isSheetConfigured()` — is `sheetId` a non-empty string, never the ID itself). A feature flag that's missing or not strictly boolean `true` counts as off. | permanent |
 
 **ToS/consent tracking (`cloudflare/worker.js`, "ToS/consent tracking" section):** `ALLOWLIST` already gates hosted access by email, so its value was extended from a bare `'true'` to a JSON record to keep a durable, server-side log of ToS acceptance — separate from the client-side `disclaimerAgreed` localStorage flag, which a user can clear at will.
 
@@ -316,23 +331,99 @@ This mechanism only exists for the hosted instance. A locally-run fork has no se
 
 **Security headers applied to all responses:**
 ```
-Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline';
-                         style-src 'self' 'unsafe-inline';
-                         img-src 'self' data: raw.githubusercontent.com
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self';
+                         img-src 'self' data: raw.githubusercontent.com;
+                         font-src 'self'; connect-src 'self'
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 Referrer-Policy: strict-origin-when-cross-origin
 ```
 
-`'unsafe-inline'` is present because some styles are applied inline in components. Removing it requires an audit of all inline style usage.
+No `'unsafe-inline'` — the CSP is already strict `script-src 'self'; style-src 'self'` with no inline exceptions (this section previously described a stale, earlier version of the policy; `addSecurityHeaders()` in `cloudflare/worker.js` is the source of truth). The coach module's camera preview doesn't need a `media-src` addition either — `<video>` uses `srcObject` (a live `MediaStream`), not a `src` URL, and CSP's `media-src` doesn't govern `srcObject` assignment.
 
 **Origin:** `ORIGIN = 'https://spikefit.app'` in `worker.js` points to GitHub Pages. When the Worker serves a `STATIC_FILES` path, it fetches the file from GitHub Pages and passes it through. Adding a new public static file requires adding its path to `STATIC_FILES`; if the file is in a dotfile directory, also add that directory to `_config.yml`'s `include` list.
 
-**Gap: wrangler.toml is not in the repo.** Anyone deploying the Worker must create `cloudflare/wrangler.toml` manually. Required bindings:
+**`wrangler.toml` is gitignored, not absent.** `cloudflare/wrangler.example.toml` is the checked-in template — copy it to `cloudflare/wrangler.toml` and fill in the real KV namespace IDs (`wrangler kv namespace create <BINDING>`). Required bindings:
 
-- KV namespace bindings for `SESSIONS`, `OTPS`, `RATELIMIT`, `ALLOWLIST`, `CONSENTS`
-- Secret binding for `RESEND_API_KEY`
+- KV namespace bindings for `SESSIONS`, `OTPS`, `RATELIMIT`, `ALLOWLIST`, `CONSENTS`, and (coach module, optional) `TEAMS`
+- Secret binding for `RESEND_API_KEY`, and (coach module, optional) `GOOGLE_SA_KEY`
 - `main = "worker.js"`, `compatibility_date`, and `name` fields
+
+---
+
+## Coach Module (ADR-014)
+
+**Purpose:** An opt-in, per-team coach area at `/coach`. Pickup sign-out (v1's only feature) lets a coach scan a QR-coded adult card and then each kid's card, and get an immediate green/yellow/red read on whether that adult is authorized to take that kid — without a paper roster. See `docs/decisions.md` ADR-014 for the full privacy rationale; this section is the technical reference.
+
+**Data model split, and why it matters:** the coach module handles a genuinely different class of data than the rest of the app — kid/adult names, adult emails/phones — and a different privacy posture applies to it. The **team's Google Sheet, owned by the team admin, is the only durable store** of that data. Nothing Cloudflare-owned (KV, the Cache API, or any future store) may ever hold a name, email, or phone number; only IDs, with short bounded TTLs. This is *in addition to*, not a replacement for, the athlete workout-data rule (ADR-002) — the coach module never reads or transmits any workout key.
+
+### Authorization (`requireCoachApi()` / `getCoachTeams()`, `cloudflare/worker.js`)
+
+Every `/coach/api/pickup/*` request goes through the same gate:
+
+1. Valid `sf_session` → email (`getSession()`, same as the rest of the Worker).
+2. **`ALLOWLIST` is re-read on every request**, not just at session creation — `record.coach.teams` (an array of team slugs) is read fresh each time, so removing a coach's access cuts them off immediately rather than waiting out their 30-day session.
+3. **Team resolution** (`resolveCoachTeam()`): on a `*.spikefit.app` team subdomain, the hostname *proposes* a team (`resolveCoachHostTeam()`) — but only if the coach's `coach.teams` list includes it; a subdomain a coach isn't assigned to resolves to no team (the UI shows a generic "no coach tools enabled" message, not a redirect hint — this is intentional, not a bug). On the apex domain or `www`, the client-supplied `team` field in the request body is used instead, still checked against `coach.teams`. The hostname never grants access by itself.
+4. The resolved team must exist in the `TEAMS` KV namespace (`getTeamConfig()`), and the specific feature (e.g. `pickup`) must be `true` in its `features` object.
+5. **CSRF defense in depth:** POST requests must have `Content-Type: application/json` and an `Origin` header equal to the request's own origin. `SameSite=Strict` on the session cookie already covers most cases; this is a cheap second layer.
+6. **Rate limit:** `coachapi:<email>` in `RATELIMIT`, 60 requests per coach per minute.
+
+`/coach/api/config` (GET) uses a lighter version of the same session+coach-role check, without resolving to one team — it returns the coach's full team list (or just the one team, on a team subdomain) so `coach.html` can render a team picker or go straight to the hub.
+
+### Pickup decision logic (`decidePickup()`, pure function)
+
+The Worker decides every green/yellow/red status — `js/coach.js` only renders what comes back. `decidePickup(roster, adultId, kidId)`:
+
+- **Red** — malformed ID (rejected by `COACH_ID_RE` before any roster lookup), unknown ID, inactive adult/kid, or a kid card scanned as the adult (or the reverse).
+- **Green** — the adult is active, on the roster, and listed in the kid's `AuthorizedParentIDs`.
+- **Yellow** — the adult is active and on the roster, but not authorized for this kid.
+
+Covered by `node --test tests/worker/pickup.test.js` (green/yellow/red for every roster case) and `tests/worker/coach-auth.test.js` (team resolution, feature-flag reader) — see `tests/README.md` update below.
+
+### Roster: parsing and caching
+
+`parseRoster(kidsRows, parentsRows)` turns the raw Sheets `Kids`/`Parents` tab rows into `{ kids: Map, parents: Map }`. Parsing rules: header row matched case-insensitively by name (not column position); IDs trimmed and uppercased; `AuthorizedParentIDs` split on commas or whitespace; `Active` is `true` only for `TRUE`/`true`/`yes`/`1` — a blank cell is inactive, so every card has to be switched on deliberately.
+
+The roster is cached for 60 seconds using the **Workers Cache API** (`caches.default`, key `https://cache.internal/roster/<team>`) — deliberately not KV, since KV writes count against a daily quota and a roster cache doesn't need cross-region durability. A cache miss re-fetches both tabs from Sheets in one `values:batchGet` call.
+
+### Google Sheets I/O
+
+- **Auth:** the Worker signs a JWT (RS256, `crypto.subtle`) as the `GOOGLE_SA_KEY` service account and exchanges it for an OAuth access token (`grant_type: urn:ietf:params:oauth:grant-type:jwt-bearer`). The token is cached in a module-level variable, with a `RATELIMIT` KV fallback key `gtoken` (55-minute TTL) so a fresh cold start doesn't have to re-mint a token from KV's perspective either. Never logged, never returned in a response.
+- **Reads:** `values:batchGet` for the `Kids` and `Parents` tabs.
+- **Writes:** `values:append` with **`valueInputOption=RAW`** (never `USER_ENTERED` — a coach note or roster name starting with `=`, `+`, `-`, or `@` would otherwise be evaluated as a formula) and `insertDataOption=INSERT_ROWS`. The request builder (`buildAppendRequest()`) is a pure function specifically so this requirement has direct `node --test` coverage (`tests/worker/sheets.test.js`) without a live Sheets call.
+- If a Sheets write fails, the endpoint returns `503 {error:'log_failed'}` and does **not** cache an `evt:` result — the client then treats the scan as unlogged and queues it offline. The UI never shows green until the row is actually written.
+- **Team setup problems are a distinct error, not a retryable one.** A missing `sheetId` (checked cheaply by `requireCoachApi()` before any Sheets call, via `isSheetConfigured()`) or a present-but-wrong one (caught by `fetchRosterFromSheets()` when Google returns `400`/`403`/`404`) both throw a `TeamNotConfiguredError` and return `409 {error:'team_not_configured'}` instead of `503`. This matters because `js/coach.js` treats a `503`/timeout as "offline, queue and retry" — but retrying can't fix a broken Sheet ID, only an admin editing the `TEAMS` config can. The client recognizes `409 team_not_configured` specifically and shows a persistent "contact your admin" card instead of silently queuing a scan that will fail forever. The hub also shows this proactively, before any scan is attempted, via the `configured` flag on `/coach/api/config`'s response.
+- **Known limitation:** one service account means the Sheets API quota is shared, project-wide, across every team's traffic — not allocated per team. Fine at the current scale; recorded in ADR-014 so it isn't rediscovered as a surprise later.
+
+### Operational KV keys (all short-TTL, IDs only)
+
+| Key | Value | TTL | Purpose |
+|---|---|---|---|
+| `coachapi:<email>` | counter | 60s | Rate limit |
+| `evt:<eventId>` | cached response JSON | 48h | Idempotency — a retried or replayed scan with the same `eventId` returns the stored result instead of writing another row |
+| `out:<team>:<localDate>:<kidId>` | `{ at, adultId, coach }` (no names) | 36h | "Already signed out today" warning. Best-effort only — Workers KV is only eventually consistent across edge locations, so this is not a guaranteed duplicate-release lock |
+| `pending:<eventId>` | `{ team, coach, adultId, kidId }` | 10 min | A yellow result awaiting `/confirm`; without this record, `/confirm` has nothing to check the coach's override against |
+| `gtoken` | `{ token, expiresAt }` | 55 min | Google access token KV fallback (see above) |
+
+Any name shown in a response (the adult's name in the pickup header, the `alreadyOut` banner) is resolved from the roster cache *at response time* — never persisted. `ScannedAt` is server-stamped for a live scan; the client-supplied value is only honored when `offline: true` (a genuinely offline-queued event replayed through `/coach/api/pickup/sync`).
+
+### Emails (Resend)
+
+`sendResend(apiKey, to, subject, html)` (`cloudflare/worker.js`) is the shared low-level Resend call — the OTP code email, the guardian consent email, and the coach module's parent/incident alerts all build their own subject/HTML and call it, rather than duplicating the `fetch()` call a third time.
+
+- **Parent alert** (a yellow override, when `pickupOverrideAlerts` is on): one email per authorized adult with an email on file — never several addresses in one `to`, so parents never see each other's addresses. Every interpolated value is HTML-escaped (`escapeHtml()`).
+- **Incident email:** sent to the team's `adminEmails` when `/coach/api/pickup/sync` processes an offline-queued red or yellow event (the kid may already be gone by the time it syncs, so these need a human to review, not just a log row).
+- A failed send doesn't fail the pickup — logged to the console, and the response includes `alertSent: false` so the coach knows to follow up manually.
+
+### Offline queue and `/coach/api/pickup/sync`
+
+`js/coach.js` treats a failed `fetch`, a 5-second timeout, or a `503` as offline, and queues the event (IDs only) in `spikefit_coach_queue` rather than blocking the coach. `/coach/api/pickup/sync` (POST, at most 50 events per call) replays the queue in `scannedAt` order:
+
+- **Green** → logged normally, `OfflineQueued = TRUE`.
+- **Yellow** → the kid is already gone by the time this syncs, so no confirmation is possible. Auto-released, logged to both `Log` and `Overrides` with reason `RELEASED OFFLINE — NOT VERIFIED`, a parent alert sent if enabled, and an incident email sent to `adminEmails`.
+- **Red** → logged to `Rejected`, `OfflineQueued = TRUE`, and an incident email sent.
+
+The client removes only the events the server actually confirmed (matched by `eventId` and `team`); anything the server didn't return (or returned as `status: 'error'`) stays queued for the next retry. Retries fire on the `online` event, on `visibilitychange` to visible, and every 30 seconds while the queue isn't empty.
 
 ---
 

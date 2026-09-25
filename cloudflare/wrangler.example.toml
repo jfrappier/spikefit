@@ -1,0 +1,62 @@
+# Example Wrangler config for the SpikeFit hosting-gate Worker.
+#
+# wrangler.toml is intentionally not committed (see docs/architecture.md,
+# "Gap: wrangler.toml is not in the repo"). Copy this file to
+# cloudflare/wrangler.toml, fill in the real KV namespace IDs (created via
+# `wrangler kv namespace create <BINDING>`), and never commit that file —
+# it's a deployment artifact, not source.
+#
+# The Worker is entirely optional. Forks running locally (opening index.html
+# or app.html directly) need none of this.
+
+name = "spikefit"
+main = "worker.js"
+compatibility_date = "2026-09-25"
+
+# Wildcard route so *.spikefit.app (team subdomains) hits this Worker too.
+# See docs/architecture.md, "Team Resolver and Theming > Hosting / DNS wiring".
+[[routes]]
+pattern = "spikefit.app/*"
+zone_name = "spikefit.app"
+
+[[routes]]
+pattern = "*.spikefit.app/*"
+zone_name = "spikefit.app"
+
+# ─── KV namespaces ──────────────────────────────────────────────────────────
+# Replace each id with the real namespace id from `wrangler kv namespace create`.
+
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "REPLACE_WITH_SESSIONS_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "OTPS"
+id = "REPLACE_WITH_OTPS_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "RATELIMIT"
+id = "REPLACE_WITH_RATELIMIT_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "ALLOWLIST"
+id = "REPLACE_WITH_ALLOWLIST_NAMESPACE_ID"
+
+[[kv_namespaces]]
+binding = "CONSENTS"
+id = "REPLACE_WITH_CONSENTS_NAMESPACE_ID"
+
+# Coach module (ADR-014). Team config only — name, timezone, sheetId,
+# feature flags, override reasons, admin emails. Never kid/adult PII.
+[[kv_namespaces]]
+binding = "TEAMS"
+id = "REPLACE_WITH_TEAMS_NAMESPACE_ID"
+
+# ─── Secrets ─────────────────────────────────────────────────────────────────
+# Secrets are NOT set here — wrangler.toml (even this example) must never hold
+# a real key. Set them with `wrangler secret put <NAME>`:
+#
+#   wrangler secret put RESEND_API_KEY
+#   wrangler secret put GOOGLE_SA_KEY      # full service-account JSON (coach module,
+#                                          # see tools/coach/README.md). client_email
+#                                          # and private_key are the only fields used.

@@ -1,5 +1,172 @@
 # SpikeFit Changelog
 
+## v0.0.929 — Fix: ACME Challenge Path Was Auth-Gated, Breaking HTTPS Cert Renewal
+
+GitHub Pages' custom-domain HTTPS certificate (Let's Encrypt, auto-renewed) was stuck in a `bad_authz` state and unable to renew. `/.well-known/acme-challenge/*` — the path Let's Encrypt's HTTP-01 validator requests to prove domain ownership — had no exemption in the Worker's routing, so it fell into the same session-gate as any other unrecognized path and got 302-redirected to `/auth.html`. A login-page redirect can never satisfy an ACME challenge, so every renewal attempt failed permanently. Likely worked once because the domain probably wasn't proxied through this Worker yet the first time a cert was issued.
+
+---
+
+## 🔒 Security / Infrastructure
+
+### `/.well-known/acme-challenge/*` now passes through unauthenticated
+
+Added as the very first check in `cloudflare/worker.js`'s `fetch()`, ahead of every other route — GitHub serves this path's content dynamically during cert issuance/renewal (never a file in this repo), and it must never be redirected or gated behind a session.
+
+## Files Changed
+
+- `cloudflare/worker.js`
+
+---
+
+## v0.0.928 — Coach Sheet CSV Templates
+
+Admin tooling only — nothing browser-facing changed.
+
+---
+
+## 📚 Documentation
+
+### `tools/coach/sheet-templates/` (new)
+
+- One ready-made CSV per required Sheet tab — `Kids.csv`, `Parents.csv` (each with two obviously-fake example rows so a coach can see the expected format before entering a real roster), and header-only `Log.csv`/`Overrides.csv`/`Rejected.csv` (the Worker appends to these itself). Column headers and order match `parseKidsSheet()`/`parseParentsSheet()` and the `Log`/`Overrides`/`Rejected` append column order in `cloudflare/worker.js` exactly.
+- `tools/coach/README.md` step 2 now walks through importing each CSV as its own tab via Google Sheets' **File → Import → Upload → Insert new sheet**, and renaming the result — tab names are case-sensitive against what the Worker reads/writes, so this is called out explicitly. Also fixed a stale "four tabs" that should've said five.
+
+## Files Changed
+
+- `tools/coach/sheet-templates/Kids.csv`, `Parents.csv`, `Log.csv`, `Overrides.csv`, `Rejected.csv`
+- `tools/coach/README.md`
+
+---
+
+## v0.0.927 — Coach Module: Detect an Unconfigured Team's Sheet
+
+A missing or wrong `sheetId` in a team's `TEAMS` config used to look exactly like a connectivity problem — the coach would see scans sit "queued, unverified" forever, retried every 30s, never succeeding, with no signal that the real problem is server-side setup, not their signal. The Worker now tells these apart and the coach UI responds accordingly.
+
+---
+
+## ✨ Features
+
+### `team_not_configured` — a distinct, non-retryable error (`cloudflare/worker.js`)
+
+- New `isSheetConfigured(teamConfig)` (presence-only — never validates or reveals the ID) short-circuits `requireCoachApi()` before any Sheets call when `sheetId` is blank.
+- `fetchRosterFromSheets()` now distinguishes a permanent setup problem (Google returns `400`/`403`/`404` — wrong ID, deleted sheet, or never shared with the service account) from an ordinary transient Sheets failure, throwing a `TeamNotConfiguredError` for the former.
+- All three pickup endpoints (`/scan`, `/confirm`, `/sync`) return `409 {error:'team_not_configured'}` for this case instead of `503`, specifically so the client never queues it offline — retrying can't fix a broken Sheet ID.
+- `/coach/api/config` now includes a presence-only `configured` boolean per team (still never the `sheetId` itself), so the hub can flag this before a coach ever attempts a scan.
+
+### Coach UI (`js/coach.js`, `css/components/coach.css`)
+
+- A team with `pickup` on but `configured: false` still gets a hub tile, styled as "Pickup — Setup Needed" — clicking it shows a toast pointing at the admin instead of opening the camera.
+- A `409 team_not_configured` from `/scan` or `/confirm` renders a persistent card ("Contact your SpikeFit admin — `<team>` needs its roster sheet finished…") instead of silently queuing the scan.
+
+## 🧪 Tests
+
+- `tests/worker/coach-auth.test.js` — `isSheetConfigured()` coverage (non-empty string, blank, missing, wrong type).
+- `tests/e2e/test_coach.py` — hub "Setup Needed" tile (never opens the scanner), and a `409 team_not_configured` scan showing the admin-contact message with an empty offline queue afterward.
+
+## 📚 Documentation
+
+- `docs/architecture.md` Coach Module section: the `409`/`503` distinction, and `configured` added to the `/coach/api/config` response shape.
+- `tools/coach/README.md`: what a coach sees if `sheetId` is left blank or wrong, plus a note that every KV write in this doc can be done from the Cloudflare dashboard — no `wrangler` CLI required.
+
+## Files Changed
+
+- `cloudflare/worker.js`
+- `js/coach.js`, `css/components/coach.css`, `coach.html` (cache-bust bump)
+- `tests/worker/coach-auth.test.js`
+- `tests/e2e/test_coach.py`
+- `docs/architecture.md`, `tools/coach/README.md`
+
+---
+
+## v0.0.926 — Add Millis (Mohawks) Team Theme
+
+New team theme for Millis, following the existing team-pack pattern (ADR-011) — no Worker logic changes, just a theme file, a `TEAMS` entry, and a logo asset.
+
+---
+
+## ✨ Features
+
+### Millis team theme (`css/themes/millis.css`, `img/teams/millis-logo.png`)
+
+- Colors sampled directly from the team's Mohawks logo (`img/teams/millis-logo.png`) — a maroon `--accent: #7e161a` with a darker hover state and a pale rose `--accent-light`, matching the token set every other theme file re-declares (`--accent`, `--accent-hover`, `--accent-light`, `--shadow-hover`, `--shadow-lg`).
+- Logo background was removed (soft alpha threshold against the near-white source) so it composites cleanly like `lions-logo.png`, rather than shipping with a visible white box like the source JPEG.
+- New `millis` entry in the `TEAMS` registry (`js/team.js`) and matching `STATIC_FILES` entries in `cloudflare/worker.js` for the theme CSS and logo.
+- Reachable at `millis.spikefit.app` or via `?team=millis` seed link, same resolution priority as every other team.
+
+## Files Changed
+
+- `css/themes/millis.css`
+- `img/teams/millis-logo.png`
+- `js/team.js`
+- `cloudflare/worker.js`
+- `app.html`, `auth.html`, `index.html`, `coach.html` (cache-bust bump for `js/team.js`)
+
+---
+
+## v0.0.925 — Coach Module v1: Pickup Sign-Out (FR-18)
+
+A new, opt-in coach-only area at `/coach` for practice pickup: a coach scans an adult's QR card, then each kid's card, and gets an immediate green/yellow/red read on whether that adult is authorized to take that kid — no paper roster. This is a genuinely new class of data for SpikeFit (kid/adult names and adult emails, not athlete workout data), so it ships with its own privacy model: the team's own Google Sheet is the only durable store of that data, and nothing Cloudflare-owned may ever hold a name, email, or phone number.
+
+---
+
+## ✨ Features
+
+### Pickup sign-out (`/coach`, `coach.html`, `js/coach.js`)
+
+- **Hub** (`GET /coach/api/config`) shows one tile per feature enabled for the coach's team; a coach with several teams and not on a team subdomain sees a team picker first. Pickup is the only feature in v1.
+- **Scanner:** `BarcodeDetector` when the browser supports the `qr_code` format, falling back to a vendored `jsQR` decoding canvas frames at ~10fps. A denied/unavailable camera falls back to a manual ID-entry field — same code path either way. A 5-second decode-dedupe absorbs rapid re-reads of the same physical card.
+- **Pickup flow:** scan the adult, then each kid. Each kid gets its own green (authorized — logged automatically), yellow (not authorized — coach must pick a reason and can add a note before confirming, or decline), or red (unknown/inactive card, or a kid card scanned as the adult or vice versa — no override) result. A pending yellow blocks **Done** until resolved. A client-side in-memory guard blocks re-submitting an already-resolved kid within the same pickup session, separate from the 5-second decode-dedupe.
+- **Offline queue:** a failed scan, timeout, or `503` queues the event (`spikefit_coach_queue`, IDs only) behind an **UNVERIFIED — check manually** banner, and retries on reconnect, on tab visibility, and every 30s. A synced offline yellow auto-releases (no confirmation is possible after the fact) and is flagged `RELEASED OFFLINE — NOT VERIFIED`, with a parent alert and an incident email to the team's admins.
+- **"Already signed out today" warning:** best-effort (Workers KV is only eventually consistent across edge locations), shown as a banner, never blocks the pickup.
+
+### Worker: coach API (`cloudflare/worker.js`)
+
+- `GET /coach` (page, gated), `GET /coach/api/config`, `POST /coach/api/pickup/{scan,confirm,sync}` — routed above the static/catch-all gate. Every API route re-reads the coach's `ALLOWLIST.coach.teams` on each request (not just at session creation), resolves the team (hostname proposes, `coach.teams` decides — a coach on the wrong team's subdomain gets the generic "no coach tools enabled" message, not a redirect hint), checks the team's feature flag, and applies CSRF defense in depth (`Content-Type`/`Origin` checks) plus a 60 req/min rate limit.
+- `decidePickup()`, `parseRoster()`, ID validation, team resolution, and the feature-flag reader are pure functions — covered by a new `node --test` layer (`tests/worker/`, zero dependencies, `"type":"module"` via a scoped `package.json`).
+- Reads/writes the team's Google Sheet directly (JWT-signed service-account auth, `crypto.subtle`, RS256) — no Apps Script layer. Writes always use `valueInputOption=RAW` (never `USER_ENTERED`, which would let a name or note starting with `=`/`+`/`-`/`@` execute as a formula). The roster is cached 60s via the Workers Cache API, not KV.
+- New `TEAMS` KV namespace (team config: name, timezone, Sheet ID, feature flags, override reasons, admin emails — `sheetId`/`adminEmails` never reach the browser). New short-TTL `RATELIMIT` keys: `coachapi:`, `evt:` (idempotency), `out:` (duplicate-pickup warning, IDs only), `pending:` (yellow awaiting confirm), `gtoken` (Google access token KV fallback).
+- New `GOOGLE_SA_KEY` secret. `cloudflare/wrangler.example.toml` added as a checked-in template with every binding (`wrangler.toml` itself stays gitignored).
+
+## 🔒 Security & Privacy
+
+### No kid/adult PII in any Cloudflare-owned store
+
+New hard rule (ADR-014): the team's Google Sheet — owned and shared by the team admin — is the only durable store of kid/adult names, emails, and phone numbers. No Worker-owned KV value may ever contain one; only IDs, with short bounded TTLs (10 min–48 h). Where a name is needed for display (the scanned adult's name, the already-out banner), it's resolved from the roster cache at response time and never persisted. This was a deliberate rejection of a simpler Cloudflare-owned-store design (D1 + CSV export) specifically because that would have made the solo maintainer the data controller for children's PII — see ADR-014's alternatives-considered section.
+
+### Resend email refactor
+
+Extracted the duplicated `fetch()` call in `sendEmail()`/`sendConsentEmail()` into a shared `sendResend(apiKey, to, subject, html)` helper, now reused by the coach module's parent-pickup and incident alerts too. Every parent alert goes to exactly one recipient (never several addresses in one `to`), and every interpolated value is HTML-escaped.
+
+---
+
+## 🧪 Tests
+
+- `tests/worker/pickup.test.js`, `coach-auth.test.js`, `sheets.test.js` — `node --test` coverage for `decidePickup()` (every green/yellow/red case, including inactive kid/adult, a kid card scanned as the adult and the reverse, and an adult authorized for one sibling but not another), roster parsing rules, ID/UUID validation, team resolution (apex, `www`, team subdomain, a subdomain the coach isn't assigned to, a spoofed `*.spikefit.app.evil.com` suffix), the feature-flag reader, and the Sheets append request builder (rejects any `valueInputOption` other than `RAW`).
+- `tests/e2e/test_coach.py` — Playwright, served over real HTTP (not `file://`, since `coach.js`'s `fetch()` calls need it) with `/coach/api/**` mocked via `page.route()`. Covers green, red, the already-out banner, yellow confirm (including the required-reason guard) and decline, the offline queue and sync (including the offline re-scan guard), and the hub hiding a team with no enabled features. Camera access is stubbed to reject immediately (matching a denied/unavailable camera) so these run through the manual-entry fallback rather than needing a fake video device.
+
+## 📚 Documentation
+
+- New **ADR-014** (coach module privacy model, alternatives considered, accepted limitations). Amended **ADR-001** (vendored-exception table, `js/vendor/jsQR.js`) and **ADR-007** (the Worker is no longer purely a hosting-only pass-through).
+- `docs/architecture.md`: new Coach Module section, updated routing/KV tables, and a fix to stale CSP documentation (`'unsafe-inline'` was documented but not actually sent).
+- `CLAUDE.md`: coach-module scoping on the workout-data hard constraint, new no-PII-in-Cloudflare-storage hard constraint, file map, localStorage registry, and Privacy Boundary Auditor additions.
+- `tools/coach/README.md` + `generate-ids.py`: setup steps (service account, Sheet, `TEAMS` KV, granting a coach) and a standard-library ID generator for printing QR cards.
+- Added a coach-module paragraph to the in-app Privacy modal (`app.html`) and `tos.html`.
+
+## Files Changed
+
+- `cloudflare/worker.js`, `cloudflare/wrangler.example.toml`, `cloudflare/package.json`
+- `coach.html`, `js/coach.js`, `js/vendor/jsQR.js`, `css/components/coach.css`
+- `app.html` (Privacy modal paragraph)
+- `tos.html`
+- `tools/coach/generate-ids.py`, `tools/coach/README.md`
+- `tests/worker/pickup.test.js`, `tests/worker/coach-auth.test.js`, `tests/worker/sheets.test.js`, `tests/worker/package.json`
+- `tests/e2e/test_coach.py`, `tests/e2e/conftest.py`
+- `tests/README.md`
+- `eslint.config.mjs`, `.codacy/tools-configs/eslint.config.mjs`
+- `docs/decisions.md`, `docs/architecture.md`, `CLAUDE.md`
+
+---
+
 ## v0.0.811 — Confirm Abnormally Long Workout Durations Before Logging (FR-17)
 
 Workout duration is auto-detected from Start → Mark Complete and feeds directly into the F.R.E.S.H. training load (`load = rpe × durationMins × readinessModifier`). A forgotten timer therefore injects one huge phantom session that dominates the acute load and spikes the ACWR for a full 7 days. When a detected duration is abnormally long, the app now prompts the user to confirm or correct it before the session is saved.
