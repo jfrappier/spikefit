@@ -1,5 +1,43 @@
 # SpikeFit Changelog
 
+## v0.0.929 — Fix: ACME Challenge Path Was Auth-Gated, Breaking HTTPS Cert Renewal
+
+GitHub Pages' custom-domain HTTPS certificate (Let's Encrypt, auto-renewed) was stuck in a `bad_authz` state and unable to renew. `/.well-known/acme-challenge/*` — the path Let's Encrypt's HTTP-01 validator requests to prove domain ownership — had no exemption in the Worker's routing, so it fell into the same session-gate as any other unrecognized path and got 302-redirected to `/auth.html`. A login-page redirect can never satisfy an ACME challenge, so every renewal attempt failed permanently. Likely worked once because the domain probably wasn't proxied through this Worker yet the first time a cert was issued.
+
+---
+
+## 🔒 Security / Infrastructure
+
+### `/.well-known/acme-challenge/*` now passes through unauthenticated
+
+Added as the very first check in `cloudflare/worker.js`'s `fetch()`, ahead of every other route — GitHub serves this path's content dynamically during cert issuance/renewal (never a file in this repo), and it must never be redirected or gated behind a session.
+
+## Files Changed
+
+- `cloudflare/worker.js`
+
+---
+
+## v0.0.928 — Coach Sheet CSV Templates
+
+Admin tooling only — nothing browser-facing changed.
+
+---
+
+## 📚 Documentation
+
+### `tools/coach/sheet-templates/` (new)
+
+- One ready-made CSV per required Sheet tab — `Kids.csv`, `Parents.csv` (each with two obviously-fake example rows so a coach can see the expected format before entering a real roster), and header-only `Log.csv`/`Overrides.csv`/`Rejected.csv` (the Worker appends to these itself). Column headers and order match `parseKidsSheet()`/`parseParentsSheet()` and the `Log`/`Overrides`/`Rejected` append column order in `cloudflare/worker.js` exactly.
+- `tools/coach/README.md` step 2 now walks through importing each CSV as its own tab via Google Sheets' **File → Import → Upload → Insert new sheet**, and renaming the result — tab names are case-sensitive against what the Worker reads/writes, so this is called out explicitly. Also fixed a stale "four tabs" that should've said five.
+
+## Files Changed
+
+- `tools/coach/sheet-templates/Kids.csv`, `Parents.csv`, `Log.csv`, `Overrides.csv`, `Rejected.csv`
+- `tools/coach/README.md`
+
+---
+
 ## v0.0.927 — Coach Module: Detect an Unconfigured Team's Sheet
 
 A missing or wrong `sheetId` in a team's `TEAMS` config used to look exactly like a connectivity problem — the coach would see scans sit "queued, unverified" forever, retried every 30s, never succeeding, with no signal that the real problem is server-side setup, not their signal. The Worker now tells these apart and the coach UI responds accordingly.

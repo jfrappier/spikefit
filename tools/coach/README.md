@@ -25,12 +25,19 @@ you run on your own machine when printing cards for a team.
 ## 2. Create the team's Google Sheet
 
 1. Create a new Google Sheet for the team (one Sheet per team).
-2. Add four tabs with these exact names and header rows (see `coach-module-plan.md` §3 for the full column list):
+2. Add five tabs with these exact names and header rows (see `coach-module-plan.md` §3 for the full column list) — **tab names are case-sensitive**, the Worker reads/writes `Kids`, `Parents`, `Log`, `Overrides`, `Rejected` literally:
    - **Kids** — `KidID | KidName | AuthorizedParentIDs | Active | Notes`
    - **Parents** — `ParentID | Name | Email | Phone | Active`
    - **Log** — `EventID | ScannedAt | ReceivedAt | Kid | KidID | Adult | ParentID | Status | Coach | OverrideReason | OverrideNote | OfflineQueued`
    - **Overrides** — same columns as Log (yellow rows only)
    - **Rejected** — `EventID | ScannedAt | ReceivedAt | ScannedID | Reason | Coach | OfflineQueued`
+
+   **The fastest way to do this** — `tools/coach/sheet-templates/` has one ready-made CSV per tab (`Kids.csv`, `Parents.csv`, `Log.csv`, `Overrides.csv`, `Rejected.csv`), header row plus two obviously-fake example rows in `Kids`/`Parents` for a coach to see the format and overwrite. Give the whole `sheet-templates/` folder to whoever's setting up a team's Sheet (or hand them the individual files) and have them, for **each** of the five files:
+   1. In the new Sheet, right-click any tab at the bottom → **Insert sheet** (skip this for the very first one — a blank Sheet already has one tab to use).
+   2. **File → Import → Upload**, pick the CSV, choose **Insert new sheet** as the import location, click **Import data**.
+   3. Double-click the new tab's name and rename it to match the CSV exactly (`Kids`, `Parents`, `Log`, `Overrides`, `Rejected`) — Google names the imported tab after the file, so if the upload picker doesn't already show the right name, this is the step to catch it.
+   4. Delete the original blank "Sheet1" tab once all five are in and correctly named.
+   5. In `Kids` and `Parents`, replace the two example rows with the team's real roster (or delete them and start adding real rows) — `Log`, `Overrides`, and `Rejected` should stay empty below the header; the Worker appends to those itself.
 3. Share the Sheet with the service account's email address (`client_email` from the JSON key) as **Editor**.
 4. Copy the Sheet ID from its URL (`https://docs.google.com/spreadsheets/d/<SHEET_ID>/edit`) — you'll need it in step 3 below.
 

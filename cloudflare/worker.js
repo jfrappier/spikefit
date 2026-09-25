@@ -56,6 +56,18 @@ export default {
   async fetch(req, env) {
     const url = new URL(req.url);
 
+    // ACME domain-validation challenge (GitHub Pages' custom-domain HTTPS
+    // cert, issued/renewed via Let's Encrypt HTTP-01). GitHub serves this
+    // dynamically at request time during issuance — it is never a file in
+    // this repo. Must never be auth-gated or redirected: the validator
+    // needs the literal challenge response, not a login page. Without this
+    // exemption the catch-all session gate below 302s it to /auth.html,
+    // which silently and permanently breaks certificate renewal.
+    if (url.pathname.startsWith('/.well-known/acme-challenge/')) {
+      const safeReq = new Request(new URL(url.pathname, ORIGIN), req);
+      return fetch(safeReq);
+    }
+
     // Auth endpoints — always pass through
     if (url.pathname === '/auth/send')     return handleSend(req, env);
     if (url.pathname === '/auth/verify')   return handleVerify(req, env);
