@@ -2,6 +2,8 @@
 
 SpikeFit is a mobile-responsive volleyball training app. It has zero runtime dependencies — everything ships as plain HTML, CSS, and JavaScript that opens directly in a browser. Privacy is non-negotiable: user workout data is always in the user's control and must never be transmitted to any server the app controls. The optional Cloudflare Worker in `cloudflare/` is a hosting-only access gate; forks running locally need none of it.
 
+**Coach module exception (ADR-014):** The Worker also hosts an opt-in coach module (`/coach`, pickup sign-out — see `docs/decisions.md` ADR-014) that processes a *different* class of data: kid/adult names and adult email addresses, written to a Google Sheet the team admin owns. This does not relax the workout-data rule below — the coach module never reads or transmits any workout key, and none of the coach data (names, emails, phones) may ever be persisted in any Cloudflare-owned store (KV or the Cache API); IDs only, short bounded TTLs. The Sheet is the only durable store of that data.
+
 ---
 
 ## Hard Constraints — Read Before Touching Code
@@ -13,8 +15,9 @@ SpikeFit is a mobile-responsive volleyball training app. It has zero runtime dep
 - **No `target="_blank"` without `rel="noopener noreferrer"`.** No exceptions.
 - **No inline event handlers in HTML** (`onclick=`, `onerror=`, etc.). Use `addEventListener` in JS.
 - **Workout key always derived via `getWorkoutKey(baseKey)`.** Never hardcode level-suffixed keys like `'A2'` or `'A3'` directly.
-- **User workout data must never leave the device.** No fetch/XHR that transmits `completedDates`, `spikefit_fresh_logs`, `workoutLevel`, or any other user-generated data to any server. The Cloudflare Worker must never handle workout data. Any future BYOS (bring-your-own-storage) feature is user-configured — the app never provides or controls the storage backend.
-- **Every JS/CSS `<script src>` and `<link href>` in `app.html`, `auth.html`, and `index.html` carries a `?v=X.X.XXX` query string.** Whenever you edit a JS or CSS file, bump that query string on every tag referencing it, in every HTML file that includes it — not just the one you're editing. See "Cache-Busting JS/CSS Assets" below for why.
+- **User workout data must never leave the device.** No fetch/XHR that transmits `completedDates`, `spikefit_fresh_logs`, `workoutLevel`, or any other user-generated data to any server. The Cloudflare Worker must never handle workout data. Any future BYOS (bring-your-own-storage) feature is user-configured — the app never provides or controls the storage backend. This applies to `/coach/api/*` too: no coach endpoint may read or accept any protected workout key (see Automated Audit Agents below).
+- **No kid or adult PII in anything Cloudflare-owned.** The coach module's team roster (kid/adult names, adult emails/phones) may only pass through the Worker transiently — in-memory per request, or the ≤60s edge roster cache — never persisted to KV or any other Cloudflare-owned store. IDs only, in KV, with short bounded TTLs. The team's Google Sheet (owned by the team admin) is the only durable store. See ADR-014.
+- **Every JS/CSS `<script src>` and `<link href>` in `app.html`, `auth.html`, `index.html`, and `coach.html` carries a `?v=X.X.XXX` query string.** Whenever you edit a JS or CSS file, bump that query string on every tag referencing it, in every HTML file that includes it — not just the one you're editing. See "Cache-Busting JS/CSS Assets" below for why.
 
 ---
 
@@ -28,6 +31,8 @@ Current split:
 - `js/workouts.js` — the `workouts` object and `schedule` array (static workout data)
 - `js/app.js` — all remaining logic
 - `js/combine.js` — Combine baseline testing feature (loaded after `js/app.js`; uses its globals)
+- `js/coach.js` — Coach module (ADR-014): hub, QR scanner, pickup sign-out. Loaded only on `coach.html`, after `js/vendor/jsQR.js`. Does **not** load `js/app.js` — it doesn't share `app.js`'s globals, so it carries its own copies of `safeParseJSON`/`showToast` against `coach.html`'s own markup.
+- `js/vendor/jsQR.js` — vendored third-party QR decoder. Documented exception to ADR-001 — see "Vendored runtime exceptions" in `docs/decisions.md`.
 
 When adding a new JS file: add it as `<script defer src="js/yourfile.js">` in the relevant HTML files, before any file that depends on its globals. Exception: early loaders that must run before first paint use `<script src="...">` (no defer) placed immediately after `<link rel="stylesheet" href="css/base.css">`.
 
@@ -41,7 +46,7 @@ SpikeFit is mobile-first and there is no reliable "hard refresh" on a phone (no 
 
 The fix is a version query string, not a filename change or a no-cache header — we still want the CDN and the phone's browser to cache these files aggressively (`cloudflare/worker.js` sets `Cache-Control: public, max-age=31536000, immutable` on every `.js`/`.css` response in `STATIC_FILES`). The query string is what forces a fresh URL — and therefore a fresh fetch — on release.
 
-- Every `<script src="js/...">` and `<link rel="stylesheet" href="css/...">` tag in `app.html`, `auth.html`, and `index.html` ends in `?v=X.X.XXX`, matching the current `changelog.md` version heading (e.g. `js/app.js?v=0.0.715`).
+- Every `<script src="js/...">` and `<link rel="stylesheet" href="css/...">` tag in `app.html`, `auth.html`, `index.html`, and `coach.html` ends in `?v=X.X.XXX`, matching the current `changelog.md` version heading (e.g. `js/app.js?v=0.0.715`).
 - **When you change a JS or CSS file, bump its `?v=` on every tag that references it, in every HTML file that includes it.** Use the version string of the changelog entry you're adding for that change.
 - This is a query string only — never rename the file itself. `STATIC_FILES` in `cloudflare/worker.js` matches on `url.pathname`, which excludes the query string, so bumping `?v=` never requires a `STATIC_FILES` update.
 - Files without a query string (images, fonts, favicons) are intentionally left alone — they're either content-hashed already (the vendored font files) or rarely change, and adding blanket long-cache headers to them without a busting mechanism would risk the exact staleness problem this convention exists to prevent.
@@ -55,17 +60,23 @@ The fix is a version query string, not a filename change or a no-cache header �
 | `index.html` + `js/team.js` | Marketing landing page. `team.js` is an early non-deferred loader that applies the team theme before first paint. (Zero-JS constraint deliberately relaxed per ADR-011.) |
 | `app.html` + `js/team.js` + `js/workouts.js` + `js/app.js` + `js/combine.js` + `js/storage.js` | Main app shell. `team.js` is the early theme loader; `workouts.js` defines the workout database; `app.js` handles all logic, rendering, and state; `combine.js` handles the Combine baseline testing feature; `storage.js` handles BYOS export/import and storage preference. |
 | `auth.html` + `js/team.js` + `js/auth.js` | OTP auth flow. `team.js` is the early theme loader; `auth.js` handles the OTP flow. Only used when the Worker is deployed. |
+| `coach.html` + `js/team.js` + `js/vendor/jsQR.js` + `js/coach.js` | Coach module (ADR-014) — hub, QR scanner, pickup sign-out. Served behind the `/coach` route's own auth+coach-role gate, not listed in `STATIC_FILES`. Requires the Worker; no coach module for `file://` forks. |
 | `js/team.js` | Team resolver, TEAMS registry, and early theme loader. Non-deferred; runs before first paint. |
+| `js/vendor/jsQR.js` | Vendored QR decoder (Apache-2.0). Documented ADR-001 exception — see `docs/decisions.md`. |
 | `css/themes/tigers.css` | Tigers team color override. Re-declares `:root` tokens from `base.css` only. |
 | `css/components/combine.css` | Combine-specific styles (summary card, test cards, timers, delta coloring). |
 | `css/components/storage.css` | Storage & Backup UI styles (gear icon, storage-choice wizard, settings modal, backup nudge, restore confirm). |
-| `cloudflare/worker.js` | Optional hosting gate — routing, OTP, sessions. Never touches workout data. |
+| `css/components/coach.css` | Coach module styles — hub tiles, scanner viewport, pickup result cards, override form. |
+| `cloudflare/worker.js` | Optional hosting gate — routing, OTP, sessions, and the coach module's pickup API. Never touches workout data. |
+| `cloudflare/wrangler.example.toml` | Template `wrangler.toml` with every KV/secret binding, including the coach module's `TEAMS` namespace. Copy to `wrangler.toml` (gitignored) and fill in real IDs. |
+| `tools/coach/` | Coach module admin tooling (ID generator, setup README). Nothing here ships to the browser. |
 | `_config.yml` | Jekyll config. Only purpose: `include` list for dotfile directories that Jekyll would otherwise ignore (e.g. `.well-known/`). |
 | `css/base.css` | All CSS custom properties (design tokens). The only file that defines `:root` variables. |
 | `css/layout.css` | Page structure and grid layouts. |
 | `css/components/*.css` | One file per UI component. |
 | `tests/unit/run.html` | QUnit unit tests — open in browser, no install. |
 | `tests/e2e/` | Playwright Python E2E tests. |
+| `tests/worker/` | `node --test` coverage for `cloudflare/worker.js`'s pure functions (coach module decision logic, team resolution, Sheets request builder). See `cloudflare/package.json`/`tests/worker/package.json` (`"type":"module"`, no other dependencies). |
 | `docs/architecture.md` | Full architecture reference including localStorage key registry. |
 | `docs/decisions.md` | Architectural decision records (ADRs). |
 | `guardrails/coding-rules.md` | Coding standards. |
@@ -89,6 +100,8 @@ The fix is a version query string, not a filename change or a no-cache header �
 | `storagePreference` | `'local' \| 'drive'` | `'local'` | Where the user chose to keep data. Set in the first-run wizard. Drives backup nudges and Settings copy. |
 | `lastBackupAt` | ISO timestamp string | absent | Set on each successful export. Powers "Last backed up …" in Settings and throttles the post-workout nudge (~once per 20 hours). |
 | `spikefit_team` | team slug string | absent | Team identity for theming (later: workout packs). Set by `?team=` seed link or future settings picker. Hostname resolver takes priority. Never transmitted; included in BYOS export. |
+| `spikefit_coach_team` | team slug string | absent | `coach.html` only. Last team a multi-team coach selected on a non-team host. Not part of the BYOS export (not workout data, and coach status isn't athlete data). |
+| `spikefit_coach_queue` | `Array<{eventId, team, adultId, kidId, scannedAt, offline}>` | `[]` | `coach.html` only. Offline pickup scans waiting to sync via `/coach/api/pickup/sync`. IDs only, never names. Not part of the BYOS export. |
 
 sessionStorage:
 
@@ -145,8 +158,8 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count.
 
 - **Canvas + `file://` protocol**: `img.crossOrigin = 'anonymous'` is set before `img.src` is assigned in `generateShareImage()`. This is required for `toDataURL()` to work when loading assets over HTTP. Do not remove it.
 - **GitHub raw fallback for badge art**: Intentional for `file://` scenarios. Disclosed in the Privacy modal. Do not remove the fallback URL.
-- **`'unsafe-inline'` in CSP**: A known gap in the Worker's Content-Security-Policy. Removing it requires auditing all inline styles in the component files first.
 - **Badge text wrapping**: Long workout names (intermediate/advanced) can overflow the badge canvas. Acknowledged in changelog; not yet fixed.
+- **Coach module QR scanning**: `<video>` uses `srcObject` (a live `MediaStream`), never a `src` URL — CSP `media-src` doesn't govern `srcObject` assignment in any current browser, so no CSP change was needed for the camera preview. Don't add `media-src` speculatively; only add it if a real device shows the preview failing to play, and note why in the commit.
 
 ---
 
@@ -206,13 +219,17 @@ include:
 
 1. If the file lives in a dotfile directory, add that directory to `_config.yml`'s `include` list so Jekyll publishes it.
 
+**Coach module routes (ADR-014):** `/coach`, `/coach/api/config`, `/coach/api/pickup/scan`, `/coach/api/pickup/confirm`, and `/coach/api/pickup/sync` are routed above the static-file/catch-all gate in `cloudflare/worker.js`. `coach.html` is deliberately **not** in `STATIC_FILES` — the `/coach` route serves it itself, behind a session + coach-role check. See `docs/architecture.md`'s Cloudflare Worker Architecture section for the full routing table and KV namespaces (including the new `TEAMS` namespace) and `docs/decisions.md` ADR-014 for the privacy model.
+
 ---
 
 ## How to Run
 
 Open `index.html` in any modern browser. No server, no build step, no installation required.
 
-Auth (if deploying with the Cloudflare Worker): requires a Cloudflare account, `wrangler.toml` with KV bindings for `SESSIONS`/`OTPS`/`RATELIMIT`/`ALLOWLIST`, and a `RESEND_API_KEY` secret. See `docs/architecture.md` for binding details.
+Auth (if deploying with the Cloudflare Worker): requires a Cloudflare account, `wrangler.toml` with KV bindings for `SESSIONS`/`OTPS`/`RATELIMIT`/`ALLOWLIST`/`CONSENTS`, and a `RESEND_API_KEY` secret. See `cloudflare/wrangler.example.toml` for a filled-in template and `docs/architecture.md` for binding details.
+
+Coach module (optional, on top of the Worker — see ADR-014 and `tools/coach/README.md`): also requires a `TEAMS` KV namespace binding and a `GOOGLE_SA_KEY` secret (a Google service-account JSON key with Sheets API access).
 
 Tests: see `tests/README.md`.
 
@@ -248,15 +265,17 @@ These agents run automatically — do not wait to be asked. Each has a defined t
 
 **What it does:** Audits all browser-shipped JS and HTML against the Hard Constraints listed above. Checks for: ES module syntax, bare `JSON.parse(localStorage.getItem())` calls, localStorage writes without try/catch, `target="_blank"` without `rel="noopener noreferrer"`, inline event handlers, hardcoded workout level suffixes, and CDN/npm imports. Reports PASS or VIOLATION with file:line for each constraint.
 
-Also checks: every `<script src="...">` and `<link rel="stylesheet" href="...">` in `app.html` and `auth.html` has a matching entry in `STATIC_FILES` in `cloudflare/worker.js`. A file referenced in HTML but absent from `STATIC_FILES` will be auth-gated by the Worker and break the hosted instance.
+Also checks: every `<script src="...">` and `<link rel="stylesheet" href="...">` in `app.html`, `auth.html`, and `coach.html` has a matching entry in `STATIC_FILES` in `cloudflare/worker.js` — **except `coach.html` itself**, which is deliberately absent from `STATIC_FILES` (the `/coach` route serves it behind the auth+coach-role gate; a `coach.html` entry in `STATIC_FILES` would be a real bug, not an omission). A referenced JS/CSS file absent from `STATIC_FILES` will be auth-gated by the Worker and break the hosted instance.
 
-Also checks: any JS/CSS file touched by the PR has its `?v=` query string bumped on every `<script>`/`<link>` tag referencing it, across `app.html`, `auth.html`, and `index.html`. A missed bump means the change won't reach mobile users behind the long-cache header until their cache naturally expires (up to a year).
+Also checks: any JS/CSS file touched by the PR has its `?v=` query string bumped on every `<script>`/`<link>` tag referencing it, across `app.html`, `auth.html`, `index.html`, and `coach.html`. A missed bump means the change won't reach mobile users behind the long-cache header until their cache naturally expires (up to a year).
 
 ### Privacy Boundary Auditor
 
 **Trigger:** Any change to a `fetch()` call, `navigator.*` usage, URL construction, or anything in `cloudflare/worker.js`.
 
-**What it does:** Finds every network transmission in `js/app.js`, `js/auth.js`, `js/combine.js`, `js/storage.js`, and `cloudflare/worker.js`. For each, confirms none of the protected keys (`completedDates`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `completedExercises`, `combineResults`, `storagePreference`, `lastBackupAt`) or their values are transmitted. Reports PASS or VIOLATION per call site.
+**What it does:** Finds every network transmission in `js/app.js`, `js/auth.js`, `js/combine.js`, `js/storage.js`, `js/coach.js`, and `cloudflare/worker.js`. For each, confirms none of the protected keys (`completedDates`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `completedExercises`, `combineResults`, `storagePreference`, `lastBackupAt`) or their values are transmitted. Reports PASS or VIOLATION per call site.
+
+**Coach module addition (ADR-014):** confirms no `/coach/api/*` handler in `cloudflare/worker.js` reads or accepts any protected workout key, and confirms no kid/adult name, email, or phone number is ever written to a Cloudflare-owned store (KV or the Cache API) — only IDs, and only the team's Google Sheet or a Resend email body may carry names/emails/phones, never a `.put()` call. Reports PASS or VIOLATION per call site.
 
 ### Test Gap Analyst
 
