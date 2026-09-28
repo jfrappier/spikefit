@@ -1,5 +1,17 @@
 # SpikeFit Changelog
 
+## v0.0.930 — Revert: ACME Challenge Passthrough (v0.0.929)
+
+Removed the `/.well-known/acme-challenge/*` exemption added in v0.0.929. It was a real bug fix (that path genuinely was getting redirected to `/auth.html`), but subsequent investigation found GitHub Pages' automatic HTTPS certificate provisioning is not a supported configuration at all when a third-party proxy (Cloudflare, in front of this Worker) sits in front of the custom domain — GitHub's ACME client does checks beyond what a clean HTTP-01 response through a proxy can satisfy. Confirmed the routing fix worked (proper GitHub/Fastly responses, no Cloudflare interference) and the cert still couldn't authorize even after a 12-hour wait and repeated retries, which matches that conclusion rather than a fixable routing issue.
+
+The actual fix is on the Cloudflare side, not the Worker: use SSL/TLS mode **Full** (not "Full (strict)") so Cloudflare's own auto-renewed Universal SSL certificate protects visitors regardless of GitHub's own (unsupported, perpetually `bad_authz`) cert state. See `docs/decisions.md` if this gets promoted to a proper ADR later — for now this note plus the git history is the record.
+
+## Files Changed
+
+- `cloudflare/worker.js`
+
+---
+
 ## v0.0.929 — Fix: ACME Challenge Path Was Auth-Gated, Breaking HTTPS Cert Renewal
 
 GitHub Pages' custom-domain HTTPS certificate (Let's Encrypt, auto-renewed) was stuck in a `bad_authz` state and unable to renew. `/.well-known/acme-challenge/*` — the path Let's Encrypt's HTTP-01 validator requests to prove domain ownership — had no exemption in the Worker's routing, so it fell into the same session-gate as any other unrecognized path and got 302-redirected to `/auth.html`. A login-page redirect can never satisfy an ACME challenge, so every renewal attempt failed permanently. Likely worked once because the domain probably wasn't proxied through this Worker yet the first time a cert was issued.
