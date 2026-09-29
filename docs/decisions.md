@@ -14,6 +14,16 @@ Lightweight ADR format: **Status → Context → Decision → Consequences**
 
 **Consequences:** No tree-shaking, no TypeScript, no hot reload. No one accidentally breaks the app by running `npm update`. The entire app loads from a file open or a GitHub Pages URL with zero network round-trips for dependencies.
 
+### Vendored runtime exceptions
+
+A small number of browser-shipped files are vendored (checked into the repo, not fetched from a CDN) rather than handwritten, because the underlying logic (barcode decoding, test running) is not something to reimplement. Each exception is listed here with its provenance so it can be reviewed by hand on update, since none of these get npm's automated advisory tooling.
+
+| File | Source | Version / commit | License | SHA-256 |
+|---|---|---|---|---|
+| `js/vendor/jsQR.js` | [`cozmo/jsQR`](https://github.com/cozmo/jsQR), `dist/jsQR.js` | commit `8e6a036beafa7053dd44b1b76ac578d22b1b3311` (2021-08-24, latest on `master`) | Apache-2.0 | `f03d84bd44da83cd3d365ec16bfa7fe969357baac1c8b13914481ec7c7ef24a3` |
+
+`jsQR` is no longer actively maintained upstream. Because there's no automated update path, a person must re-review the diff by hand before ever bumping the pinned commit, and the recorded SHA-256 must be verified against the vendored file on every PR that touches it.
+
 ---
 
 ## ADR-002: Privacy-First Storage — User Data Never Leaves the Device
@@ -93,6 +103,8 @@ Lightweight ADR format: **Status → Context → Decision → Consequences**
 **Decision:** Authentication via Cloudflare Workers is optional and serves only as an access gate for the hosted instance. The app behaves identically without it. The Worker acts as a reverse proxy — unauthenticated requests to protected routes redirect to `/auth.html`. Access is allowlist-based; there is no self-registration. The Worker never handles or stores user workout data.
 
 **Consequences:** Users must be manually added to the ALLOWLIST KV. The Worker requires a Cloudflare account, a `RESEND_API_KEY` secret (Resend API for email), and a `wrangler.toml` file with the four KV namespace bindings. Anyone forking the repo to run locally needs none of this.
+
+**Update (2026-09-25, coach module):** This ADR's title is no longer fully accurate. As of ADR-014, the Worker is not purely a hosting-only gate — it also hosts a coach-facing API (`/coach/api/*`) that validates QR-code pickup scans, writes rows to a team-owned Google Sheet, and sends Resend emails to parents and admins. The "hosting-only gate, never handles or stores user workout data" framing still holds **for the athlete-facing app and its localStorage keys** — that boundary is unchanged and is restated in ADR-014. What's changed is that the Worker is no longer purely a pass-through/redirect layer with zero app logic of its own; the coach module is real server-side application logic, scoped to a separate, opt-in class of data (coach and family PII, never workout data) with its own privacy posture documented in ADR-014.
 
 ---
 
@@ -212,3 +224,32 @@ The full Google Drive OAuth path was evaluated. It requires: a `client_secret` s
 **Decision:** Add a second required checkbox to the disclaimer modal, alongside the existing "I am under 18" one: "I have consulted with my physician or primary care provider before starting this program." `#btn-accept-disclaimer` (`app.html`) now ships with the `disabled` attribute by default; `updateAcceptButtonState()` (`js/app.js`) only enables it once this checkbox is checked (and, for self-declared minors, once guardian consent has also been submitted). `DISCLAIMER_VERSION` was bumped to re-prompt existing users, per the versioning mechanism established in ADR-012.
 
 **Consequences:** Every user must now take an affirmative action (checking a box making a factual claim) rather than just reading text, which is a stronger record than the pre-existing instructional sentence — mirrors the same reasoning as ADR-012's minor/guardian consent design. This does not verify the claim is true, same as the age checkbox doesn't verify age; it only makes the record harder to disclaim after the fact ("I never even told you I hadn't seen a doctor").
+
+---
+
+## ADR-014: Coach Module and Server-Side Coach Data
+
+**Status:** Accepted
+
+**Context:** Coaches need an in-app way to run pickup sign-out at practice: scan an adult's QR card, scan each kid's card, and get an immediate green/yellow/red read on whether that adult is authorized to take that kid, without keeping a paper roster on a clipboard. This is fundamentally different from every other feature in the app. Every existing feature operates on the *athlete's own* workout data, which ADR-002 keeps entirely on-device. Pickup sign-out operates on *other people's* data — a roster of kids and their authorized adults, largely minors, including names, emails, and phone numbers — that a coach needs validated in real time against something durable enough to survive a phone being dropped or swapped. That can't be done from on-device storage alone; some server has to hold the roster and the pickup log. The question this ADR answers is *whose* server, and what it's allowed to persist.
+
+**Decision:**
+
+(a) **The team's Google Sheet, owned by the team admin, is the only durable store of names, emails, and phone numbers — not anything Cloudflare-owned.** The team admin already manages rosters in Sheets/Forms today; this keeps the liability for that PII exactly where it already sits, with the team, rather than transferring it to whoever happens to run the SpikeFit Worker. The Worker authenticates to Google as a service account (`GOOGLE_SA_KEY`, RS256-signed JWT, `spreadsheets` scope) and both reads the roster and appends log rows directly — no Google Apps Script layer in between.
+
+(b) **No-PII-in-Cloudflare-owned-storage is a first-class rule, not an implementation detail.** No key in any Worker-owned KV namespace (`TEAMS`, `RATELIMIT`, or any future namespace) may ever hold a kid's or adult's name, email, or phone number — IDs only. The one exception is direct pass-through: a name interpolated into a Sheets `append` request body or a Resend email body in-flight, never written to KV. Where the UI needs a name to display (the adult's name in the pickup header, the "already out" banner, a yellow card's list of authorized adults), the Worker resolves it from the **roster cache** at response time and returns it in that one response — it's never the thing being persisted. The roster cache itself lives in the Workers Cache API (`caches.default`, a 60-second max-age, not KV) rather than KV, both because KV writes are quota-limited on the free plan and because a cache doesn't need the durability or cross-region replication KV provides.
+
+(c) **What KV actually stores, and for how long:** rate-limit counters (`coachapi:<email>`, 60s), scan idempotency keys (`evt:<eventId>`, 48h), a same-day duplicate-pickup marker (`out:<team>:<date>:<kidId>` → `{ at, adultId, coach }`, 36h, IDs only — no adult name), and a pending-override marker for the yellow-confirm flow (`pending:<eventId>`, 10 min, IDs only). All of these are operational bookkeeping with short TTLs, not records of who anyone is.
+
+(d) **Alternatives considered and rejected:**
+  - *Google Apps Script as an intermediary.* Rejected — it adds a second deployment surface and a second place auth can silently drift, for no privacy benefit over calling the Sheets API directly from the Worker.
+  - *Caching the roster only on the coach's phone, never server-side.* Rejected — the phone can't be the source of truth for whether an ID is still active (a revoked card, a newly added sibling) without a server round-trip anyway, and a phone-resident roster cache would itself become an unmanaged copy of children's PII sitting in browser storage indefinitely.
+  - *Moving pickup logging to a Cloudflare-owned store (D1), with the coach exporting a CSV from the Worker on "Done" instead of writing to Sheets.* This was the most seriously considered alternative — it would have simplified the server code (no Google JWT/service-account plumbing) and kept everything in one place. Rejected because it would make the solo maintainer of this repository the **data controller** for children's names, emails, and phone numbers the moment that data lived in Cloudflare-owned storage, even transiently at rest — a liability posture this project is not set up to carry, and a materially different privacy stance than every other feature in the app. Keeping the Sheet as the durable store, owned and shared by the team admin, keeps that controller role with the team, matching how teams already handle this data via Sheets/Forms.
+
+(e) **The workout-data rule is unchanged, not superseded.** ADR-002's boundary — `completedDates`, `completedExercises`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `combineResults`, `storagePreference`, `lastBackupAt` never leave the device — still applies with zero exceptions. The coach module is additive: a separate class of data (coach/family PII), with its own separate privacy posture, that never intersects with an athlete's workout data. No `/coach/api/*` endpoint reads or accepts any protected workout key; this is a standing Privacy Boundary Auditor check.
+
+(f) **Accepted limitations, recorded here so they aren't rediscovered as surprises:**
+  - The `out:` same-day duplicate-pickup check is **best-effort, not a guaranteed lock.** Workers KV is only eventually consistent across edge locations, so two coaches (or the same coach on two devices) scanning the same kid at nearly the same moment at different edge locations could both see "not yet out." This is a UX warning, not a release-blocking control — the human coach remains the actual safeguard.
+  - The Google Sheets API quota is **per Google Cloud project, shared across every team** using the one service account — not allocated per team. Fine at the current number of teams; a future scaling limit if the coach module is adopted widely, at which point per-team service accounts or a quota-pooling strategy would need revisiting.
+
+**Consequences:** Deploying the coach module for a team requires the team admin to create and share a Google Sheet, and requires the Worker deployment to hold a `GOOGLE_SA_KEY` secret — a new, high-value credential that must never be logged or returned in a response. The Worker gains real application logic (roster validation, override review, email alerts) for the first time, which ADR-007 is updated to reflect. Any future feature that needs to persist a person's name, email, or phone number must default to "does this belong in the team's Sheet, not in Cloudflare KV" and justify any deviation from that default here, not silently.

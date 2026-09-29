@@ -24,7 +24,7 @@ When you push a commit or open a pull request:
 - **Codacy** runs its engine suite (ESLint for JS, Pylint for Python, CSSLint for CSS) and posts a status check and inline comments on the PR. Configuration in `.codacy.yml`.
 - **SonarCloud** runs its scanner and posts a Quality Gate status check on the PR. Configuration in `sonar-project.properties`.
 
-Both services ignore the paths listed in their config files (`tests/unit/qunit/`, `fonts/`, `img/`).
+Both services ignore the paths listed in their config files (`tests/unit/qunit/`, `js/vendor/`, `fonts/`, `img/`).
 
 ---
 

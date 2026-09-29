@@ -12,7 +12,8 @@
 
 const TEAMS = {
     tigers: { css: 'css/themes/tigers.css', logo: 'img/teams/tigers-logo.svg' },
-    lions:  { css: 'css/themes/lions.css',  logo: 'img/teams/lions-logo.png'  }
+    lions:  { css: 'css/themes/lions.css',  logo: 'img/teams/lions-logo.png'  },
+    millis: { css: 'css/themes/millis.css', logo: 'img/teams/millis-logo.png' }
 };
 
 // Pure, testable. Returns the resolved team slug or null.

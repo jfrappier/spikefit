@@ -44,6 +44,19 @@ const browserGlobals = {
     performance: 'readonly',
     self: 'readonly',
     addEventListener: 'readonly',
+    AbortController: 'readonly',
+};
+
+// ─── Cloudflare Worker runtime globals ───────────────────────────────────────
+// Not part of browserGlobals — Workers-only (or Worker-relevant) APIs used by
+// cloudflare/worker.js's coach-module Sheets/JWT code (ADR-014).
+const workerGlobals = {
+    Intl: 'readonly',
+    atob: 'readonly',
+    btoa: 'readonly',
+    TextEncoder: 'readonly',
+    TextDecoder: 'readonly',
+    caches: 'readonly',
 };
 
 // ─── SpikeFit cross-file app globals ─────────────────────────────────────────
@@ -64,6 +77,8 @@ const appGlobals = {
     checkStorageChoice: 'readonly',
     shouldShowBackupNudge: 'readonly',
     showBackupNudge: 'readonly',
+    // js/vendor/jsQR.js → js/coach.js (ADR-001 vendored exception)
+    jsQR: 'readonly',
 };
 
 const scriptRules = {
@@ -133,6 +148,11 @@ const scriptRules = {
 };
 
 export default [
+    // ── Vendored, unmodified third-party code — not linted against project
+    //    rules. See docs/decisions.md ADR-001 "Vendored runtime exceptions".
+    {
+        ignores: ["js/vendor/**"],
+    },
     // ── All project JS files (plain scripts, not ES modules) ──────────────────
     {
         files: ["**/*.js"],
@@ -150,6 +170,9 @@ export default [
         files: ["cloudflare/**/*.js"],
         languageOptions: {
             sourceType: "module",
+            globals: {
+                ...workerGlobals,
+            },
         },
     },
     // ── Unit tests: add QUnit global ──────────────────────────────────────────
@@ -159,6 +182,14 @@ export default [
             globals: {
                 QUnit: 'readonly',
             },
+        },
+    },
+    // ── Worker pure-function tests: node --test, ES modules (see
+    //    tests/worker/package.json and cloudflare/package.json) ──────────────
+    {
+        files: ["tests/worker/**/*.js"],
+        languageOptions: {
+            sourceType: "module",
         },
     },
 ];

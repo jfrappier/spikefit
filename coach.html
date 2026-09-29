@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Coach — SpikeFit</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="/fonts/fonts.css?v=0.0.715">
+  <link rel="stylesheet" href="css/base.css?v=0.0.715">
+  <script src="js/team.js?v=0.0.926"></script>
+  <link rel="stylesheet" href="css/layout.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/buttons.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/forms.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/cards.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/modals.css?v=0.0.811">
+  <link rel="stylesheet" href="css/components/coach.css?v=0.0.927">
+  <script src="js/vendor/jsQR.js?v=0.0.925" defer></script>
+  <script src="js/coach.js?v=0.0.927" defer></script>
+</head>
+<body class="auth-body coach-body">
+
+<div class="auth-container coach-container">
+
+  <!-- Loading -->
+  <div id="view-loading" class="card">
+    <img src="logo.png" alt="SpikeFit" class="logo">
+    <h1>Coach</h1>
+    <p class="subtitle">Loading your teams…</p>
+  </div>
+
+  <!-- Team picker (multi-team coach, not on a team subdomain) -->
+  <div id="view-team-picker" class="card u-hidden">
+    <img src="logo.png" alt="SpikeFit" class="logo">
+    <h1>Choose a Team</h1>
+    <p class="subtitle">You coach more than one team. Pick one to continue.</p>
+    <div id="team-picker-list" class="coach-team-list"></div>
+  </div>
+
+  <!-- Hub -->
+  <div id="view-hub" class="card u-hidden">
+    <img src="logo.png" alt="SpikeFit" class="logo">
+    <h1 id="hub-team-name">Coach</h1>
+    <p class="subtitle" id="hub-subtitle">Coach tools for your team.</p>
+
+    <div id="hub-tiles" class="coach-tile-grid"></div>
+
+    <p id="hub-no-features" class="hint u-hidden">No coach tools are enabled for this team.</p>
+
+    <div id="hub-queue-badge" class="coach-queue-badge u-hidden"></div>
+
+    <button class="btn btn-ghost" id="btn-switch-team" type="button">Switch team</button>
+    <button class="btn btn-ghost" id="btn-logout" type="button">Log out</button>
+  </div>
+
+  <!-- Pickup feature -->
+  <div id="view-pickup" class="coach-pickup u-hidden">
+    <div class="coach-pickup-header">
+      <button class="btn-icon" id="btn-back-to-hub" type="button" aria-label="Back">←</button>
+      <h1>Pickup</h1>
+      <div id="pickup-queue-badge" class="coach-queue-badge u-hidden"></div>
+    </div>
+
+    <div id="offline-banner" class="coach-offline-banner u-hidden">
+      UNVERIFIED — check manually. You're offline; scans are queued and will verify when the connection returns.
+    </div>
+
+    <div class="coach-scanner">
+      <video id="coach-video" playsinline muted></video>
+      <canvas id="coach-canvas" class="u-hidden"></canvas>
+      <div id="scan-flash" class="coach-scan-flash"></div>
+      <div id="camera-denied" class="coach-camera-denied u-hidden">
+        <p>Camera access was denied or isn't available. Enable camera access in your browser settings, or enter card IDs manually below.</p>
+      </div>
+    </div>
+
+    <p id="pickup-status" class="coach-pickup-status">Scan the adult's card.</p>
+
+    <details class="coach-manual-entry">
+      <summary>Enter a card ID manually</summary>
+      <label for="manual-id-input">Card ID</label>
+      <input type="text" id="manual-id-input" placeholder="P-XXXXXX or K-XXXXXX" autocomplete="off" autocapitalize="characters">
+      <button class="btn" id="manual-submit-btn" type="button">Submit</button>
+    </details>
+
+    <div id="pickup-results" class="coach-results"></div>
+
+    <button class="btn" id="btn-done" type="button" disabled>Done</button>
+  </div>
+
+</div>
+
+<!-- Toast (mirrors app.html's #app-toast markup/pattern) -->
+<div id="coach-toast" class="toast-container">
+  <span id="coach-toast-icon" class="toast-icon">🏐</span>
+  <div class="toast-content">
+    <div id="coach-toast-title" class="toast-title"></div>
+    <div id="coach-toast-text" class="toast-text"></div>
+  </div>
+  <button class="toast-close" id="coach-toast-close" type="button" aria-label="Close">&times;</button>
+</div>
+
+</body>
+</html>

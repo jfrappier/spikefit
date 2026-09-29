@@ -1,4 +1,7 @@
+import functools
+import http.server
 import json
+import threading
 from pathlib import Path
 import pytest
 from playwright.sync_api import Page
@@ -53,3 +56,26 @@ def auth_page(page: Page):
     ))
     page.goto(AUTH_URL)
     return page
+
+
+@pytest.fixture(scope="session")
+def http_server_base_url():
+    """
+    Serve the repo root over real HTTP for tests that can't use file:// —
+    coach.html's fetch() calls to /coach/api/* would resolve against a
+    file:// origin instead of hitting page.route() mocks the way they do
+    against an http:// origin. See tests/e2e/test_coach.py.
+    """
+    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(REPO_ROOT))
+    # Bind to port 0 (OS-assigned free port) directly on the server itself,
+    # rather than probing with a separate socket first, to avoid a race
+    # where something else grabs the port in between.
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{port}"
+    finally:
+        server.shutdown()
+        server.server_close()

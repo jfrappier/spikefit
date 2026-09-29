@@ -1,0 +1,3 @@
+KidID,KidName,AuthorizedParentIDs,Active,Notes
+K-7F3QX9,Jane Example,"P-2M8KD4, P-9TQW1R",TRUE,
+K-3H9VBN,John Example,P-2M8KD4,TRUE,sibling of Jane

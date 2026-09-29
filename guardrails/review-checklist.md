@@ -104,7 +104,17 @@ Known false positives to ignore: Codacy flagging `acwr.test.js` and `workout-key
 - [ ] `STATIC_FILES` set updated if new files need to be served through the Worker
 - [ ] New routes have explicit auth handling (session check or documented public exemption)
 - [ ] ALLOWLIST gate not bypassed in the OTP send handler
-- [ ] KV namespace names (`SESSIONS`, `OTPS`, `RATELIMIT`, `ALLOWLIST`) not renamed without updating `wrangler.toml` and architecture docs
+- [ ] KV namespace names (`SESSIONS`, `OTPS`, `RATELIMIT`, `ALLOWLIST`, `CONSENTS`, `TEAMS`) not renamed without updating `wrangler.example.toml` and architecture docs
+
+## Coach Module (ADR-014)
+
+- [ ] No kid/adult name, email, or phone number written to any Cloudflare-owned store (KV or the Cache API) — IDs only, everywhere except a direct pass-through into a Sheets append call or a Resend email body
+- [ ] Every `/coach/api/*` route re-reads `ALLOWLIST.coach.teams` on that request (not cached from session creation), resolves the team via `coach.teams` (never the hostname alone), and checks the team's feature flag
+- [ ] POST routes on `/coach/api/*` still check `Content-Type: application/json` and `Origin === url.origin`
+- [ ] No coach endpoint reads or accepts a protected workout key (`completedDates`, `spikefit_fresh_logs`, `workoutLevel`, `activeWorkoutStart`, `completedExercises`, `combineResults`, `storagePreference`, `lastBackupAt`)
+- [ ] Sheets writes still use `valueInputOption=RAW`, never `USER_ENTERED`
+- [ ] `evt:` idempotency still prevents a retried/replayed scan from writing a duplicate row
+- [ ] `js/vendor/jsQR.js`'s SHA-256 still matches the one recorded in `docs/decisions.md` ADR-001, if that file was touched
 
 ---
 

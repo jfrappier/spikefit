@@ -28,6 +28,10 @@ New localStorage keys use the `spikefit_` prefix (e.g., `spikefit_fresh_logs`) f
 
 User workout data (`completedDates`, `completedExercises`, `spikefit_fresh_logs`, `workoutLevel`) must never be transmitted to any server the app controls. No fetch or XHR call may include this data. The Cloudflare Worker must never receive or store workout data — it handles auth tokens only. Any future BYOS feature is user-configured; the app never provides or controls the backend. Any new network call (even an asset CDN fallback) must be disclosed in the Privacy modal.
 
+## Coach Module: No PII in Cloudflare-Owned Storage
+
+Kid/adult names, emails, and phone numbers handled by the coach module (ADR-014) must never be written to a Cloudflare-owned store — no KV `.put()`, no Cache API entry. IDs only, with short bounded TTLs. The one exception is direct pass-through into a Sheets `append` call or a Resend email body, in-flight, never persisted. A name needed for display (an adult's name in a response) must be resolved from the roster cache at response time, not stored. The team's own Google Sheet is the only durable store of that data. This is in addition to, not a replacement for, the Privacy Absolute rule below — the coach module must never read or transmit a workout key either.
+
 ## XSS: No User Data in innerHTML
 
 The app uses `innerHTML` extensively for rendering workout content. Workout data in the `workouts` object is static and hardcoded — it is safe to interpolate. User-controlled data (anything read from localStorage or user input) must never be interpolated into `innerHTML` strings. Use `textContent` or `createElement` / `setAttribute` instead.
