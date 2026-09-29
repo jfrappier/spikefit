@@ -69,7 +69,7 @@ Current file breakdown:
 ### Contents of `js/workouts.js`
 
 - `workouts` object — 12 workout definitions (A/B/C/D × Beginner/Intermediate/Advanced)
-- `schedule` array — 7-day rotating weekly schedule: A, D, B, D, C, A, Rest
+- `schedule` array — 7-day rotating weekly schedule: D, A, B, A, D, C, Rest
 
 Custom workout sets for coaches/teams follow the same shape and variable names. The Cloudflare Worker can serve a different `workouts-*.js` file at the `/js/workouts.js` URL based on the user's email mapping in the ALLOWLIST KV.
 
@@ -247,7 +247,7 @@ Workouts are defined in the `workouts` object. The naming convention:
 
 `getWorkoutKey(baseKey)` converts the day's base letter (`'A'`, `'B'`, `'C'`, `'D'`) to the level-appropriate key using `workoutLevel`. Never hardcode level-suffixed keys directly.
 
-The weekly schedule (the `schedule` array): **A, D, B, D, C, A, Rest** (Monday through Sunday).
+The weekly schedule (the `schedule` array): **D, A, B, A, D, C, Rest** (Monday through Sunday).
 
 Exercises marked with `impact: 'high'` carry an `alt` object. When `FRESH_SYSTEM.needsRegulation()` returns true, `renderDaily()` swaps the high-impact exercise for its `alt` automatically.
 

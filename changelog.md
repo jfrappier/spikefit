@@ -1,5 +1,61 @@
 # SpikeFit Changelog
 
+## v0.0.931 — Add Home-Friendly Exercises and Rework the Weekly Schedule (FR-19)
+
+Moves Workout A (Vertical Power) to Tuesday and Thursday so the most important sessions land on the days least likely to be skipped. Also adds single-leg landing, loaded jump, step-up, squat, lateral hop, acceleration, and rotational throw work across the A, B, C, and D tiers. Every addition only needs home equipment (dumbbells, a box or bench, a med ball, a wall), and most are swaps rather than additions so session length stays about the same.
+
+---
+
+## 🏋️ Workouts
+
+### Workout A: Vertical Power
+
+- **A (Beginner):** Replaced Superset 2 Glute Bridge (`a6`) with bodyweight Step-Ups (`a7`). Glute Bridge already appears in the warm-up.
+- **A2 (Intermediate):** Replaced DB Reverse Lunges (`a2-4`) with DB Step-Ups w/ Knee Drive (`a2-7`). Added Heel-Elevated Goblet Squat (`a2-8`), which restores a bilateral squat pattern that A2 and A3 were missing.
+- **A3 (Advanced):** Added DB Squat Jumps (`a3-11`, high impact, alt: DB Squat to Calf Raise) to Superset 1. In Superset 2, replaced DB Reverse Lunges (`a3-4`) with DB Step-Ups w/ Knee Drive (`a3-12`), replaced DB Romanian Deadlifts (`a3-6`) with Single-Leg DB RDL (`a3-13`), and added Heel-Elevated Goblet Squat (`a3-14`). In Superset 3, replaced Depth Drops (`a3-8`) with Single-Leg Depth Drops (`a3-10`, high impact, alt unchanged).
+
+### Workout B: Upper Body Armor
+
+- **B / B2 / B3:** Updated the "Pull-Ups or DB Rows" notes and video search to the supported single-arm DB row.
+
+### Workout C: Defense Agility
+
+- **C (Beginner):** Added Lateral Line Hops (`c5`) to Superset 1, the first lateral plyometric at the beginner tier.
+- **C3 (Advanced):** Replaced High Knees (`c3-9`) with Wall Drives (`c3-10`) for first-step acceleration.
+
+### Workout D: Core & Swing Mechanics
+
+- **D2 / D3:** Replaced Seated Rotational Twists (`d2-2`, `d3-2`) with Split-Stance Rotational Med Ball Throws (`d2-10`, `d3-11`). Weighted Russian Twists remain in Workout B.
+
+Replaced exercises get new IDs so past `completedExercises` entries never point at a different exercise.
+
+## 📅 Schedule
+
+### Weekly schedule reordered
+
+The `schedule` array changes from **A · D · B · D · C · A · Rest** to **D · A · B · A · D · C · Rest** (Monday → Sunday):
+
+| Day | Before | After |
+|---|---|---|
+| Monday | A: Vertical Power | D: Core & Swing Mechanics |
+| Tuesday | D: Core & Swing Mechanics | A: Vertical Power |
+| Wednesday | B: Upper Body Armor | B: Upper Body Armor |
+| Thursday | D: Core & Swing Mechanics | A: Vertical Power |
+| Friday | C: Defense Agility | D: Core & Swing Mechanics |
+| Saturday | A: Vertical Power | C: Defense Agility |
+| Sunday | Rest/Run | Rest/Run |
+
+The two A sessions stay 48 hours apart with an upper-body day between them, and a skipped Monday or Friday now costs a lower-impact D session instead of a vertical power session.
+
+## Files Changed
+
+- `js/workouts.js`
+- `app.html` (cache-bust bump)
+- `CLAUDE.md`
+- `docs/architecture.md`
+
+---
+
 ## v0.0.930 — Revert: ACME Challenge Passthrough (v0.0.929)
 
 Removed the `/.well-known/acme-challenge/*` exemption added in v0.0.929. It was a real bug fix (that path genuinely was getting redirected to `/auth.html`), but subsequent investigation found GitHub Pages' automatic HTTPS certificate provisioning is not a supported configuration at all when a third-party proxy (Cloudflare, in front of this Worker) sits in front of the custom domain — GitHub's ACME client does checks beyond what a clean HTTP-01 response through a proxy can satisfy. Confirmed the routing fix worked (proper GitHub/Fastly responses, no Cloudflare interference) and the cert still couldn't authorize even after a 12-hour wait and repeated retries, which matches that conclusion rather than a fixable routing issue.
