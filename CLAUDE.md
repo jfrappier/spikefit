@@ -6,6 +6,14 @@ SpikeFit is a mobile-responsive volleyball training app. It has zero runtime dep
 
 ---
 
+## Check Vendor Docs Before Guessing
+
+When a task involves a third-party platform or vendor — Cloudflare, GitHub Pages, Google Cloud/Sheets API, or anything else outside this repo's own code — **check that vendor's own documentation for what's actually supported before proposing configuration changes.** Don't iterate through plausible-sounding settings hoping one works. If the vendor's docs say the thing being asked for isn't a supported configuration, say that plainly and explain why, instead of continuing to suggest tweaks.
+
+This is written down because it was learned the expensive way: GitHub Pages' automatic HTTPS certificate provisioning for a custom domain is not supported when a third-party proxy (Cloudflare) sits in front of that domain — documented GitHub behavior, checkable in minutes. Multiple days were spent instead tuning Cloudflare Page Rules, Bot Fight Mode, and Worker routing before reaching that conclusion by trial and error. The actual fix (Cloudflare SSL/TLS mode `Full`, so Cloudflare's own certificate covers visitors regardless of GitHub's) was available immediately to anyone who'd checked GitHub's docs on custom domains + proxies first.
+
+---
+
 ## Hard Constraints — Read Before Touching Code
 
 - **No npm packages or CDN imports in production paths.** Dev tooling (Playwright, QUnit as a vendored file) is exempt.
