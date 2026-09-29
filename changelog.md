@@ -1,8 +1,8 @@
 # SpikeFit Changelog
 
-## v0.0.931 — Add Home-Friendly Power, Landing, and Rotation Exercises
+## v0.0.931 — Add Home-Friendly Exercises and Rework the Weekly Schedule
 
-Adds single-leg landing, loaded jump, step-up, squat, lateral hop, acceleration, and rotational throw work across the A, B, C, and D tiers. Every addition only needs home equipment (dumbbells, a box or bench, a med ball, a wall), and most are swaps rather than additions so session length stays about the same.
+Moves Workout A (Vertical Power) to Tuesday and Thursday so the most important sessions land on the days least likely to be skipped. Also adds single-leg landing, loaded jump, step-up, squat, lateral hop, acceleration, and rotational throw work across the A, B, C, and D tiers. Every addition only needs home equipment (dumbbells, a box or bench, a med ball, a wall), and most are swaps rather than additions so session length stays about the same.
 
 ---
 
@@ -29,10 +29,30 @@ Adds single-leg landing, loaded jump, step-up, squat, lateral hop, acceleration,
 
 Replaced exercises get new IDs so past `completedExercises` entries never point at a different exercise.
 
+## 📅 Schedule
+
+### Weekly schedule reordered
+
+The `schedule` array changes from **A · D · B · D · C · A · Rest** to **D · A · B · A · D · C · Rest** (Monday → Sunday):
+
+| Day | Before | After |
+|---|---|---|
+| Monday | A: Vertical Power | D: Core & Swing Mechanics |
+| Tuesday | D: Core & Swing Mechanics | A: Vertical Power |
+| Wednesday | B: Upper Body Armor | B: Upper Body Armor |
+| Thursday | D: Core & Swing Mechanics | A: Vertical Power |
+| Friday | C: Defense Agility | D: Core & Swing Mechanics |
+| Saturday | A: Vertical Power | C: Defense Agility |
+| Sunday | Rest/Run | Rest/Run |
+
+The two A sessions stay 48 hours apart with an upper-body day between them, and a skipped Monday or Friday now costs a lower-impact D session instead of a vertical power session.
+
 ## Files Changed
 
 - `js/workouts.js`
 - `app.html` (cache-bust bump)
+- `CLAUDE.md`
+- `docs/architecture.md`
 
 ---
 

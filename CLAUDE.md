@@ -134,7 +134,7 @@ The `workouts` object has 12 entries. Naming convention:
 
 `getWorkoutKey(baseKey)` converts the base letter to the level-appropriate key. Use it; never hardcode the suffix.
 
-Weekly schedule (the `schedule` array, Monday → Sunday): **A · D · B · D · C · A · Rest**
+Weekly schedule (the `schedule` array, Monday → Sunday): **D · A · B · A · D · C · Rest**
 
 Exercises with `impact: 'high'` carry an `alt` object. When `FRESH_SYSTEM.needsRegulation()` is true, `renderDaily()` swaps these automatically.
 

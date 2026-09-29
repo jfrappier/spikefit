@@ -430,11 +430,11 @@ const workouts = {
 };
 
 const schedule = [
-    { day: 'Monday',    workout: 'A' },
-    { day: 'Tuesday',   workout: 'D' },
+    { day: 'Monday',    workout: 'D' },
+    { day: 'Tuesday',   workout: 'A' },
     { day: 'Wednesday', workout: 'B' },
-    { day: 'Thursday',  workout: 'D' },
-    { day: 'Friday',    workout: 'C' },
-    { day: 'Saturday',  workout: 'A' },
+    { day: 'Thursday',  workout: 'A' },
+    { day: 'Friday',    workout: 'D' },
+    { day: 'Saturday',  workout: 'C' },
     { day: 'Sunday',    workout: 'Rest/Run' }
 ];
