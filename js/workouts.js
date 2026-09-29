@@ -25,7 +25,7 @@ const workouts = {
                     { id: 'a3', name: 'DB Reverse Lunges', reps: '8 reps / leg', notes: 'Drive through front heel.', video: 'Dumbbell Reverse Lunges' },
                     { id: 'a4', name: 'Dead Bugs', reps: '10 reps / side', notes: 'Lower back glued to floor.', video: 'Dead Bug exercise' },
                     { id: 'a5', name: 'Goblet Squat', reps: '10 reps', notes: 'Hold DB at chest, sit into hips, drive through heels.', video: 'Goblet Squat' },
-                    { id: 'a6', name: 'Glute Bridge', reps: '15 reps', notes: 'Squeeze glutes at top, drive hips up through heels.', video: 'Glute Bridge' }
+                    { id: 'a7', name: 'Step-Ups', reps: '8 reps / leg', notes: 'Bodyweight. Use a sturdy box, bench, or bottom stair. Drive through the heel on the box — don\'t push off the back foot.', video: 'Bodyweight Step Ups' }
                 ]
             }
         ]
@@ -55,9 +55,10 @@ const workouts = {
             {
                 title: 'Superset 2 (3 Rounds - Rest 60s)',
                 exercises: [
-                    { id: 'a2-4', name: 'DB Reverse Lunges', reps: '10 reps / leg', notes: 'Drive through front heel.', video: 'Dumbbell Reverse Lunges' },
+                    { id: 'a2-7', name: 'DB Step-Ups w/ Knee Drive', reps: '8 reps / leg', notes: 'Hold a DB at your chest. Step onto a bench or box, drive the free knee up to hip height at the top. Lower with control.', video: 'Dumbbell Step Up Knee Drive' },
                     { id: 'a2-5', name: 'Dead Bugs', reps: '12 reps / side', notes: 'Lower back glued to floor.', video: 'Dead Bug exercise' },
-                    { id: 'a2-6', name: 'DB Romanian Deadlifts', reps: '10 reps', notes: 'Hinge at the hips, slight knee bend.', video: 'Dumbbell RDL' }
+                    { id: 'a2-6', name: 'DB Romanian Deadlifts', reps: '10 reps', notes: 'Hinge at the hips, slight knee bend.', video: 'Dumbbell RDL' },
+                    { id: 'a2-8', name: 'Heel-Elevated Goblet Squat', reps: '10 reps', notes: 'Heels on a 1-2 inch board, plates, or thick book. Hold DB at chest, sit straight down, knees travel over toes.', video: 'Heel Elevated Goblet Squat' }
                 ]
             }
         ]
@@ -78,7 +79,7 @@ const workouts = {
                 title: 'Superset 1 (4 Rounds - Rest 60-90s)',
                 exercises: [
                     { id: 'b1', name: 'DB Push Press', reps: '8 reps', notes: 'Slight knee dip to drive up.', video: 'Dumbbell Push Press' },
-                    { id: 'b2', name: 'Pull-Ups or DB Rows', reps: '8-10 reps', notes: 'Squeeze back at the top.', video: 'Dumbbell Rows' }
+                    { id: 'b2', name: 'Pull-Ups or DB Rows', reps: '8-10 reps', notes: 'Rows: one hand and knee braced on a bench or chair (or hand on a bench, staggered stance). Pull the DB to your hip, squeeze back at the top.', video: 'Supported Single Arm Dumbbell Row' }
                 ]
             },
             {
@@ -113,7 +114,7 @@ const workouts = {
                 title: 'Superset 1 (4 Rounds - Rest 60-90s)',
                 exercises: [
                     { id: 'b2-1', name: 'DB Push Press', reps: '10 reps', notes: 'Slight knee dip to drive up.', video: 'Dumbbell Push Press' },
-                    { id: 'b2-2', name: 'Pull-Ups or DB Rows', reps: '10-12 reps', notes: 'Squeeze back at the top.', video: 'Dumbbell Rows' },
+                    { id: 'b2-2', name: 'Pull-Ups or DB Rows', reps: '10-12 reps', notes: 'Rows: one hand and knee braced on a bench or chair (or hand on a bench, staggered stance). Pull the DB to your hip, squeeze back at the top.', video: 'Supported Single Arm Dumbbell Row' },
                     { id: 'b2-3', name: 'Push-Ups', reps: 'Max Reps', notes: 'Strict form, stop 1 rep shy of failure.', video: 'Perfect Pushup' }
                 ]
             },
@@ -149,7 +150,8 @@ const workouts = {
                 title: 'Superset 1 (4 Rounds - Rest 60-90s)',
                 exercises: [
                     { id: 'c1', name: 'Single-Arm DB Snatches', reps: '6 reps / arm', notes: 'Power from the hips.', video: 'Single-Arm Dumbbell Snatch' },
-                    { id: 'c2', name: 'Lateral Lunges', reps: '8 reps / leg', notes: 'Push hips back.', video: 'Lateral Lunges' }
+                    { id: 'c2', name: 'Lateral Lunges', reps: '8 reps / leg', notes: 'Push hips back.', video: 'Lateral Lunges' },
+                    { id: 'c5', name: 'Lateral Line Hops', reps: '20 seconds', notes: 'Two feet together, hop side to side over a line. Small and quick — stay on the balls of your feet.', video: 'Lateral Line Hops' }
                 ]
             },
             {
@@ -239,7 +241,7 @@ const workouts = {
                 title: 'Volleyball Core (3 Rounds - Rest 45s)',
                 exercises: [
                     { id: 'd2-1', name: 'Hollow Body Hold', reps: '45 seconds', notes: 'Mimics pre-swing mid-air tension. Press lower back into floor.', video: 'Hollow Body Hold' },
-                    { id: 'd2-2', name: 'Seated Rotational Twists', reps: '20 reps / side', notes: 'Focus on torso rotation to simulate arm swing torque.', video: 'Russian Twists' },
+                    { id: 'd2-10', name: 'Split-Stance Rotational Med Ball Throw', reps: '8 reps / side', notes: 'Split stance, side-on to a sturdy outdoor wall. Load the back hip and throw the ball into the wall by rotating through the torso. No wall? Throw to a partner or do rotational slams into the ground.', video: 'Split Stance Rotational Med Ball Throw' },
                     { id: 'd2-3', name: 'Bird-Dog', reps: '12 reps / side', notes: 'Slow and controlled. Builds back and core stability.', video: 'Bird Dog Exercise' },
                     { id: 'd2-4', name: 'Side Plank', reps: '30 seconds / side', notes: 'Keep body in a straight line, push floor away.', video: 'Side Plank' }
                 ]
@@ -275,22 +277,24 @@ const workouts = {
                 exercises: [
                     { id: 'a3-1', name: 'Seated Box Jumps', reps: '6 reps', notes: 'Explode up, jump down, land on two feet.', video: 'Seated Box Jumps', impact: 'high', alt: { name: 'Kettlebell Swings', reps: '20 reps', notes: 'Explosive hip hinge. Protect the knees.', video: 'Kettlebell Swings' } },
                     { id: 'a3-2', name: 'Pogo Jumps', reps: '30 seconds', notes: 'Max ankle stiffness and height.', video: 'Pogo Jumps exercise' },
-                    { id: 'a3-3', name: 'Broad Jumps', reps: '6 reps', notes: 'Explode forward, stick the landing.', video: 'Broad Jumps', impact: 'high', alt: { name: 'Glute Bridges', reps: '20 reps', notes: 'Squeeze glutes at the top.', video: 'Glute Bridge' } }
+                    { id: 'a3-3', name: 'Broad Jumps', reps: '6 reps', notes: 'Explode forward, stick the landing.', video: 'Broad Jumps', impact: 'high', alt: { name: 'Glute Bridges', reps: '20 reps', notes: 'Squeeze glutes at the top.', video: 'Glute Bridge' } },
+                    { id: 'a3-11', name: 'DB Squat Jumps', reps: '5 reps', notes: 'Light DBs at your sides (about 10-20% of bodyweight). Quarter squat, jump max height, land soft on both feet. Reset between reps.', video: 'Dumbbell Squat Jumps', impact: 'high', alt: { name: 'DB Squat to Calf Raise', reps: '10 reps', notes: 'Quarter squat, stand tall onto toes. No jump.', video: 'Squat to Calf Raise' } }
                 ]
             },
             {
                 title: 'Superset 2 (3 Rounds - Rest 60s)',
                 exercises: [
-                    { id: 'a3-4', name: 'DB Reverse Lunges', reps: '12 reps / leg', notes: 'Drive through front heel.', video: 'Dumbbell Reverse Lunges' },
+                    { id: 'a3-12', name: 'DB Step-Ups w/ Knee Drive', reps: '10 reps / leg', notes: 'Hold a DB at your chest. Step onto a bench or box, drive the free knee up to hip height at the top. Lower with control.', video: 'Dumbbell Step Up Knee Drive' },
                     { id: 'a3-5', name: 'Dead Bugs', reps: '15 reps / side', notes: 'Lower back glued to floor.', video: 'Dead Bug exercise' },
-                    { id: 'a3-6', name: 'DB Romanian Deadlifts', reps: '12 reps', notes: 'Hinge at the hips, slight knee bend.', video: 'Dumbbell RDL' }
+                    { id: 'a3-13', name: 'Single-Leg DB RDL', reps: '8 reps / leg', notes: 'DB in the hand opposite the standing leg. Hinge until your torso is near parallel, hips square to the floor. Hold a wall with the free hand if balance breaks down.', video: 'Single Leg Dumbbell RDL' },
+                    { id: 'a3-14', name: 'Heel-Elevated Goblet Squat', reps: '12 reps', notes: 'Heels on a 1-2 inch board, plates, or thick book. Hold DB at chest, sit straight down, knees travel over toes.', video: 'Heel Elevated Goblet Squat' }
                 ]
             },
             {
                 title: 'Superset 3 (3 Rounds - Rest 60s)',
                 exercises: [
                     { id: 'a3-7', name: 'Bulgarian Split Squats', reps: '8 reps / leg', notes: 'Keep chest up, drop back knee down.', video: 'Bulgarian Split Squat' },
-                    { id: 'a3-8', name: 'Depth Drops', reps: '5 reps', notes: 'Step off low box, stick landing instantly.', video: 'Depth Drop', impact: 'high', alt: { name: 'Squat Pulses', reps: '20 seconds', notes: 'Stay low, pulse up and down.', video: 'Squat Pulses' } },
+                    { id: 'a3-10', name: 'Single-Leg Depth Drops', reps: '4 reps / leg', notes: 'Step off a low box on one leg, land on that same leg and stick it instantly. Knee tracks over toes — don\'t let it cave in.', video: 'Single Leg Depth Drop', impact: 'high', alt: { name: 'Squat Pulses', reps: '20 seconds', notes: 'Stay low, pulse up and down.', video: 'Squat Pulses' } },
                     { id: 'a3-9', name: 'Calf Raises', reps: '20 reps', notes: 'Full extension, slow negative.', video: 'Standing Calf Raise' }
                 ]
             }
@@ -314,7 +318,7 @@ const workouts = {
                 title: 'Superset 1 (4 Rounds - Rest 60-90s)',
                 exercises: [
                     { id: 'b3-1', name: 'DB Push Press', reps: '12 reps', notes: 'Slight knee dip to drive up.', video: 'Dumbbell Push Press' },
-                    { id: 'b3-2', name: 'Pull-Ups or DB Rows', reps: '12-15 reps', notes: 'Squeeze back at the top.', video: 'Dumbbell Rows' },
+                    { id: 'b3-2', name: 'Pull-Ups or DB Rows', reps: '12-15 reps', notes: 'Rows: one hand and knee braced on a bench or chair (or hand on a bench, staggered stance). Pull the DB to your hip, squeeze back at the top.', video: 'Supported Single Arm Dumbbell Row' },
                     { id: 'b3-3', name: 'Push-Ups', reps: 'Max Reps', notes: 'Strict form, stop 1 rep shy of failure.', video: 'Perfect Pushup' }
                 ]
             },
@@ -376,7 +380,7 @@ const workouts = {
                 exercises: [
                     { id: 'c3-7', name: 'Lateral Bounds', reps: '8 reps / side', notes: 'Jump sideways off one leg, stick landing.', video: 'Lateral Bounds', impact: 'high', alt: { name: 'Lateral Lunges', reps: '8 reps / side', notes: 'Push hips back.', video: 'Lateral Lunges' } },
                     { id: 'c3-8', name: 'Bear Crawls', reps: '30 seconds', notes: 'Keep knees hovering just off floor.', video: 'Bear Crawl' },
-                    { id: 'c3-9', name: 'High Knees', reps: '30 seconds', notes: 'Pump arms, drive knees up fast.', video: 'High Knees' }
+                    { id: 'c3-10', name: 'Wall Drives', reps: '3 x 5 reps / leg', notes: 'Hands on a wall, body leaning at about 45 degrees. Drive one knee up fast and punch the foot back down under your hips. Trains first-step acceleration.', video: 'Wall Drive Acceleration Drill' }
                 ]
             }
         ],
@@ -400,7 +404,7 @@ const workouts = {
                 title: 'Superset 1: Volleyball Core (3 Rounds - Rest 45s)',
                 exercises: [
                     { id: 'd3-1', name: 'Hollow Body Hold', reps: '60 seconds', notes: 'Mimics pre-swing mid-air tension. Press lower back into floor.', video: 'Hollow Body Hold' },
-                    { id: 'd3-2', name: 'Seated Rotational Twists', reps: '25 reps / side', notes: 'Focus on torso rotation to simulate arm swing torque.', video: 'Russian Twists' },
+                    { id: 'd3-11', name: 'Split-Stance Rotational Med Ball Throw', reps: '10 reps / side', notes: 'Split stance, side-on to a sturdy outdoor wall. Load the back hip and throw the ball into the wall by rotating through the torso. No wall? Throw to a partner or do rotational slams into the ground.', video: 'Split Stance Rotational Med Ball Throw' },
                     { id: 'd3-3', name: 'Bird-Dog', reps: '15 reps / side', notes: 'Slow and controlled. Builds back and core stability.', video: 'Bird Dog Exercise' }
                 ]
             },
