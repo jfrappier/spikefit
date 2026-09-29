@@ -1,6 +1,6 @@
 # SpikeFit Changelog
 
-## v0.0.931 — Add Home-Friendly Exercises and Rework the Weekly Schedule
+## v0.0.931 — Add Home-Friendly Exercises and Rework the Weekly Schedule (FR-19)
 
 Moves Workout A (Vertical Power) to Tuesday and Thursday so the most important sessions land on the days least likely to be skipped. Also adds single-leg landing, loaded jump, step-up, squat, lateral hop, acceleration, and rotational throw work across the A, B, C, and D tiers. Every addition only needs home equipment (dumbbells, a box or bench, a med ball, a wall), and most are swaps rather than additions so session length stays about the same.
 
