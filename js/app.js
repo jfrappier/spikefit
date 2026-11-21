@@ -121,7 +121,7 @@ const FRESH_SYSTEM = {
         return acwr.status === 'danger' || (joints !== null && joints < 5);
     },
 
-    openDashboardModal: () => {
+    renderDashboard: () => {
         const data = FRESH_SYSTEM.calculateACWR();
         const statusEl = document.getElementById('fresh-status');
         const ratioEl = document.getElementById('fresh-ratio');
@@ -151,11 +151,6 @@ const FRESH_SYSTEM = {
             statusEl.style.color = 'var(--text-main)'; 
             ratioEl.style.color = 'var(--text-main)';
         }
-        document.getElementById('fresh-modal').style.display = 'flex';
-    },
-
-    closeDashboardModal: () => {
-        document.getElementById('fresh-modal').style.display = 'none';
     }
 };
 
@@ -239,6 +234,9 @@ function switchTab(tabId, btn) {
     document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
+
+    // F.R.E.S.H. is computed live from the training log, so refresh on every visit.
+    if (tabId === 'fresh') FRESH_SYSTEM.renderDashboard();
 
     if (window.innerWidth <= 980) {
         window.scrollTo({ top: document.getElementById('main').offsetTop - 20, behavior: 'smooth' });
@@ -1084,16 +1082,8 @@ document.getElementById('main-nav').addEventListener('click', e => {
     const btn = e.target.closest('button');
     if (!btn) return;
     const tab = btn.dataset.tab;
-    if (tab) {
-        switchTab(tab, btn);
-    } else if (btn.id === 'btn-nav-fresh') {
-        FRESH_SYSTEM.openDashboardModal();
-    }
+    if (tab) switchTab(tab, btn);
 });
-
-// F.R.E.S.H. Modals
-const closeFreshBtn = document.getElementById('btn-close-fresh');
-if (closeFreshBtn) closeFreshBtn.addEventListener('click', FRESH_SYSTEM.closeDashboardModal);
 
 // Workout controls
 document.getElementById('btn-start-workout').addEventListener('click', () => {

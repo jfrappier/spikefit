@@ -86,7 +86,7 @@ Custom workout sets for coaches/teams follow the same shape and variable names. 
 9. History calendar — `renderHistoryCalendar()`, `changeMonth()`, `checkStreak()`
 10. Badge generation — `generateShareImage()`, `shareBadge()`, `shareTodaysBadge()` (Canvas API)
 11. Render functions — `renderDaily()` (rebuilds full workout HTML from state on every change)
-12. Modal helpers — disclaimer, privacy, readiness check-in, RPE survey, FRESH dashboard
+12. Modal helpers — disclaimer, privacy, readiness check-in, RPE survey (the FRESH dashboard is a regular tab, not a modal)
 13. Event listeners — all delegation-based, set up at page load
 14. Init sequence + splash screen
 

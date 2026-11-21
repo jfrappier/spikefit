@@ -1,5 +1,6 @@
 """E2E tests for the core workout lifecycle."""
 import json
+import re
 from datetime import date
 from playwright.sync_api import expect
 
@@ -71,3 +72,29 @@ def test_completed_workout_appears_in_history(seeded_page):
     p.locator("button", has_text="Calendar").click()
     completed_days = p.locator(".month-date.completed, .calendar-day.completed")
     expect(completed_days.first).to_be_visible(timeout=3000)
+
+
+SEEDED = {"disclaimerAgreed": "0.0.723", "storagePreference": "local", "combineSkipped": "true"}
+
+
+def test_fresh_tab_opens_as_page_not_modal(seeded_page):
+    """F.R.E.S.H. is a regular nav tab: it swaps the active page and has no modal or Close button."""
+    p = seeded_page(SEEDED)
+    p.locator('#main-nav button[data-tab="fresh"]').click()
+    expect(p.locator("#fresh")).to_be_visible()
+    expect(p.locator("#fresh")).to_have_class("container active")
+    expect(p.locator("#daily")).not_to_have_class("container active")
+    expect(p.locator('#main-nav button[data-tab="fresh"]')).to_have_class("active")
+    expect(p.locator("#fresh-modal")).to_have_count(0)
+    expect(p.locator("#btn-close-fresh")).to_have_count(0)
+    # No logged sessions yet → baseline state is shown
+    expect(p.locator("#fresh-status")).to_have_text(re.compile("baseline", re.I))
+
+
+def test_fresh_tab_navigates_to_other_tabs(seeded_page):
+    """Leaving F.R.E.S.H. via another nav button works like any other page."""
+    p = seeded_page(SEEDED)
+    p.locator('#main-nav button[data-tab="fresh"]').click()
+    p.locator('#main-nav button[data-tab="schedule"]').click()
+    expect(p.locator("#schedule")).to_be_visible()
+    expect(p.locator("#fresh")).to_be_hidden()
