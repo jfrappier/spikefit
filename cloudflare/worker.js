@@ -1770,11 +1770,16 @@ async function handleEventsNext(req, env, url) {
   const horizon = shiftDate(today, NEXT_WINDOW_DAYS);
   const guardianId = await hmacId(env.EVENTS_HMAC_KEY, 'g', ctx.team, ctx.email);
 
-  const infos = (await listEventInfos(env, ctx.team))
+  const allInfos = await listEventInfos(env, ctx.team);
+  const infos = allInfos
     .filter(i => i.date >= shiftDate(today, -1) && i.date <= horizon)
     .slice(0, MAX_EVENTS_LOADED);
   const loaded = (await Promise.all(infos.map(i => loadEvent(env, i)))).filter(Boolean);
-  const upcoming = loaded.filter(ev => !hasEnded(ev, nowStamp)).slice(0, NEXT_MAX_EVENTS);
+  const notEnded = loaded.filter(ev => !hasEnded(ev, nowStamp));
+  const upcoming = notEnded.slice(0, NEXT_MAX_EVENTS);
+  // Upcoming events the banner isn't showing: over the cap, or past the window
+  // (a future date can't have ended, so those need no load). Past events never count.
+  const more = (notEnded.length - upcoming.length) + allInfos.filter(i => i.date > horizon).length;
 
   const [name, kids] = await Promise.all([
     readOwnName(env, ctx.team, ctx.selfId),
@@ -1799,6 +1804,7 @@ async function handleEventsNext(req, env, url) {
     types: eventTypesFor(ctx.teamConfig),
     hasName: !!name,
     kidCount: kids.length,
+    more,
     events
   });
 }

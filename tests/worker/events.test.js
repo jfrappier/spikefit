@@ -572,6 +572,26 @@ test('/next shows a canceled event as canceled and skips ended ones', async () =
   assert.deepEqual(r.events.map(e => [e.title, e.canceled]), [['Called off', true]]);
 });
 
+test('/next reports how many more upcoming events there are, never counting past ones', async () => {
+  const env = makeEnv();
+  assert.equal((await call(env, PLAYER, '/events/api/next')).json.more, 0);
+  await createEvent(env, { title: 'Soon' });
+  assert.equal((await call(env, PLAYER, '/events/api/next')).json.more, 0);       // just the one
+  await createEvent(env, { date: shiftDate(TODAY, 40), title: 'Far off' });        // beyond the 14-day window
+  await createEvent(env, { date: shiftDate(TODAY, -1), time: '00:00', endTime: '00:30', title: 'Already over' });
+  const r = (await call(env, PLAYER, '/events/api/next')).json;
+  assert.deepEqual(r.events.map(e => e.title), ['Soon']);
+  assert.equal(r.more, 1);                                                        // 'Far off' counts, 'Already over' doesn't
+});
+
+test('/next counts upcoming events beyond the three it returns', async () => {
+  const env = makeEnv();
+  for (let n = 1; n <= 5; n++) await createEvent(env, { date: shiftDate(TODAY, n), title: `Event ${n}` });
+  const r = (await call(env, PLAYER, '/events/api/next')).json;
+  assert.equal(r.events.length, 3);
+  assert.equal(r.more, 2);
+});
+
 test('/list?past=1 includes ended events, marked ended', async () => {
   const env = makeEnv();
   await createEvent(env, { date: shiftDate(TODAY, -1), time: '00:00', endTime: '00:30', title: 'Already over' });

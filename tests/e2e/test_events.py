@@ -478,12 +478,41 @@ def test_banner_marks_a_canceled_event(page, banner_page):
     assert "is-canceled" in link.get_attribute("class")
 
 
-def test_banner_counts_the_other_upcoming_events(page, banner_page):
+def _next_with_more(events, more):
+    payload = _next(events)
+    payload["more"] = more
+    return payload
+
+
+def test_banner_offers_see_more_events_when_there_are_several_upcoming(page, banner_page):
     others = [_banner_event(id=f"{n}{n}{n}{n}{n}{n}{n}{n}-5555-4555-8555-555555555555", title=f"Extra {n}") for n in (6, 7)]
-    banner_page(_next([_banner_event(), *others]))
+    banner_page(_next_with_more([_banner_event(), *others], 0))
     page.wait_for_selector("#event-banner:not(.u-hidden)")
-    assert page.locator("#event-banner .event-banner-more").text_content() == "+2"
-    assert "Tuesday practice" in page.locator("#event-banner").text_content()   # soonest one is the one shown
+    more = page.locator("#event-banner a.event-banner-seemore")
+    assert more.text_content() == "See more events ›"
+    assert more.get_attribute("href") == "/events"
+    assert "Tuesday practice" in page.locator("#event-banner a.event-banner-link").text_content()   # soonest is still the one shown
+
+
+def test_banner_offers_see_more_events_for_one_shown_plus_ones_the_worker_left_out(page, banner_page):
+    banner_page(_next_with_more([_banner_event()], 1))     # e.g. a second event further out than the feed's window
+    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    assert page.locator("#event-banner a.event-banner-seemore").count() == 1
+
+
+@pytest.mark.parametrize("payload", [_next_with_more([_banner_event()], 0), _next([_banner_event()])])
+def test_banner_has_no_see_more_link_for_a_single_upcoming_event(page, banner_page, payload):
+    banner_page(payload)
+    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    assert page.locator("#event-banner a.event-banner-seemore").count() == 0
+
+
+def test_see_more_link_adds_only_a_sliver_of_height(page, banner_page):
+    banner_page(_next_with_more([_banner_event()], 2))
+    page.wait_for_selector("#event-banner a.event-banner-seemore")
+    strip = page.locator("#event-banner a.event-banner-link").bounding_box()
+    link = page.locator("#event-banner a.event-banner-seemore").bounding_box()
+    assert link["y"] + link["height"] - strip["y"] < 56      # strip + the small link together
 
 
 @pytest.mark.parametrize("status,payload", [(403, {"error": "events_unavailable"}), (401, {}), (200, _next([]))])

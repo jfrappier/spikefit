@@ -81,7 +81,9 @@
     function render() {
         const ev = data.events[0];
         const action = ev.canceled ? 'Canceled' : actionText(ev);
-        const more = data.events.length - 1;
+        // Upcoming only: the feed never includes ended events, and `more` counts
+        // the upcoming ones it left out (over its cap or past its window).
+        const hasMore = data.events.length + (data.more ?? 0) > 1;
 
         const link = el('a', 'event-banner-link');
         link.href = `/events?e=${encodeURIComponent(ev.id)}`;
@@ -94,11 +96,15 @@
         text.appendChild(el('strong', null, ev.title));
         text.appendChild(document.createTextNode(` · ${formatDay(ev.date)} ${formatTime(ev.time)}`));
         link.appendChild(text);
-        if (more > 0) link.appendChild(el('span', 'event-banner-more', `+${more}`));
         link.appendChild(el('span', 'event-banner-action', action));
 
         container.textContent = '';
         container.appendChild(link);
+        if (hasMore) {
+            const seeMore = el('a', 'event-banner-seemore', 'See more events ›');
+            seeMore.href = '/events';
+            container.appendChild(seeMore);
+        }
         container.classList.remove('u-hidden');
     }
 

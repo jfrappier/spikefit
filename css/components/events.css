@@ -105,12 +105,13 @@
     flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     text-transform: none; letter-spacing: normal;
 }
-.event-banner-more {
-    flex: none; padding: 0 0.45em; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
-    background: rgba(255, 255, 255, 0.25);
-}
-.is-answered .event-banner-more { background: var(--border); }
 .event-banner-action { flex: none; white-space: nowrap; font-weight: 800; }
+/* "See more events" sits right under the strip, small, so it adds a few pixels rather than a row. */
+.event-banner-seemore {
+    display: block; margin-top: 0.2em; text-align: right;
+    font-size: 0.75rem; font-weight: 700; line-height: 1.2; color: var(--accent); text-decoration: none;
+}
+.event-banner-seemore:hover { text-decoration: underline; }
 
 @media (max-width: 420px) {
     .ev-container { padding: 1em 0.85em 2.5em; }

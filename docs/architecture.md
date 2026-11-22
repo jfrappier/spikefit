@@ -443,7 +443,7 @@ Coaches publish events (practice, game, team dinner, fundraiser, …); players a
 |---|---|---|
 | `GET /events` | signed in | Serves `events.html`. Unauthenticated → `/auth.html?redirect=<path+query>` so a `?e=<eventId>` deep link survives login. |
 | `GET /events/api/list[?past=1]` | any | Events not yet ended (or the last ≤60 incl. past), counts, my answer, my kids' answers. Coaches also get `attendees` (names). |
-| `GET /events/api/next` | any | Banner feed: next ≤3 events not yet ended within 14 days, plus my / my single kid's answer. |
+| `GET /events/api/next` | any | Banner feed: next ≤3 events not yet ended within 14 days, plus my / my single kid's answer, and `more` — how many other upcoming (never past) events exist beyond those, so the banner can offer "See more events". |
 | `POST /events/api/profile` | any | Set own display name; links a minor with a confirmed `guardianEmail` into that guardian's kid list. |
 | `POST /events/api/kids` | any | Parent `add` / `rename` / `remove` a managed kid (cap 8). |
 | `POST /events/api/rsvp` | any | `{eventId, response, memberId?}` — self, or a kid on the caller's own list. Refused for canceled/ended events. |
@@ -459,7 +459,7 @@ Coaches publish events (practice, game, team dinner, fundraiser, …); players a
 
 **Deep link / share:** the coach's Share button (client-only, no network) builds a message with `https://<team>.spikefit.app/events?e=<eventId>` and uses `navigator.share`, falling back to the clipboard. Opening it highlights the event; an unknown/expired id shows "That event is no longer available".
 
-**Banner (`js/events-banner.js`):** runs only over http(s) on a `*.spikefit.app` host. One bodyless `GET /events/api/next` (cookie only, no query string) and no other request; stays hidden on any non-200 or empty feed. It renders a single slim line — the soonest event's title and time, a `+N` count of others, and either "Click to RSVP ›" or the person's own answer — that links to `/events?e=<id>`, where the answer buttons live. A canceled event shows "Canceled" instead. No localStorage, no new keys.
+**Banner (`js/events-banner.js`):** runs only over http(s) on a `*.spikefit.app` host. One bodyless `GET /events/api/next` (cookie only, no query string) and no other request; stays hidden on any non-200 or empty feed. It renders a single slim line — the soonest event's title and time, and either "Click to RSVP ›" or the person's own answer — that links to `/events?e=<id>`, where the answer buttons live. When more than one upcoming event exists (the feed's `more` field counts the ones it left out; past events never count), a small "See more events ›" link to `/events` sits just under the strip. A canceled event shows "Canceled" instead. No localStorage, no new keys.
 
 **Eventual consistency on the page (`js/events.js`):** KV `list()` can lag a minute behind a write, so the page keeps the last server snapshot plus a short list of its own recent changes (event save/cancel/delete, answers, adding/removing a player) and renders the snapshot with those re-applied. Each change is dropped as soon as the server agrees, or after 150 s; a quiet background re-check runs 65 s after a change (never while the editor is open, and a failure leaves the page as is). The Worker's managed-kid RSVP check reads that one `kid:` key directly rather than via `list()`, so a just-added player can be answered for immediately.
 
