@@ -52,6 +52,13 @@ id = "REPLACE_WITH_CONSENTS_NAMESPACE_ID"
 binding = "TEAMS"
 id = "REPLACE_WITH_TEAMS_NAMESPACE_ID"
 
+# Team events module (ADR-015). Holds events and RSVPs: self-chosen display
+# names + answers, keyed by HMAC ids. Never an email, phone number, or roster
+# data. Every key expires (event date + 30 days / 180 days idle).
+[[kv_namespaces]]
+binding = "EVENTS"
+id = "REPLACE_WITH_EVENTS_NAMESPACE_ID"
+
 # ─── Secrets ─────────────────────────────────────────────────────────────────
 # Secrets are NOT set here — wrangler.toml (even this example) must never hold
 # a real key. Set them with `wrangler secret put <NAME>`:
@@ -60,3 +67,6 @@ id = "REPLACE_WITH_TEAMS_NAMESPACE_ID"
 #   wrangler secret put GOOGLE_SA_KEY      # full service-account JSON (coach module,
 #                                          # see tools/coach/README.md). client_email
 #                                          # and private_key are the only fields used.
+#   wrangler secret put EVENTS_HMAC_KEY    # random string, 32+ chars (team events,
+#                                          # ADR-015). Never reuse another secret.
+#                                          # Rotating it orphans existing RSVPs.

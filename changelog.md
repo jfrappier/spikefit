@@ -1,5 +1,68 @@
 # SpikeFit Changelog
 
+## v0.0.1121 — Team Events and RSVP
+
+Coaches can now publish team events — practices, games, dinners, fundraisers — and players, or parents answering for their kid, can say whether they're going. Parents see their linked player's answers, and the coach sees who's coming.
+
+---
+
+## ✨ Features
+
+### Team events page (`/events`)
+A new `events.html` page, served on a team's own subdomain behind the existing sign-in. Players set the name their coach should see (first name and last initial is plenty), then answer Going / Maybe / Can't go on each event. Parents add their player by name and answer for them; a minor whose guardian has confirmed consent by email shows up under their parent automatically. Coaches get a New event form (with Duplicate for "same time next week"), Edit, Cancel/Restore, Delete, and a list of who answered — everyone else only sees counts and their own answer.
+
+### Share link
+Each event has a coach-only **Share** button that sends a link like `millis.spikefit.app/events?e=…` to the team group chat through the phone's share sheet (or copies it). Opening it signs people in if needed and lands them on that event. Fixes the login redirect for this route to keep the query string.
+
+### "Upcoming event" banner in the app
+On a team's page, the top of the app shows the next few events that haven't ended, with quick Going / Maybe / Can't go buttons. It lives in its own `js/events-banner.js` and makes one request to the server (your sign-in cookie only — no workout data); it stays hidden everywhere else, including `file://` copies.
+
+### Coach hub Events tile
+Coaches with events turned on for their team get an **Events** tile next to Pickup.
+
+---
+
+## 🔒 Privacy
+
+### ADR-015: events live in Worker KV, not the Google Sheet
+Events hold no personal data. Answers store only the display name someone typed, the answer, and an irreversible scrambled ID derived from their sign-in email (HMAC with a new `EVENTS_HMAC_KEY` secret) — never the email, a phone number, or roster data. Events and answers expire 30 days after the event (name/profile entries after 180 idle days), and **Remove my data** on the events page deletes a person's entries immediately. This narrowly supersedes ADR-014's no-names-in-Cloudflare rule for exactly these keys. The privacy modal has a new section explaining it.
+
+---
+
+## ⚙️ Setup
+
+Needs an `EVENTS` KV namespace + binding, an `EVENTS_HMAC_KEY` secret, and `"events": true` under `features` in the team's `TEAMS` entry — no Google setup. See `tools/coach/README.md` §7. The Worker needs a paste-and-deploy; publish the static files first.
+
+---
+
+## 🧪 Tests
+
+- `tests/worker/events.test.js` — pure helpers plus handler-level flows against an in-memory KV (`tests/worker/helpers/fake-kv.js`), including a scan that no email address is ever written to `EVENTS`/`RATELIMIT`.
+- `tests/e2e/test_events.py` — page, coach controls, share, deep link, coach hub tile, and the `app.html` banner.
+
+---
+
+## Files Changed
+
+- `cloudflare/worker.js`
+- `events.html` (new)
+- `js/events.js` (new)
+- `js/events-banner.js` (new)
+- `css/components/events.css` (new)
+- `app.html`
+- `coach.html`
+- `js/coach.js`
+- `cloudflare/wrangler.example.toml`
+- `tests/worker/events.test.js` (new), `tests/worker/helpers/fake-kv.js` (new)
+- `tests/e2e/test_events.py` (new)
+- `tests/README.md`
+- `tools/coach/README.md`
+- `docs/decisions.md` (ADR-015)
+- `docs/architecture.md`
+- `CLAUDE.md`
+
+---
+
 ## v0.0.932 — F.R.E.S.H. Is Now a Regular Menu Page
 
 F.R.E.S.H. now opens as its own page like Today, Schedule, Combine, and Calendar instead of a modal with a Close button.

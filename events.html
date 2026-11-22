@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Team Events — SpikeFit</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="/fonts/fonts.css?v=0.0.715">
+  <link rel="stylesheet" href="css/base.css?v=0.0.715">
+  <script src="js/team.js?v=0.0.926"></script>
+  <link rel="stylesheet" href="css/layout.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/buttons.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/forms.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/cards.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/modals.css?v=0.0.811">
+  <link rel="stylesheet" href="css/components/events.css?v=0.0.1121">
+  <script src="js/events.js?v=0.0.1121" defer></script>
+</head>
+<body class="auth-body ev-body">
+
+<div class="ev-container">
+
+  <!-- Loading -->
+  <div id="view-loading" class="card">
+    <img src="logo.png" alt="SpikeFit" class="logo">
+    <h1>Team Events</h1>
+    <p class="subtitle">Loading…</p>
+  </div>
+
+  <!-- Unavailable / error -->
+  <div id="view-unavailable" class="card u-hidden">
+    <img src="logo.png" alt="SpikeFit" class="logo">
+    <h1>Team Events</h1>
+    <p class="subtitle" id="unavailable-text">Team events aren't available right now.</p>
+    <a class="btn btn-ghost" href="/app.html">Back to SpikeFit</a>
+  </div>
+
+  <!-- Main: events list, my name, my players -->
+  <div id="view-main" class="u-hidden">
+    <div class="ev-header">
+      <a class="ev-back" href="/app.html" aria-label="Back to SpikeFit">←</a>
+      <h1 id="ev-team-name">Team Events</h1>
+    </div>
+
+    <p id="ev-deeplink-msg" class="ev-notice u-hidden"></p>
+
+    <div id="ev-coach-bar" class="ev-coach-bar u-hidden">
+      <button class="btn" id="btn-new-event" type="button">+ New event</button>
+    </div>
+
+    <div id="ev-events" class="ev-events"></div>
+
+    <p id="ev-empty" class="hint ev-empty u-hidden">No upcoming events yet.</p>
+
+    <button class="btn btn-ghost" id="btn-toggle-past" type="button">Show past events</button>
+
+    <!-- My name (needed to answer for yourself) -->
+    <section id="ev-name-card" class="ev-section u-hidden">
+      <h2>Your name</h2>
+      <p class="hint" id="ev-name-hint">Add the name your coach should see — first name and last initial is plenty (no emails or phone numbers). Parents can skip this and add their player below.</p>
+      <form id="form-name" class="ev-inline-form" autocomplete="off">
+        <label class="ev-sr" for="input-name">Your name</label>
+        <input type="text" id="input-name" maxlength="30" placeholder="e.g. Alex M." required>
+        <button class="btn" type="submit">Save</button>
+      </form>
+    </section>
+
+    <!-- My players (parents) -->
+    <section id="ev-kids-card" class="ev-section">
+      <h2>My players</h2>
+      <p class="hint">Parents: add your player so you can answer for them. If your player has their own SpikeFit login and you confirmed their consent, they appear here automatically.</p>
+      <ul id="ev-kids-list" class="ev-kids-list"></ul>
+      <form id="form-kid" class="ev-inline-form" autocomplete="off">
+        <label class="ev-sr" for="input-kid">Player name</label>
+        <input type="text" id="input-kid" maxlength="30" placeholder="Player's name, e.g. Sam S." required>
+        <button class="btn btn-ghost ev-add-btn" type="submit">Add player</button>
+      </form>
+    </section>
+
+    <section class="ev-section">
+      <h2>Your data</h2>
+      <p class="hint">Events and answers are deleted automatically 30 days after the event. You can also remove your name, your players and your answers from this team now.</p>
+      <button class="btn btn-ghost" id="btn-forget" type="button">Remove my data</button>
+    </section>
+  </div>
+
+  <!-- Coach editor -->
+  <div id="view-editor" class="card ev-editor u-hidden">
+    <h1 id="editor-title">New event</h1>
+    <form id="form-event" autocomplete="off">
+      <label for="ev-type">Type</label>
+      <select id="ev-type"></select>
+
+      <label for="ev-title">Title</label>
+      <input type="text" id="ev-title" maxlength="80" placeholder="e.g. Home game vs. Lincoln" required>
+
+      <label for="ev-date">Date</label>
+      <input type="date" id="ev-date" required>
+
+      <div class="ev-time-row">
+        <div>
+          <label for="ev-time">Starts</label>
+          <input type="time" id="ev-time" required>
+        </div>
+        <div>
+          <label for="ev-end">Ends (optional)</label>
+          <input type="time" id="ev-end">
+        </div>
+      </div>
+
+      <label for="ev-location">Where</label>
+      <input type="text" id="ev-location" maxlength="120" placeholder="e.g. Main gym">
+
+      <label for="ev-notes">Notes</label>
+      <textarea id="ev-notes" maxlength="500" rows="3" placeholder="What to bring, what to wear…"></textarea>
+      <p class="hint">Visible to your whole team — please don't put phone numbers or email addresses here.</p>
+
+      <p id="editor-error" class="ev-error u-hidden"></p>
+
+      <button class="btn" id="btn-save-event" type="submit">Save event</button>
+      <button class="btn btn-ghost" id="btn-cancel-editor" type="button">Cancel</button>
+    </form>
+  </div>
+
+</div>
+
+<!-- Toast (mirrors coach.html's markup) -->
+<div id="ev-toast" class="toast-container">
+  <span id="ev-toast-icon" class="toast-icon">🏐</span>
+  <div class="toast-content">
+    <div id="ev-toast-title" class="toast-title"></div>
+    <div id="ev-toast-text" class="toast-text"></div>
+  </div>
+  <button class="toast-close" id="ev-toast-close" type="button" aria-label="Close">&times;</button>
+</div>
+
+</body>
+</html>

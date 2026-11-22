@@ -253,3 +253,50 @@ The full Google Drive OAuth path was evaluated. It requires: a `client_secret` s
   - The Google Sheets API quota is **per Google Cloud project, shared across every team** using the one service account — not allocated per team. Fine at the current number of teams; a future scaling limit if the coach module is adopted widely, at which point per-team service accounts or a quota-pooling strategy would need revisiting.
 
 **Consequences:** Deploying the coach module for a team requires the team admin to create and share a Google Sheet, and requires the Worker deployment to hold a `GOOGLE_SA_KEY` secret — a new, high-value credential that must never be logged or returned in a response. The Worker gains real application logic (roster validation, override review, email alerts) for the first time, which ADR-007 is updated to reflect. Any future feature that needs to persist a person's name, email, or phone number must default to "does this belong in the team's Sheet, not in Cloudflare KV" and justify any deviation from that default here, not silently.
+
+---
+
+## ADR-015: Team Events & RSVP — Display Names in Worker KV
+
+**Status:** Accepted. Narrowly supersedes ADR-014(b) for this one feature.
+
+**Context:** Coaches want to publish team events (practice, game, team dinner, fundraiser, …) and have players — and parents answering for their kid — say whether they're going, with a parent able to see their player's answer. ADR-014 would have put this in the team's Google Sheet, but that Sheet exists for the pickup roster (kids' names, adults' emails and phone numbers), it was awkward to set up and run, and pickup itself went unused. Events are a different shape of data: the events themselves hold no personal data at all, and an RSVP needs only a *display name* plus an answer. The question this ADR answers is whether that justifies relaxing ADR-014(b)'s "no names in Cloudflare-owned storage" for events, and under what limits.
+
+**Decision:**
+
+(a) **Events and RSVPs live in a dedicated Worker KV namespace, `EVENTS`, not the Sheet.** No Google credentials, no admin-owned spreadsheet, no per-team setup beyond a feature flag (`features.events: true` in the team's `TEAMS` entry).
+
+(b) **What may be stored, exhaustively** (nothing else is ever written to `EVENTS`):
+
+| Key | Holds | Lifetime |
+|---|---|---|
+| `ev:<team>:<date>T<HHMM>:<eventId>` | event type, title, time, location, notes, canceled flag — coach-written event details; the editor tells coaches not to include contact info (no personal data is collected by design) | event date + 30 days |
+| `rsvp:<team>:<eventId>:<memberId>` | value `1`; metadata `{n: display name, r: yes/maybe/no, b: self/guardian, at}` | event date + 30 days |
+| `me:<team>:<selfId>` | `{n: display name}` | rolling 180 days idle |
+| `kid:<team>:<guardianId>:<memberId>` | value `1`; metadata `{n: display name, l: linked?}` | rolling 180 days idle (refreshed when the guardian answers for that kid, or the kid saves/answers) |
+
+**Never stored in any Cloudflare-owned store for this feature: an email address, a phone number, roster data, or any workout key.** A person's identity is `HMAC-SHA256(EVENTS_HMAC_KEY, "<scope>:<team>:<email>")`, truncated to 32 hex chars, computed per request; the team is mixed in so the same person isn't linkable across teams. The rate-limit counter for these routes is keyed by that same HMAC, not the email.
+
+(c) **A display name is a name the person typed for themselves or a parent typed for their kid** (UI guidance: "first name and last initial is plenty"). It is not looked up from, or checked against, any roster. Names containing an `@` or a run of 7+ digits are rejected so an email or phone number can't be parked in KV as a "name". This is the only personal data the feature persists.
+
+(d) **Team membership is the subdomain.** A request on `millis.spikefit.app` is a request about the Millis team (`resolveCoachHostTeam`); the team must exist in `TEAMS` with `features.events === true`. There is no roster lookup and no per-user team field. Accepted consequence: any signed-in (allowlisted) user who visits a team's subdomain can answer that team's events; mitigations are the caps (≤500 answers per event, ≤8 kids per parent, ≤50 upcoming events per team), per-user rate limiting, and that only a coach of the team can see names.
+
+(e) **Who sees what:** players see their own answer and counts; a parent sees their linked players' answers; only a coach of the host team (`ALLOWLIST` `coach.teams`) sees names, as `attendees` in `/events/api/list`. A player is linked to a parent only when the player's own `ALLOWLIST` record has a `guardianEmail` — which is written only by the existing emailed-link confirmation (ADR-012). A parent may also add kids who have no login (random id, parent-managed).
+
+(f) **Retention and deletion:** every key carries an expiry (above). `POST /events/api/forget` removes the caller's name, kid list, parent-managed kids' answers, and their own answers immediately. Rotating `EVENTS_HMAC_KEY` orphans existing answers (they expire on their own).
+
+(g) **Privacy statement change:** `app.html` previously called the Worker only for `/consent/*`. The "upcoming event" banner (`js/events-banner.js`, a separate file from `js/app.js`) adds one bodyless `GET /events/api/next` (session cookie only) on team subdomains. It never reads localStorage or any protected key, and the privacy modal says so. ADR-002 is unchanged: no `/events/api/*` endpoint reads or accepts any protected workout key.
+
+(h) **Alternatives considered and rejected:**
+  - *The team Google Sheet (as ADR-014).* Rejected — setup friction and a second credential for data that is mostly non-personal; the one piece of personal data (a self-chosen display name) is too small to justify it.
+  - *Counts only, no names at rest.* Rejected — a coach needs to know *who* is coming, and who's covering, not a headcount.
+  - *D1.* Rejected for the reason ADR-014(d) gave, and unnecessary: per-person-per-event keys with TTL, read via `list()` with metadata, cover every query this feature needs without a database.
+  - *Emailing/notifying team members.* Rejected for v1 — it would require persisting member emails. Discovery is instead by the coach sharing a deep link (`/events?e=<eventId>`) into the team's existing group chat, plus the banner.
+
+(i) **Accepted limitations:**
+  - Coaches can't see who *hasn't* answered (there is no roster, so no denominator).
+  - KV `list` is eventually consistent; an answer may take up to ~60 seconds to appear at another edge location.
+  - A parent who added a kid by hand and whose kid later gets their own login sees two entries and removes the manual one.
+  - The maintainer of the Worker deployment is the data controller for display names for up to 30 days after an event (and up to 180 days of idle profile keys). That is the deliberate cost of this decision.
+
+**Consequences:** Deploying events for a team needs a new `EVENTS` KV binding, an `EVENTS_HMAC_KEY` secret, and `"events": true` in the team's `TEAMS` entry — no Google setup. The Worker gains `/events` and `/events/api/*` (see `docs/architecture.md`). ADR-014(b) still governs the coach/pickup module unchanged; this ADR carves out only the keys listed in (b). Any future feature that persists personal data in Cloudflare must either fit within (b)'s list or add its own ADR.

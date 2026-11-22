@@ -198,6 +198,19 @@ function renderHub() {
         });
     }
 
+    // Team events (ADR-015). Lives on its own page, on the team's subdomain —
+    // the session cookie is host-only, so a coach browsing from the apex
+    // domain is sent to <team>.spikefit.app/events (and signs in there if
+    // needed). No Sheet involved, so no "Setup Needed" state.
+    if (team.features && team.features.events === true) {
+        const onTeamHost = location.hostname === `${state.activeTeam}.spikefit.app`;
+        featureTiles.push({
+            label: 'Events',
+            configured: true,
+            onClick: () => { window.location.href = onTeamHost ? '/events' : `https://${state.activeTeam}.spikefit.app/events`; }
+        });
+    }
+
     if (featureTiles.length === 0) {
         noFeatures.classList.remove('u-hidden');
     } else {
