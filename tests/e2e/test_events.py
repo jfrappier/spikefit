@@ -409,25 +409,46 @@ def banner_page(page: Page):
     return open_banner
 
 
-def test_banner_is_one_slim_line_linking_to_the_event(page, banner_page):
+def _next_with_more(events, more):
+    payload = _next(events)
+    payload["more"] = more
+    return payload
+
+
+def _badge(page):
+    return page.locator("#event-banner .event-banner-badge")
+
+
+def test_banner_is_one_slim_pill_linking_to_the_event(page, banner_page):
     banner_page(_next([_banner_event()]))
     page.wait_for_selector("#event-banner:not(.u-hidden)")
     link = page.locator("#event-banner a.event-banner-link")
     text = link.text_content()
-    assert "Tuesday practice" in text and "Tue Jun 18" in text and "5:30 PM" in text and "Click to RSVP" in text
+    assert "Tuesday practice" in text and "Jun 18" in text and "5:30 PM" in text
     assert link.get_attribute("href") == f"/events?e={EVENT_ID}"
+    assert "click to rsvp" in link.get_attribute("aria-label").lower()
     assert page.locator("#event-banner button").count() == 0
-    assert link.bounding_box()["height"] < 48      # a strip, not a card
+    assert page.locator("#event-banner .event-banner-strip").bounding_box()["height"] < 48   # a pill, not a card
+
+
+def test_banner_shows_a_weekday_for_an_event_this_week(page, banner_page):
+    import datetime
+    day = datetime.date.today() + datetime.timedelta(days=2)
+    banner_page(_next([_banner_event(date=day.isoformat())]))
+    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    text = page.locator("#event-banner a.event-banner-link").text_content()
+    assert day.strftime("%a") in text and day.strftime("%b") not in text
 
 
 def test_banner_stays_one_line_on_a_phone_with_a_long_title(page, banner_page):
     page.set_viewport_size({"width": 360, "height": 740})
-    banner_page(_next([_banner_event(title="Annual end of season team dinner and awards night at the lodge")]))
+    banner_page(_next_with_more([_banner_event(title="Annual end of season team dinner and awards night at the lodge")], 2))
     page.wait_for_selector("#event-banner:not(.u-hidden)")
-    link = page.locator("#event-banner a.event-banner-link")
-    assert link.bounding_box()["height"] < 48
+    strip = page.locator("#event-banner .event-banner-strip")
+    assert strip.bounding_box()["height"] < 48
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
-    assert link.locator(".event-banner-action").is_visible()   # the prompt is never squeezed out
+    assert _badge(page).is_visible()                                          # the status circle is never squeezed out
+    assert page.locator("#event-banner a.event-banner-seemore").is_visible()  # nor the link to more events
 
 
 def test_banner_makes_one_bodyless_get_and_nothing_else(page, banner_page):
@@ -441,78 +462,101 @@ def test_banner_makes_one_bodyless_get_and_nothing_else(page, banner_page):
     assert calls["other"] == []
 
 
-def test_banner_shows_the_answer_instead_of_the_prompt_once_answered(page, banner_page):
-    banner_page(_next([_banner_event(mine="maybe")]))
-    page.wait_for_selector("text=You're a maybe")
-    link = page.locator("#event-banner a.event-banner-link")
-    assert "Click to RSVP" not in link.text_content()
-    assert "is-answered" in link.get_attribute("class")
+@pytest.mark.parametrize("mine,css,glyph", [
+    (None, "is-none", "?"),
+    ("yes", "is-yes", "✓"),
+    ("maybe", "is-maybe", "~"),
+    ("no", "is-no", "✕"),
+])
+def test_banner_status_circle_reflects_the_answer(page, banner_page, mine, css, glyph):
+    banner_page(_next([_banner_event(mine=mine)]))
+    page.wait_for_selector("#event-banner .event-banner-badge")
+    badge = _badge(page)
+    assert badge.count() == 1
+    assert css in badge.get_attribute("class") and badge.text_content() == glyph
+    assert "Click to RSVP" not in page.locator("#event-banner a.event-banner-link").text_content()   # no words, just the circle
 
 
-def test_banner_prompts_a_new_player_to_rsvp(page, banner_page):
+def test_banner_answered_pill_turns_neutral_and_unanswered_stays_bold(page, banner_page):
+    banner_page(_next([_banner_event(mine="yes")]))
+    page.wait_for_selector("#event-banner .event-banner-badge")
+    assert "is-answered" in page.locator("#event-banner .event-banner-strip").get_attribute("class")
+
+
+def test_banner_prompts_a_new_player_with_a_question_mark(page, banner_page):
     banner_page(_next([_banner_event()], has_name=False))
-    page.wait_for_selector("#event-banner:not(.u-hidden)")
-    assert "Click to RSVP" in page.locator("#event-banner").text_content()
-    assert page.locator("#event-banner a").get_attribute("href") == f"/events?e={EVENT_ID}"
+    page.wait_for_selector("#event-banner .event-banner-badge")
+    assert "is-none" in _badge(page).get_attribute("class")
+    assert page.locator("#event-banner a.event-banner-link").get_attribute("href") == f"/events?e={EVENT_ID}"
 
 
-@pytest.mark.parametrize("response,expected", [(None, "Click to RSVP"), ("yes", "Sam S.: going ✓")])
-def test_banner_follows_a_parents_single_player(page, banner_page, response, expected):
-    kid = {"memberId": KID_ID, "name": "Sam S.", "response": response}
+def test_banner_follows_a_parents_single_player(page, banner_page):
+    kid = {"memberId": KID_ID, "name": "Sam S.", "response": None}
     banner_page(_next([_banner_event(kid=kid)], has_name=False, kid_count=1))
-    page.wait_for_selector("#event-banner:not(.u-hidden)")
-    assert expected in page.locator("#event-banner").text_content()
+    page.wait_for_selector("#event-banner .event-banner-badge")
+    assert _badge(page).count() == 1 and "is-none" in _badge(page).get_attribute("class")
+    assert "Sam S." in _badge(page).get_attribute("title")
 
 
-def test_banner_asks_a_parent_with_several_players_to_rsvp(page, banner_page):
+def test_banner_shows_a_circle_for_the_player_and_their_one_kid(page, banner_page):
+    kid = {"memberId": KID_ID, "name": "Sam S.", "response": "no"}
+    banner_page(_next([_banner_event(mine="yes", kid=kid)], has_name=True, kid_count=1))
+    page.wait_for_selector("#event-banner .event-banner-badge")
+    assert _badge(page).count() == 2
+    assert "is-yes" in _badge(page).nth(0).get_attribute("class")
+    assert "is-no" in _badge(page).nth(1).get_attribute("class")
+    assert "Sam S.: can't go" in _badge(page).nth(1).get_attribute("title")
+
+
+def test_banner_asks_a_parent_with_several_players_to_respond(page, banner_page):
     banner_page(_next([_banner_event(mine="yes")], has_name=True, kid_count=2))
-    page.wait_for_selector("#event-banner:not(.u-hidden)")
-    assert "Click to RSVP" in page.locator("#event-banner").text_content()
+    page.wait_for_selector("#event-banner .event-banner-badge")
+    assert _badge(page).count() == 1 and "is-none" in _badge(page).get_attribute("class")
 
 
-def test_banner_marks_a_canceled_event(page, banner_page):
+def test_banner_marks_a_canceled_event_without_a_circle(page, banner_page):
     banner_page(_next([_banner_event(canceled=True)]))
     page.wait_for_selector("#event-banner:not(.u-hidden)")
     link = page.locator("#event-banner a.event-banner-link")
-    assert "Canceled" in link.text_content() and "Click to RSVP" not in link.text_content()
-    assert "is-canceled" in link.get_attribute("class")
+    assert "Canceled" in link.text_content()
+    assert _badge(page).count() == 0
+    assert "is-canceled" in page.locator("#event-banner .event-banner-strip").get_attribute("class")
 
 
-def _next_with_more(events, more):
-    payload = _next(events)
-    payload["more"] = more
-    return payload
-
-
-def test_banner_offers_see_more_events_when_there_are_several_upcoming(page, banner_page):
+def test_see_more_events_sits_to_the_right_of_the_status_circle_in_the_pill(page, banner_page):
     others = [_banner_event(id=f"{n}{n}{n}{n}{n}{n}{n}{n}-5555-4555-8555-555555555555", title=f"Extra {n}") for n in (6, 7)]
-    banner_page(_next_with_more([_banner_event(), *others], 0))
-    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    banner_page(_next_with_more([_banner_event(mine="yes"), *others], 0))
+    page.wait_for_selector("#event-banner .event-banner-seemore")
     more = page.locator("#event-banner a.event-banner-seemore")
-    assert more.text_content() == "See more events ›"
     assert more.get_attribute("href") == "/events"
-    assert "Tuesday practice" in page.locator("#event-banner a.event-banner-link").text_content()   # soonest is still the one shown
+    assert "See more events" in more.text_content()
+    strip = page.locator("#event-banner .event-banner-strip")
+    assert strip.locator("a.event-banner-seemore").count() == 1                 # inside the pill, not under it
+    assert more.bounding_box()["x"] > _badge(page).bounding_box()["x"]          # to the right of the circle
+    assert abs(more.bounding_box()["y"] - strip.bounding_box()["y"]) < strip.bounding_box()["height"]   # same row
+    assert "Tuesday practice" in page.locator("#event-banner a.event-banner-link").text_content()   # soonest is the one shown
 
 
-def test_banner_offers_see_more_events_for_one_shown_plus_ones_the_worker_left_out(page, banner_page):
+def test_see_more_events_counts_ones_the_worker_left_out(page, banner_page):
     banner_page(_next_with_more([_banner_event()], 1))     # e.g. a second event further out than the feed's window
     page.wait_for_selector("#event-banner:not(.u-hidden)")
     assert page.locator("#event-banner a.event-banner-seemore").count() == 1
 
 
 @pytest.mark.parametrize("payload", [_next_with_more([_banner_event()], 0), _next([_banner_event()])])
-def test_banner_has_no_see_more_link_for_a_single_upcoming_event(page, banner_page, payload):
+def test_no_see_more_events_for_a_single_upcoming_event(page, banner_page, payload):
     banner_page(payload)
     page.wait_for_selector("#event-banner:not(.u-hidden)")
     assert page.locator("#event-banner a.event-banner-seemore").count() == 0
 
 
-def test_see_more_link_adds_only_a_sliver_of_height(page, banner_page):
+def test_see_more_events_is_shortened_on_a_very_narrow_phone(page, banner_page):
+    page.set_viewport_size({"width": 340, "height": 700})
     banner_page(_next_with_more([_banner_event()], 2))
-    page.wait_for_selector("#event-banner a.event-banner-seemore")
-    strip = page.locator("#event-banner a.event-banner-link").bounding_box()
-    link = page.locator("#event-banner a.event-banner-seemore").bounding_box()
-    assert link["y"] + link["height"] - strip["y"] < 56      # strip + the small link together
+    page.wait_for_selector("#event-banner .event-banner-seemore")
+    more = page.locator("#event-banner a.event-banner-seemore")
+    assert more.locator(".event-banner-seemore-short").is_visible()
+    assert more.locator(".event-banner-seemore-long").is_hidden()
 
 
 @pytest.mark.parametrize("status,payload", [(403, {"error": "events_unavailable"}), (401, {}), (200, _next([]))])

@@ -61,6 +61,15 @@
         return who === 'You' ? "You can't go" : `${prefix} can't go`;
     }
 
+    // "Tue" within the coming week, "Jun 24" beyond it — short, so the title keeps its room.
+    function shortDay(dateStr) {
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const day = new Date(y, m - 1, d);
+        const now = new Date();
+        const ahead = Math.round((day - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+        return ahead >= 0 && ahead < 7 ? DAY_NAMES[day.getDay()] : `${MONTH_NAMES[m - 1]} ${d}`;
+    }
+
     // Who this person answers for on this event: themselves, plus their one
     // player if they have exactly one. With several players (or no name yet)
     // the /events page has the per-person rows.
@@ -71,40 +80,67 @@
         return targets;
     }
 
-    // What the right-hand end of the strip says: a prompt, or their answer.
-    function actionText(ev) {
+    const BADGES = new Map([
+        ['yes',   { glyph: '✓', cls: 'is-yes' }],
+        ['maybe', { glyph: '~', cls: 'is-maybe' }],
+        ['no',    { glyph: '✕', cls: 'is-no' }]
+    ]);
+    const UNANSWERED = { glyph: '?', cls: 'is-none' };
+
+    // One status circle per person answered for: ✓ going, ~ maybe, ✕ can't go,
+    // ? not answered yet. No name yet / several players -> a single "?".
+    function badgesFor(ev) {
         const targets = targetsFor(ev);
-        const needsReply = targets.length === 0 || data.kidCount > 1 || targets.some(t => !t.response);
-        return needsReply ? 'Click to RSVP ›' : targets.map(t => statusText(t.who, t.response)).join(' · ');
+        if (targets.length === 0 || data.kidCount > 1) return [{ response: null, title: 'Click to RSVP' }];
+        return targets.map(t => ({
+            response: t.response,
+            title: t.response ? statusText(t.who, t.response) : `${t.who === 'You' ? 'You haven\u2019t' : t.who + ' hasn\u2019t'} answered yet — click to RSVP`
+        }));
+    }
+
+    function buildBadge(badge) {
+        const look = BADGES.get(badge.response) ?? UNANSWERED;
+        const node = el('span', `event-banner-badge ${look.cls}`, look.glyph);
+        node.title = badge.title;
+        return node;
+    }
+
+    function buildSeeMore() {
+        const link = el('a', 'event-banner-seemore');
+        link.href = '/events';
+        link.appendChild(el('span', 'event-banner-seemore-long', 'See more events'));
+        link.appendChild(el('span', 'event-banner-seemore-short', 'More'));
+        link.appendChild(document.createTextNode(' ›'));
+        return link;
     }
 
     function render() {
         const ev = data.events[0];
-        const action = ev.canceled ? 'Canceled' : actionText(ev);
+        const badges = ev.canceled ? [] : badgesFor(ev);
+        const summary = ev.canceled ? 'Canceled' : badges.map(b => b.title).join('. ');
         // Upcoming only: the feed never includes ended events, and `more` counts
         // the upcoming ones it left out (over its cap or past its window).
         const hasMore = data.events.length + (data.more ?? 0) > 1;
 
+        const strip = el('div', 'event-banner-strip');
+        strip.classList.toggle('is-canceled', ev.canceled === true);
+        strip.classList.toggle('is-answered', !ev.canceled && badges.every(b => b.response));
+
         const link = el('a', 'event-banner-link');
         link.href = `/events?e=${encodeURIComponent(ev.id)}`;
-        link.classList.toggle('is-canceled', ev.canceled === true);
-        link.classList.toggle('is-answered', !ev.canceled && action !== 'Click to RSVP ›');
-        link.setAttribute('aria-label', `Upcoming event: ${ev.title}, ${formatDay(ev.date)} at ${formatTime(ev.time)}. ${action.replace(' ›', '')}.`);
-
+        link.setAttribute('aria-label', `Upcoming event: ${ev.title}, ${formatDay(ev.date)} at ${formatTime(ev.time)}. ${summary}.`);
         link.appendChild(el('span', 'event-banner-icon', '📅'));
         const text = el('span', 'event-banner-text');
-        text.appendChild(el('strong', null, ev.title));
-        text.appendChild(document.createTextNode(` · ${formatDay(ev.date)} ${formatTime(ev.time)}`));
+        text.appendChild(el('strong', 'event-banner-title', ev.title));
+        text.appendChild(el('span', 'event-banner-when', `· ${shortDay(ev.date)} ${formatTime(ev.time)}`));
         link.appendChild(text);
-        link.appendChild(el('span', 'event-banner-action', action));
+        if (ev.canceled) link.appendChild(el('span', 'event-banner-action', 'Canceled'));
+        badges.forEach(b => link.appendChild(buildBadge(b)));
+        strip.appendChild(link);
+        if (hasMore) strip.appendChild(buildSeeMore());
 
         container.textContent = '';
-        container.appendChild(link);
-        if (hasMore) {
-            const seeMore = el('a', 'event-banner-seemore', 'See more events ›');
-            seeMore.href = '/events';
-            container.appendChild(seeMore);
-        }
+        container.appendChild(strip);
         container.classList.remove('u-hidden');
     }
 

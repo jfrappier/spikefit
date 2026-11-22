@@ -81,37 +81,65 @@
 .ev-error { color: #9b2c2c; font-weight: 600; margin: 0.75em 0 0; }
 
 /* ───────── app.html banner (js/events-banner.js) ───────── */
-/* One slim line, like the landing page's ticker: next event on the left,
-   a prompt (or the person's answer) on the right. The whole strip is a link. */
+/* One slim line, like the landing page's ticker: the next event on the left,
+   then a status circle for the person's answer, then "See more events". */
 
 .event-banner {
     /* min-width: 0 + a bounded width stop the one-line text from stretching a flex parent past the screen. */
     box-sizing: border-box; width: 100%; min-width: 0; max-width: 800px; margin: 0.5em auto 0; padding: 0 1em;
 }
-.event-banner-link {
-    display: flex; align-items: center; gap: 0.5em;
-    padding: 0.45em 0.85em; border-radius: var(--radius-md);
+/* The pill is .event-banner-strip; its two links (the event, and "See more
+   events") sit side by side inside it, so there are no nested links. */
+.event-banner-strip {
+    display: flex; align-items: center; gap: 0.6em;
+    padding: 0.4em 0.85em; border-radius: var(--radius-md);
     background: var(--accent); color: #ffffff;
-    font-size: 0.85rem; line-height: 1.3; text-decoration: none;
+    font-size: 0.85rem; line-height: 1.3;
 }
-.event-banner-link:hover { filter: brightness(1.08); }
-.event-banner-link:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; }
-.event-banner-link.is-answered {
+.event-banner-strip.is-answered {
     background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);
 }
-.event-banner-link.is-canceled { background: #9b2c2c; }
+.event-banner-strip.is-canceled { background: #9b2c2c; }
+.event-banner-link {
+    display: flex; flex: 1; min-width: 0; align-items: center; gap: 0.5em;
+    color: inherit; text-decoration: none;
+}
+.event-banner-link:hover, .event-banner-seemore:hover { filter: brightness(1.12); }
+.event-banner-link:focus-visible, .event-banner-seemore:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .event-banner-icon { flex: none; }
 .event-banner-text {
-    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: flex; flex: 1; min-width: 0; gap: 0.35em; white-space: nowrap;
     text-transform: none; letter-spacing: normal;
 }
+/* The title gives way first, so the day and time are always readable. */
+.event-banner-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.event-banner-when { flex: none; }
 .event-banner-action { flex: none; white-space: nowrap; font-weight: 800; }
-/* "See more events" sits right under the strip, small, so it adds a few pixels rather than a row. */
-.event-banner-seemore {
-    display: block; margin-top: 0.2em; text-align: right;
-    font-size: 0.75rem; font-weight: 700; line-height: 1.2; color: var(--accent); text-decoration: none;
+
+/* Status circle: ✓ going · ~ maybe · ✕ can't go · ? not answered yet. */
+.event-banner-badge {
+    flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 1.5em; height: 1.5em; border-radius: 50%; box-sizing: border-box;
+    font-size: 0.85rem; font-weight: 800; line-height: 1; color: #ffffff; border: 2px solid #ffffff;
 }
-.event-banner-seemore:hover { text-decoration: underline; }
+.event-banner-badge.is-yes   { background: #2f855a; }
+.event-banner-badge.is-maybe { background: #b7791f; }
+.event-banner-badge.is-no    { background: #c53030; }
+.event-banner-badge.is-none  { background: transparent; }
+.is-answered .event-banner-badge { border-color: transparent; }
+.is-answered .event-banner-badge.is-none { border-color: var(--border); color: var(--text-muted); }
+
+.event-banner-seemore {
+    flex: none; white-space: nowrap; padding-left: 0.6em; border-left: 1px solid currentColor;
+    font-size: 0.75rem; font-weight: 700; color: inherit; text-decoration: none;
+}
+.event-banner-seemore-short { display: none; }
+
+@media (max-width: 400px) {
+    /* "See more events" shortens to "More" on phones so the event title keeps its room. */
+    .event-banner-seemore-long { display: none; }
+    .event-banner-seemore-short { display: inline; }
+}
 
 @media (max-width: 420px) {
     .ev-container { padding: 1em 0.85em 2.5em; }
