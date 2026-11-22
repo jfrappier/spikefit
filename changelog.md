@@ -1,5 +1,32 @@
 # SpikeFit Changelog
 
+## v0.0.1122 — Codacy follow-ups for Team Events
+
+Addresses the Codacy findings on the team events pull request: smaller Worker functions, a safer log call, and documented suppressions for two browser-side false positives.
+
+---
+
+## ⚙️ Code Quality
+
+### Split three over-complex Worker functions
+`requireEventsContext`, `handleEventsRsvp` and `handleEventSave` were split into small helpers (`checkEventsRequest`, `resolveEventsTeam`, `readJsonObject`, `loadOpenEvent`, `resolveRsvpTarget`, `resolveSaveTarget`, `restampRsvps`). Behavior, error codes and check order are unchanged; the existing 96 Worker tests pass unmodified.
+
+### Safer error logging in `js/events.js`
+The failed-request log no longer builds its message with a template literal around the request path.
+
+### Documented false positives
+The two `fetch()` helpers in `js/events.js` and `js/events-banner.js` carry a `nosemgrep` note: the SSRF rule targets server-side HTTP clients, and these only ever request literal same-origin `/events/api/...` paths from the browser.
+
+## 📝 Docs
+`CLAUDE.md`: the Privacy Boundary Auditor now reports UNCERTAIN rather than assuming PASS for call sites it can't classify.
+
+## Files Changed
+- `cloudflare/worker.js`, `js/events.js`, `js/events-banner.js`
+- `events.html`, `app.html` (`?v=0.0.1122` on the two changed scripts)
+- `CLAUDE.md`, `changelog.md`
+
+---
+
 ## v0.0.1121 — Team Events and RSVP
 
 Coaches can now publish team events — practices, games, dinners, fundraisers — and players, or parents answering for their kid, can say whether they're going. Parents see their linked player's answers, and the coach sees who's coming.

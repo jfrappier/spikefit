@@ -109,6 +109,7 @@ async function fetchWithTimeout(url, options = {}) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
+        // nosemgrep: SSRF rule targets server-side HTTP clients. This runs in the browser and every caller passes a literal same-origin '/events/api/...' path.
         return await fetch(url, { ...options, signal: controller.signal });
     } finally {
         clearTimeout(timer);
@@ -126,7 +127,7 @@ async function api(path, body) {
         try { data = await res.json(); } catch { /* non-JSON error body */ }
         return { ok: res.ok, status: res.status, data };
     } catch (err) {
-        console.error(`Request to ${path} failed.`, err);
+        console.error('Events request failed.', path, err);
         return { ok: false, status: 0, data: null };
     }
 }

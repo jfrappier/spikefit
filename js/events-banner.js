@@ -58,6 +58,7 @@
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
         try {
+            // nosemgrep: SSRF rule targets server-side HTTP clients. This runs in the browser and callers pass only the literal same-origin '/events/api/...' paths below.
             return await fetch(path, { ...options, signal: controller.signal });
         } finally {
             clearTimeout(timer);

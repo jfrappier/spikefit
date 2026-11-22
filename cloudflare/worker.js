@@ -1588,18 +1588,19 @@ async function writeProfile(env, ctx, name) {
 // Shared gate for every /events/api/* route. Returns a context object or a
 // Response to return directly. Membership = the subdomain the request arrived
 // on (no roster lookup); the team must exist in TEAMS with features.events.
-async function requireEventsContext(req, env, url, { mutating = false, coach = false } = {}) {
-  if (mutating) {
-    if (req.method !== 'POST') return eventsRespond({ error: 'method_not_allowed' }, 405);
-    if (!(req.headers.get('Content-Type') || '').includes('application/json')) return eventsRespond({ error: 'bad_request' }, 400);
-    if (req.headers.get('Origin') !== url.origin) return eventsRespond({ error: 'bad_request' }, 400);
-  } else if (req.method !== 'GET') {
-    return eventsRespond({ error: 'method_not_allowed' }, 405);
-  }
+// Method / content-type / same-Origin (CSRF) checks. Returns a Response to
+// send, or null when the request shape is acceptable.
+function checkEventsRequest(req, url, mutating) {
+  if (!mutating) return req.method === 'GET' ? null : eventsRespond({ error: 'method_not_allowed' }, 405);
+  if (req.method !== 'POST') return eventsRespond({ error: 'method_not_allowed' }, 405);
+  if (!(req.headers.get('Content-Type') || '').includes('application/json')) return eventsRespond({ error: 'bad_request' }, 400);
+  if (req.headers.get('Origin') !== url.origin) return eventsRespond({ error: 'bad_request' }, 400);
+  return null;
+}
 
-  const email = await getSession(req, env);
-  if (!email) return eventsRespond({ error: 'not_authenticated' }, 401);
-
+// Team from the host, its TEAMS config with features.events, and the EVENTS
+// binding + HMAC secret. Returns {team, teamConfig} or a Response.
+async function resolveEventsTeam(env, url) {
   const team = resolveCoachHostTeam(url.hostname);
   if (!team) return eventsRespond({ error: 'events_unavailable' }, 403);
   const teamConfig = await getTeamConfig(env, team);
@@ -1607,6 +1608,32 @@ async function requireEventsContext(req, env, url, { mutating = false, coach = f
   if (!env.EVENTS || typeof env.EVENTS_HMAC_KEY !== 'string' || env.EVENTS_HMAC_KEY.length < 16) {
     return eventsRespond({ error: 'events_not_configured' }, 503);
   }
+  return { team, teamConfig };
+}
+
+// Parses a JSON object body; null for anything else (invalid, array, scalar).
+async function readJsonObject(req) {
+  try {
+    const body = await req.json();
+    return body && typeof body === 'object' && !Array.isArray(body) ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+// Shared gate for every /events/api/* route. Returns a context object or a
+// Response to return directly. Membership = the subdomain the request arrived
+// on (no roster lookup); the team must exist in TEAMS with features.events.
+async function requireEventsContext(req, env, url, { mutating = false, coach = false } = {}) {
+  const shapeError = checkEventsRequest(req, url, mutating);
+  if (shapeError) return shapeError;
+
+  const email = await getSession(req, env);
+  if (!email) return eventsRespond({ error: 'not_authenticated' }, 401);
+
+  const resolved = await resolveEventsTeam(env, url);
+  if (resolved instanceof Response) return resolved;
+  const { team, teamConfig } = resolved;
 
   const selfId = await hmacId(env.EVENTS_HMAC_KEY, 'm', team, email);
 
@@ -1619,8 +1646,8 @@ async function requireEventsContext(req, env, url, { mutating = false, coach = f
 
   let body = null;
   if (mutating) {
-    try { body = await req.json(); } catch { return eventsRespond({ error: 'bad_request' }, 400); }
-    if (!body || typeof body !== 'object' || Array.isArray(body)) return eventsRespond({ error: 'bad_request' }, 400);
+    body = await readJsonObject(req);
+    if (!body) return eventsRespond({ error: 'bad_request' }, 400);
   }
 
   return {
@@ -1843,6 +1870,34 @@ async function findEventInfo(env, team, eventId) {
   return infos.find(i => i.id === eventId) || null;
 }
 
+// The event an RSVP targets, or a Response if it's missing, canceled or over.
+async function loadOpenEvent(env, ctx, eventId) {
+  const info = await findEventInfo(env, ctx.team, eventId);
+  const ev = info ? await loadEvent(env, info) : null;
+  if (!ev) return eventsRespond({ error: 'event_not_found' }, 404);
+  if (ev.canceled) return eventsRespond({ error: 'event_canceled' }, 409);
+  if (hasEnded(ev, nowStampInTz(ctx.tz))) return eventsRespond({ error: 'event_ended' }, 409);
+  return ev;
+}
+
+// Whose answer this is and the display name to store, or a Response when the
+// caller may not answer for that member. A managed kid's list entry is
+// refreshed here (rolling idle TTL) while it's in use.
+async function resolveRsvpTarget(env, ctx, memberId) {
+  if (memberId === ctx.selfId) {
+    const displayName = await readOwnName(env, ctx.team, ctx.selfId);
+    return displayName ? { isSelf: true, displayName } : eventsRespond({ error: 'name_required' }, 400);
+  }
+  const guardianId = await hmacId(env.EVENTS_HMAC_KEY, 'g', ctx.team, ctx.email);
+  const kids = await listKids(env, ctx.team, guardianId);
+  if (!canRsvpFor(memberId, ctx.selfId, kids.map(k => k.memberId))) return eventsRespond({ error: 'not_your_player' }, 403);
+  const kid = kids.find(k => k.memberId === memberId);
+  await env.EVENTS.put(`kid:${ctx.team}:${guardianId}:${memberId}`, '1', {
+    metadata: { n: kid.name, l: kid.linked ? 1 : 0 }, expirationTtl: PROFILE_TTL
+  });
+  return { isSelf: false, displayName: kid.name };
+}
+
 async function handleEventsRsvp(req, env, url) {
   const ctx = await requireEventsContext(req, env, url, { mutating: true });
   if (ctx instanceof Response) return ctx;
@@ -1852,29 +1907,10 @@ async function handleEventsRsvp(req, env, url) {
   const memberId = ctx.body.memberId === undefined || ctx.body.memberId === null ? ctx.selfId : ctx.body.memberId;
   if (!isValidMemberId(memberId)) return eventsRespond({ error: 'bad_request' }, 400);
 
-  const info = await findEventInfo(env, ctx.team, eventId);
-  if (!info) return eventsRespond({ error: 'event_not_found' }, 404);
-  const ev = await loadEvent(env, info);
-  if (!ev) return eventsRespond({ error: 'event_not_found' }, 404);
-  if (ev.canceled) return eventsRespond({ error: 'event_canceled' }, 409);
-  if (hasEnded(ev, nowStampInTz(ctx.tz))) return eventsRespond({ error: 'event_ended' }, 409);
-
-  const isSelf = memberId === ctx.selfId;
-  let displayName;
-  if (isSelf) {
-    displayName = await readOwnName(env, ctx.team, ctx.selfId);
-    if (!displayName) return eventsRespond({ error: 'name_required' }, 400);
-  } else {
-    const guardianId = await hmacId(env.EVENTS_HMAC_KEY, 'g', ctx.team, ctx.email);
-    const kids = await listKids(env, ctx.team, guardianId);
-    if (!canRsvpFor(memberId, ctx.selfId, kids.map(k => k.memberId))) return eventsRespond({ error: 'not_your_player' }, 403);
-    const kid = kids.find(k => k.memberId === memberId);
-    displayName = kid.name;
-    // Keep the kid on the parent's list while it's in use (rolling idle TTL).
-    await env.EVENTS.put(`kid:${ctx.team}:${guardianId}:${memberId}`, '1', {
-      metadata: { n: kid.name, l: kid.linked ? 1 : 0 }, expirationTtl: PROFILE_TTL
-    });
-  }
+  const ev = await loadOpenEvent(env, ctx, eventId);
+  if (ev instanceof Response) return ev;
+  const target = await resolveRsvpTarget(env, ctx, memberId);
+  if (target instanceof Response) return target;
 
   const key = rsvpKey(ctx.team, eventId, memberId);
   const existing = await kvListAll(env.EVENTS, `rsvp:${ctx.team}:${eventId}:`);
@@ -1883,13 +1919,35 @@ async function handleEventsRsvp(req, env, url) {
   }
 
   await env.EVENTS.put(key, '1', {
-    metadata: { n: displayName, r: response, b: isSelf ? 'self' : 'guardian', at: new Date().toISOString() },
+    metadata: { n: target.displayName, r: response, b: target.isSelf ? 'self' : 'guardian', at: new Date().toISOString() },
     expiration: eventExpiry(ev.date)
   });
   // Refreshes the rolling profile TTL and (re)links a minor to their guardian.
-  if (isSelf) await writeProfile(env, ctx, displayName);
+  if (target.isSelf) await writeProfile(env, ctx, target.displayName);
 
   return eventsRespond({ ok: true, memberId, response });
+}
+
+// Which stored event a save targets: {existing} (null for a new event) or a
+// Response for a bad id, an unknown event, or the upcoming-events cap.
+function resolveSaveTarget(infos, inputId, today) {
+  if (inputId === undefined || inputId === null || inputId === '') {
+    return infos.filter(i => i.date >= today).length >= MAX_UPCOMING_EVENTS
+      ? eventsRespond({ error: 'too_many_events' }, 409)
+      : { existing: null };
+  }
+  if (!isValidEventId(inputId)) return eventsRespond({ error: 'bad_request' }, 400);
+  const existing = infos.find(i => i.id === inputId) || null;
+  return existing ? { existing } : eventsRespond({ error: 'event_not_found' }, 404);
+}
+
+// RSVP keys were stamped with the old date's expiry, so re-put them (same
+// metadata) with the rescheduled date's expiry.
+async function restampRsvps(env, team, eventId, newDate) {
+  const rsvps = await kvListAll(env.EVENTS, `rsvp:${team}:${eventId}:`);
+  await Promise.all(rsvps.map(k => env.EVENTS.put(k.name, '1', {
+    metadata: k.metadata, expiration: eventExpiry(newDate)
+  })));
 }
 
 async function handleEventSave(req, env, url) {
@@ -1901,15 +1959,9 @@ async function handleEventSave(req, env, url) {
 
   const today = nowStampInTz(ctx.tz).slice(0, 10);
   const infos = await listEventInfos(env, ctx.team);
-
-  let existing = null;
-  if (input.id !== undefined && input.id !== null && input.id !== '') {
-    if (!isValidEventId(input.id)) return eventsRespond({ error: 'bad_request' }, 400);
-    existing = infos.find(i => i.id === input.id) || null;
-    if (!existing) return eventsRespond({ error: 'event_not_found' }, 404);
-  } else if (infos.filter(i => i.date >= today).length >= MAX_UPCOMING_EVENTS) {
-    return eventsRespond({ error: 'too_many_events' }, 409);
-  }
+  const target = resolveSaveTarget(infos, input.id, today);
+  if (target instanceof Response) return target;
+  const { existing } = target;
 
   // An update that doesn't say `canceled` keeps the event's current state
   // (only an explicit true/false changes it).
@@ -1931,15 +1983,7 @@ async function handleEventSave(req, env, url) {
   }), { expiration: eventExpiry(ev.date) });
 
   if (existing && existing.name !== newName) await env.EVENTS.delete(existing.name);
-
-  if (existing && existing.date !== ev.date) {
-    // Rescheduled: RSVP keys were stamped with the old date's expiry, so
-    // re-put them (same metadata) with the new one.
-    const rsvps = await kvListAll(env.EVENTS, `rsvp:${ctx.team}:${id}:`);
-    await Promise.all(rsvps.map(k => env.EVENTS.put(k.name, '1', {
-      metadata: k.metadata, expiration: eventExpiry(ev.date)
-    })));
-  }
+  if (existing && existing.date !== ev.date) await restampRsvps(env, ctx.team, id, ev.date);
 
   return eventsRespond({ ok: true, id });
 }
