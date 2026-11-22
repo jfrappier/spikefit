@@ -1,10 +1,11 @@
-// js/events-banner.js — "upcoming team event" banner for app.html (ADR-015)
+// js/events-banner.js — one-line "upcoming team event" strip for app.html (ADR-015)
 //
 // Deliberately a separate file from js/app.js, so the one network call this
 // feature adds to app.html is isolated and easy to audit. It makes a single
-// bodyless GET to /events/api/next (session cookie only) and a POST to
-// /events/api/rsvp when someone taps an answer. It never reads localStorage
-// or any workout data, and it renders only with textContent/createElement.
+// bodyless GET to /events/api/next (session cookie only) and nothing else —
+// answering happens on the /events page the strip links to. It never reads
+// localStorage or any workout data, and it renders only with
+// textContent/createElement.
 //
 // Runs only on a team subdomain over http(s). On the apex domain, file://
 // forks, an offline device, or any non-200 response it stays hidden, and
@@ -22,15 +23,8 @@
     const FETCH_TIMEOUT_MS = 5000;
     const DAY_NAMES   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const ANSWERS = [
-        { value: 'yes',   label: 'Going' },
-        { value: 'maybe', label: 'Maybe' },
-        { value: 'no',    label: "Can't go" }
-    ];
 
     let data = null;
-    const editing = new Set();   // "<eventId>:<memberId|self>" rows showing buttons despite an answer
-    const failed  = new Set();   // rows whose last save failed
 
     function el(tag, className, text) {
         const node = document.createElement(tag);
@@ -49,16 +43,11 @@
         return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
     }
 
-    function typeLabel(typeId) {
-        const t = (data.types || []).find(x => x.id === typeId);
-        return t ? t.label : 'Event';
-    }
-
     async function request(path, options) {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
         try {
-            // nosemgrep: SSRF rule targets server-side HTTP clients. This runs in the browser and callers pass only the literal same-origin '/events/api/...' paths below.
+            // nosemgrep: SSRF rule targets server-side HTTP clients. This runs in the browser and the only caller passes the literal same-origin '/events/api/next' path.
             return await fetch(path, { ...options, signal: controller.signal });
         } finally {
             clearTimeout(timer);
@@ -72,88 +61,44 @@
         return who === 'You' ? "You can't go" : `${prefix} can't go`;
     }
 
-    function buildTargetRow(ev, target) {
-        const rowKey = `${ev.id}:${target.memberId || 'self'}`;
-        const row = el('div', 'event-banner-actions');
-
-        if (target.response && !editing.has(rowKey)) {
-            row.appendChild(el('span', 'event-banner-status', statusText(target.who, target.response)));
-            const change = el('button', 'event-banner-btn', 'Change');
-            change.type = 'button';
-            change.addEventListener('click', () => { editing.add(rowKey); render(); });
-            row.appendChild(change);
-            return row;
-        }
-
-        row.appendChild(el('span', 'event-banner-who', target.who === 'You' ? 'Going?' : `${target.who}:`));
-        ANSWERS.forEach(a => {
-            const btn = el('button', 'event-banner-btn', a.label);
-            btn.type = 'button';
-            if (target.response === a.value) btn.classList.add(`ev-sel-${a.value}`);
-            btn.addEventListener('click', () => answer(ev, target, rowKey, a.value, row));
-            row.appendChild(btn);
-        });
-        if (failed.has(rowKey)) row.appendChild(el('span', 'event-banner-canceled', "Couldn't save — try again"));
-        return row;
-    }
-
-    async function answer(ev, target, rowKey, response, row) {
-        row.querySelectorAll('button').forEach(b => { b.disabled = true; });
-        const body = { eventId: ev.id, response };
-        if (target.memberId) body.memberId = target.memberId;
-        try {
-            const res = await request('/events/api/rsvp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            if (!res.ok) throw new Error(`rsvp_failed_${res.status}`);
-            failed.delete(rowKey);
-            editing.delete(rowKey);
-            if (target.memberId) ev.kid.response = response;
-            else ev.mine = response;
-        } catch (err) {
-            console.error('Could not save RSVP from banner.', err);
-            failed.add(rowKey);
-        }
-        render();
-    }
-
-    function buildEventRow(ev) {
-        const row = el('div', 'event-banner-row');
-        row.appendChild(el('p', 'event-banner-title', `${typeLabel(ev.type)} · ${ev.title}`));
-
-        const range = ev.endTime ? `${formatTime(ev.time)} – ${formatTime(ev.endTime)}` : formatTime(ev.time);
-        const when = el('p', 'event-banner-when', `${formatDay(ev.date)} · ${range}${ev.location ? ` · ${ev.location}` : ''}`);
-        if (ev.canceled) when.appendChild(el('span', 'event-banner-canceled', '  Canceled'));
-        row.appendChild(when);
-        if (ev.canceled) return row;
-
+    // Who this person answers for on this event: themselves, plus their one
+    // player if they have exactly one. With several players (or no name yet)
+    // the /events page has the per-person rows.
+    function targetsFor(ev) {
         const targets = [];
-        if (data.hasName) targets.push({ who: 'You', memberId: null, response: ev.mine });
-        if (data.kidCount === 1 && ev.kid) targets.push({ who: ev.kid.name, memberId: ev.kid.memberId, response: ev.kid.response });
-        targets.forEach(t => row.appendChild(buildTargetRow(ev, t)));
+        if (data.hasName) targets.push({ who: 'You', response: ev.mine });
+        if (data.kidCount === 1 && ev.kid) targets.push({ who: ev.kid.name, response: ev.kid.response });
+        return targets;
+    }
 
-        // No name yet, or several players: the full page has the name prompt / per-player rows.
-        if (targets.length === 0 || data.kidCount > 1) {
-            const link = el('a', 'event-banner-btn', data.kidCount > 1 ? 'Respond for your players' : 'Respond');
-            link.href = `/events?e=${encodeURIComponent(ev.id)}`;
-            const wrap = el('div', 'event-banner-actions');
-            wrap.appendChild(link);
-            row.appendChild(wrap);
-        }
-        return row;
+    // What the right-hand end of the strip says: a prompt, or their answer.
+    function actionText(ev) {
+        const targets = targetsFor(ev);
+        const needsReply = targets.length === 0 || data.kidCount > 1 || targets.some(t => !t.response);
+        return needsReply ? 'Click to RSVP ›' : targets.map(t => statusText(t.who, t.response)).join(' · ');
     }
 
     function render() {
+        const ev = data.events[0];
+        const action = ev.canceled ? 'Canceled' : actionText(ev);
+        const more = data.events.length - 1;
+
+        const link = el('a', 'event-banner-link');
+        link.href = `/events?e=${encodeURIComponent(ev.id)}`;
+        link.classList.toggle('is-canceled', ev.canceled === true);
+        link.classList.toggle('is-answered', !ev.canceled && action !== 'Click to RSVP ›');
+        link.setAttribute('aria-label', `Upcoming event: ${ev.title}, ${formatDay(ev.date)} at ${formatTime(ev.time)}. ${action.replace(' ›', '')}.`);
+
+        link.appendChild(el('span', 'event-banner-icon', '📅'));
+        const text = el('span', 'event-banner-text');
+        text.appendChild(el('strong', null, ev.title));
+        text.appendChild(document.createTextNode(` · ${formatDay(ev.date)} ${formatTime(ev.time)}`));
+        link.appendChild(text);
+        if (more > 0) link.appendChild(el('span', 'event-banner-more', `+${more}`));
+        link.appendChild(el('span', 'event-banner-action', action));
+
         container.textContent = '';
-        const inner = el('div', 'event-banner-inner');
-        inner.appendChild(el('p', 'event-banner-head', `Upcoming · ${data.teamName || 'Your team'}`));
-        data.events.forEach(ev => inner.appendChild(buildEventRow(ev)));
-        const more = el('a', 'event-banner-more', 'See all events →');
-        more.href = '/events';
-        inner.appendChild(more);
-        container.appendChild(inner);
+        container.appendChild(link);
         container.classList.remove('u-hidden');
     }
 

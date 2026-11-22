@@ -1889,13 +1889,17 @@ async function resolveRsvpTarget(env, ctx, memberId) {
     return displayName ? { isSelf: true, displayName } : eventsRespond({ error: 'name_required' }, 400);
   }
   const guardianId = await hmacId(env.EVENTS_HMAC_KEY, 'g', ctx.team, ctx.email);
-  const kids = await listKids(env, ctx.team, guardianId);
-  if (!canRsvpFor(memberId, ctx.selfId, kids.map(k => k.memberId))) return eventsRespond({ error: 'not_your_player' }, 403);
-  const kid = kids.find(k => k.memberId === memberId);
-  await env.EVENTS.put(`kid:${ctx.team}:${guardianId}:${memberId}`, '1', {
-    metadata: { n: kid.name, l: kid.linked ? 1 : 0 }, expirationTtl: PROFILE_TTL
+  // A direct read of this one key (not list(), which can lag a minute behind
+  // a just-added player). Same pattern as the kids rename/remove paths.
+  const kidKey = `kid:${ctx.team}:${guardianId}:${memberId}`;
+  const found = await env.EVENTS.getWithMetadata(kidKey);
+  const kidIds = found.value !== null && found.metadata ? [memberId] : [];
+  if (!canRsvpFor(memberId, ctx.selfId, kidIds)) return eventsRespond({ error: 'not_your_player' }, 403);
+  const kidName = typeof found.metadata.n === 'string' ? found.metadata.n : '';
+  await env.EVENTS.put(kidKey, '1', {
+    metadata: { n: kidName, l: found.metadata.l === 1 ? 1 : 0 }, expirationTtl: PROFILE_TTL
   });
-  return { isSelf: false, displayName: kid.name };
+  return { isSelf: false, displayName: kidName };
 }
 
 async function handleEventsRsvp(req, env, url) {

@@ -76,7 +76,7 @@ pytest tests/e2e/ --headed
 | `test_workout_flow.py` | Start workout, check exercises, RPE modal, badge, reset day, mid-workout day switch |
 | `test_localstorage_safety.py` | Corrupted JSON, date-scoped key isolation across two dates |
 | `test_auth.py` | OTP UI steps, invalid email, attempt lockout, redirect on success |
-| `test_events.py` | Team events (ADR-015): player/parent/coach flows on `events.html` (name prompt, answering, adding players, creating/duplicating/canceling events, attendee names), the Share button (native share + clipboard fallback), `?e=` deep links, the coach hub Events tile, and the `app.html` banner (served for a fake `millis.spikefit.app` host via `page.route()`; asserts the banner's only request is a bodyless, query-less `GET /events/api/next`) |
+| `test_events.py` | Team events (ADR-015): player/parent/coach flows on `events.html` (name prompt, answering, adding players, creating/duplicating/canceling events, attendee names), the Share button (native share + clipboard fallback), `?e=` deep links, the coach hub Events tile, and the `app.html` banner (served for a fake `millis.spikefit.app` host via `page.route()`; asserts the banner's only request is a bodyless, query-less `GET /events/api/next`, and that it stays one slim line on a phone), and the stale-list cases (a mocked list that lags behind the page's own saves, answers and player changes, with Playwright's fake clock driving the background re-check) |
 | `test_coach.py` | Coach module (ADR-014): hub tile visibility, green/red/yellow (confirm + decline) pickup results, the already-out banner, the offline queue and sync, the offline re-scan guard |
 
 ### How tests seed state

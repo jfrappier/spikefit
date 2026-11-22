@@ -81,32 +81,36 @@
 .ev-error { color: #9b2c2c; font-weight: 600; margin: 0.75em 0 0; }
 
 /* ───────── app.html banner (js/events-banner.js) ───────── */
+/* One slim line, like the landing page's ticker: next event on the left,
+   a prompt (or the person's answer) on the right. The whole strip is a link. */
 
 .event-banner {
-    max-width: 800px; margin: 0.75em auto 0; padding: 0 1em;
+    /* min-width: 0 + a bounded width stop the one-line text from stretching a flex parent past the screen. */
+    box-sizing: border-box; width: 100%; min-width: 0; max-width: 800px; margin: 0.5em auto 0; padding: 0 1em;
 }
-.event-banner-inner {
-    background: var(--bg-panel); border: 1px solid var(--border); border-left: 4px solid var(--accent);
-    border-radius: var(--radius-md); padding: 0.75em 1em; box-shadow: var(--shadow-sm);
+.event-banner-link {
+    display: flex; align-items: center; gap: 0.5em;
+    padding: 0.45em 0.85em; border-radius: var(--radius-md);
+    background: var(--accent); color: #ffffff;
+    font-size: 0.85rem; line-height: 1.3; text-decoration: none;
 }
-.event-banner-head { margin: 0 0 0.35em; font-size: 0.72em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
-.event-banner-row { padding: 0.45em 0; border-top: 1px solid var(--border); }
-.event-banner-row:first-of-type { border-top: none; padding-top: 0; }
-.event-banner-title { margin: 0; font-weight: 700; color: var(--text-main); text-transform: none; letter-spacing: normal; }
-.event-banner-when { margin: 0.1em 0 0; color: var(--text-muted); font-size: 0.9em; }
-.event-banner-canceled { color: #9b2c2c; font-weight: 700; }
-.event-banner-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4em; margin-top: 0.4em; }
-.event-banner-who { font-size: 0.85em; font-weight: 700; color: var(--text-main); margin-right: 0.25em; }
-.event-banner-status { font-size: 0.9em; font-weight: 700; color: var(--text-main); }
-.event-banner-btn {
-    padding: 0.35em 0.9em; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg-panel);
-    color: var(--text-main); font-family: inherit; font-size: 0.85em; font-weight: 700; cursor: pointer; text-decoration: none;
+.event-banner-link:hover { filter: brightness(1.08); }
+.event-banner-link:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; }
+.event-banner-link.is-answered {
+    background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);
 }
-.event-banner-btn:hover { border-color: var(--accent); color: var(--accent); }
-.event-banner-btn.ev-sel-yes   { background: #2f855a; border-color: #2f855a; color: #fff; }
-.event-banner-btn.ev-sel-maybe { background: #b7791f; border-color: #b7791f; color: #fff; }
-.event-banner-btn.ev-sel-no    { background: #c53030; border-color: #c53030; color: #fff; }
-.event-banner-more { display: inline-block; margin-top: 0.4em; font-size: 0.85em; font-weight: 700; color: var(--accent); text-decoration: none; }
+.event-banner-link.is-canceled { background: #9b2c2c; }
+.event-banner-icon { flex: none; }
+.event-banner-text {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    text-transform: none; letter-spacing: normal;
+}
+.event-banner-more {
+    flex: none; padding: 0 0.45em; border-radius: 999px; font-size: 0.75rem; font-weight: 700;
+    background: rgba(255, 255, 255, 0.25);
+}
+.is-answered .event-banner-more { background: var(--border); }
+.event-banner-action { flex: none; white-space: nowrap; font-weight: 800; }
 
 @media (max-width: 420px) {
     .ev-container { padding: 1em 0.85em 2.5em; }

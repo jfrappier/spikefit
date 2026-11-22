@@ -7,6 +7,12 @@
 //
 // No localStorage keys, no offline queue: answering needs a connection and
 // shows a toast if it fails.
+//
+// KV's list() is eventually consistent, so re-fetching right after our own
+// write can return the old picture for up to a minute. We therefore keep the
+// last server snapshot (state.server) and a short list of our own recent
+// changes (state.pending), and render the snapshot with those re-applied. Each
+// change is dropped as soon as the server agrees, or after PENDING_TTL_MS.
 
 // ─── Toast (mirrors js/coach.js against events.html's own markup) ───────────
 
@@ -30,6 +36,8 @@ document.getElementById('ev-toast-close').addEventListener('click', closeEvToast
 // ─── Constants / state ───────────────────────────────────────────────────────
 
 const FETCH_TIMEOUT_MS = 8000;
+const PENDING_TTL_MS = 150000;        // how long our own change outranks a stale server list
+const BACKGROUND_RELOAD_MS = 65000;   // re-check the server this long after a change
 const DAY_NAMES   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const ANSWERS = [
@@ -57,7 +65,9 @@ const ERROR_MESSAGES = {
 };
 
 const state = {
-    data: null,          // last /events/api/list response
+    server: null,        // last /events/api/list response, untouched
+    data: null,          // state.server with our pending changes re-applied (what we render)
+    pending: [],         // [{kind, at, ...}] changes the server list may not show yet
     showPast: false,
     editingId: null,     // event id being edited (null = new)
     deepLinkId: new URLSearchParams(location.search).get('e'),
@@ -145,10 +155,15 @@ function showUnavailable(text) {
 
 // ─── Load + render ───────────────────────────────────────────────────────────
 
-async function load() {
+async function load({ background = false } = {}) {
     const res = await api(`/events/api/list${state.showPast ? '?past=1' : ''}`);
     if (res.status === 401) {
         window.location.href = `/auth.html?redirect=${encodeURIComponent(location.pathname + location.search)}`;
+        return;
+    }
+    // A quiet re-check must never replace a working page with an error screen.
+    if (background && (!res.ok || !res.data)) {
+        scheduleReload();
         return;
     }
     if (res.status === 403) {
@@ -159,8 +174,142 @@ async function load() {
         showUnavailable("Couldn't load events. Check your connection and try again.");
         return;
     }
-    state.data = res.data;
+    state.server = res.data;
+    state.data = applyPending(state.server);
     render();
+    scheduleReload();
+}
+
+// ─── Our own recent changes (see the header note) ────────────────────────────
+
+// Public fields of an event, in one comparable string.
+function eventSig(ev) {
+    return JSON.stringify([ev.type, ev.title, ev.date, ev.time, ev.endTime, ev.location, ev.notes, ev.canceled]);
+}
+
+function byStart(a, b) {
+    return `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`);
+}
+
+function blankEvent(data) {
+    return {
+        ended: false,
+        counts: { yes: 0, maybe: 0, no: 0 },
+        mine: null,
+        kidAnswers: data.kids.map(k => ({ memberId: k.memberId, name: k.name, response: null, by: null })),
+        attendees: []
+    };
+}
+
+// Each handler re-applies one pending change to `data` and returns true while
+// the server snapshot still doesn't show it.
+function applyPendingEvent(data, p) {
+    const known = data.events.filter(e => e.id === p.ev.id);
+    if (known.length === 1 && eventSig(known[0]) === eventSig(p.ev)) return false;
+    const base = known.length > 0 ? known[0] : blankEvent(data);
+    // Filtering by id also hides a stale pre-reschedule copy under the old key.
+    data.events = data.events.filter(e => e.id !== p.ev.id);
+    data.events.push({ ...base, ...p.ev, ended: false });
+    return true;
+}
+
+function applyPendingRemove(data, p) {
+    const stillListed = data.events.some(e => e.id === p.id);
+    data.events = data.events.filter(e => e.id !== p.id);
+    return stillListed;
+}
+
+function adjustCounts(ev, previous, next) {
+    if (previous) ev.counts[previous] = Math.max(0, ev.counts[previous] - 1);
+    ev.counts[next] += 1;
+}
+
+// Coaches also see who answered; keep that list in step with the counts.
+function updateAttendees(ev, data, p, slot) {
+    if (!data.isCoach) return;
+    if (!Array.isArray(ev.attendees)) ev.attendees = [];
+    const name = slot ? slot.name : data.me.name;
+    const by = slot ? 'guardian' : 'self';
+    const entry = ev.attendees.find(a => a.by === by && (slot ? a.memberId === p.memberId : a.name === name));
+    if (entry) entry.response = p.response;
+    else ev.attendees.push({ memberId: p.memberId, name, response: p.response, by });
+    ev.attendees.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function applyPendingRsvp(data, p) {
+    const ev = data.events.find(e => e.id === p.eventId);
+    if (!ev) return false;
+    const slot = p.memberId ? ev.kidAnswers.find(k => k.memberId === p.memberId) : null;
+    if (p.memberId && !slot) return false;
+    const previous = slot ? slot.response : (ev.mine ? ev.mine.response : null);
+    if (previous === p.response) return false;
+    adjustCounts(ev, previous, p.response);
+    if (slot) { slot.response = p.response; slot.by = 'guardian'; }
+    else ev.mine = { response: p.response, by: 'self' };
+    updateAttendees(ev, data, p, slot);
+    return true;
+}
+
+function applyPendingKidAdd(data, p) {
+    if (data.kids.some(k => k.memberId === p.memberId)) return false;
+    data.kids.push({ memberId: p.memberId, name: p.name, linked: false });
+    data.events.forEach(ev => {
+        if (!ev.kidAnswers.some(k => k.memberId === p.memberId)) {
+            ev.kidAnswers.push({ memberId: p.memberId, name: p.name, response: null, by: null });
+        }
+    });
+    return true;
+}
+
+function applyPendingKidRemove(data, p) {
+    const stillListed = data.kids.some(k => k.memberId === p.memberId);
+    data.kids = data.kids.filter(k => k.memberId !== p.memberId);
+    data.events.forEach(ev => { ev.kidAnswers = ev.kidAnswers.filter(k => k.memberId !== p.memberId); });
+    return stillListed;
+}
+
+const PENDING_HANDLERS = {
+    event: applyPendingEvent,
+    remove: applyPendingRemove,
+    rsvp: applyPendingRsvp,
+    'kid-add': applyPendingKidAdd,
+    'kid-remove': applyPendingKidRemove
+};
+
+// Returns a copy of the snapshot with the still-needed pending changes applied
+// (in the order they were made), and forgets the ones that are no longer needed.
+function applyPending(server) {
+    const data = JSON.parse(JSON.stringify(server));
+    const now = Date.now();
+    state.pending = state.pending.filter(p => now - p.at < PENDING_TTL_MS && PENDING_HANDLERS[p.kind](data, p));
+    data.events.sort(byStart);
+    return data;
+}
+
+// Records a change we just made, shows it straight away, and re-checks the
+// server later in the background.
+function commit(change) {
+    state.pending.push({ ...change, at: Date.now() });
+    state.data = applyPending(state.server);
+    render();
+    scheduleReload();
+}
+
+let reloadTimer = null;
+
+function scheduleReload() {
+    clearTimeout(reloadTimer);
+    if (state.pending.length > 0) reloadTimer = setTimeout(backgroundReload, BACKGROUND_RELOAD_MS);
+}
+
+async function backgroundReload() {
+    // Never yank someone out of the editor or reload a tab they aren't looking at.
+    const editing = !document.getElementById('view-editor').classList.contains('u-hidden');
+    if (document.hidden || editing) {
+        scheduleReload();
+        return;
+    }
+    await load({ background: true });
 }
 
 function render() {
@@ -253,7 +402,7 @@ async function submitRsvp(eventId, response, memberId, row) {
         if (res.data && ['event_canceled', 'event_ended', 'event_not_found'].includes(res.data.error)) await load();
         return;
     }
-    await load();
+    commit({ kind: 'rsvp', eventId, memberId: memberId || null, response });
 }
 
 function buildAttendees(ev) {
@@ -382,8 +531,10 @@ document.getElementById('form-kid').addEventListener('submit', async e => {
         showToast("Couldn't add player", errorText(res.data && res.data.error), '⚠️');
         return;
     }
+    const added = { memberId: res.data && res.data.memberId, name: (res.data && res.data.name) ?? input.value.trim() };
     input.value = '';
-    await load();
+    if (added.memberId) commit({ kind: 'kid-add', ...added });
+    else await load();
 });
 
 async function removeKid(kid) {
@@ -396,7 +547,7 @@ async function removeKid(kid) {
         showToast("Couldn't remove", errorText(res.data && res.data.error), '⚠️');
         return;
     }
-    await load();
+    commit({ kind: 'kid-remove', memberId: kid.memberId });
 }
 
 document.getElementById('btn-forget').addEventListener('click', async () => {
@@ -447,6 +598,16 @@ function openEditor(ev, duplicate) {
 document.getElementById('btn-new-event').addEventListener('click', () => openEditor(null, false));
 document.getElementById('btn-cancel-editor').addEventListener('click', () => showView('view-main'));
 
+// What we expect the server to hold after a successful save (same fields it
+// returns), so the page can show it before KV's list catches up.
+function localEvent(id, event) {
+    return {
+        id, type: event.type, title: event.title.trim(), date: event.date, time: event.time,
+        endTime: event.endTime ?? '', location: (event.location ?? '').trim(), notes: (event.notes ?? '').trim(),
+        canceled: event.canceled === true
+    };
+}
+
 document.getElementById('form-event').addEventListener('submit', async e => {
     e.preventDefault();
     const event = {
@@ -474,7 +635,9 @@ document.getElementById('form-event').addEventListener('submit', async e => {
         return;
     }
     showToast('Saved', 'Tap Share on the event to send it to your team chat.', '✅');
-    await load();
+    const id = res.data && res.data.id;
+    if (id) commit({ kind: 'event', ev: localEvent(id, event) });
+    else await load();
 });
 
 async function toggleCanceled(ev) {
@@ -489,7 +652,7 @@ async function toggleCanceled(ev) {
         showToast("Couldn't update", errorText(res.data && res.data.error), '⚠️');
         return;
     }
-    await load();
+    commit({ kind: 'event', ev: localEvent(ev.id, event) });
 }
 
 async function deleteEvent(ev) {
@@ -499,7 +662,7 @@ async function deleteEvent(ev) {
         showToast("Couldn't delete", errorText(res.data && res.data.error), '⚠️');
         return;
     }
-    await load();
+    commit({ kind: 'remove', id: ev.id });
 }
 
 // ─── Boot ────────────────────────────────────────────────────────────────────

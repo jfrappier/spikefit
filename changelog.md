@@ -42,7 +42,7 @@ A new `events.html` page, served on a team's own subdomain behind the existing s
 Each event has a coach-only **Share** button that sends a link like `millis.spikefit.app/events?e=…` to the team group chat through the phone's share sheet (or copies it). Opening it signs people in if needed and lands them on that event. Fixes the login redirect for this route to keep the query string.
 
 ### "Upcoming event" banner in the app
-On a team's page, the top of the app shows the next few events that haven't ended, with quick Going / Maybe / Can't go buttons. It lives in its own `js/events-banner.js` and makes one request to the server (your sign-in cookie only — no workout data); it stays hidden everywhere else, including `file://` copies.
+On a team's page, the top of the app shows the next few events that haven't ended, as one slim line — the event, when it is, and "Click to RSVP" (or your answer once you've given one) — that opens the event on the events page. It lives in its own `js/events-banner.js` and makes one request to the server (your sign-in cookie only — no workout data); it stays hidden everywhere else, including `file://` copies.
 
 ### Coach hub Events tile
 Coaches with events turned on for their team get an **Events** tile next to Pickup.

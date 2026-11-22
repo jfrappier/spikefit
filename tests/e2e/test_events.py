@@ -21,6 +21,7 @@ from playwright.sync_api import Page
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 EVENT_ID = "11111111-1111-4111-8111-111111111111"
+NEW_EVENT_ID = "44444444-4444-4444-8444-444444444444"
 KID_ID = "22222222-2222-4222-8222-222222222222"
 TYPES = [
     {"id": "practice", "label": "Practice"},
@@ -71,7 +72,10 @@ class Api:
     def _post(self, route, name):
         body = json.loads(route.request.post_data or "{}")
         self.posts.append((name, body))
-        route.fulfill(status=200, content_type="application/json", body=json.dumps({"ok": True, "memberId": KID_ID}))
+        reply = {"ok": True, "memberId": KID_ID}
+        if name == "event/save":
+            reply = {"ok": True, "id": body.get("event", {}).get("id", NEW_EVENT_ID)}
+        route.fulfill(status=200, content_type="application/json", body=json.dumps(reply))
 
     def posted(self, name):
         return [b for n, b in self.posts if n == name]
@@ -383,78 +387,103 @@ def _banner_event(**over):
 
 @pytest.fixture
 def banner_page(page: Page):
-    calls = {"next": [], "rsvp": []}
+    calls = {"next": [], "other": []}
 
     def open_banner(payload, *, status=200):
         def next_handler(route):
             calls["next"].append(route.request)
             route.fulfill(status=status, content_type="application/json", body=json.dumps(payload))
 
-        def rsvp_handler(route):
-            calls["rsvp"].append(json.loads(route.request.post_data or "{}"))
-            route.fulfill(status=200, content_type="application/json", body='{"ok":true}')
+        def other_handler(route):
+            calls["other"].append(route.request.url)   # the strip must never call anything else
+            route.fulfill(status=500, body="")
 
         # Pre-accept the first-run disclaimer and storage prompts, like the other app tests.
         page.add_init_script("""
             localStorage.setItem('disclaimerAgreed', '0.0.723');
             localStorage.setItem('storagePreference', 'local');
         """)
-        _serve_repo(page, TEAM_HOST, {"/events/api/next": next_handler, "/events/api/rsvp": rsvp_handler})
+        _serve_repo(page, TEAM_HOST, {"/events/api/next": next_handler, "/events/api/rsvp": other_handler})
         page.goto(f"{TEAM_HOST}/app.html")
         return calls
     return open_banner
 
 
-def test_banner_shows_next_event_with_quick_answer(page, banner_page):
+def test_banner_is_one_slim_line_linking_to_the_event(page, banner_page):
+    banner_page(_next([_banner_event()]))
+    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    link = page.locator("#event-banner a.event-banner-link")
+    text = link.text_content()
+    assert "Tuesday practice" in text and "Tue Jun 18" in text and "5:30 PM" in text and "Click to RSVP" in text
+    assert link.get_attribute("href") == f"/events?e={EVENT_ID}"
+    assert page.locator("#event-banner button").count() == 0
+    assert link.bounding_box()["height"] < 48      # a strip, not a card
+
+
+def test_banner_stays_one_line_on_a_phone_with_a_long_title(page, banner_page):
+    page.set_viewport_size({"width": 360, "height": 740})
+    banner_page(_next([_banner_event(title="Annual end of season team dinner and awards night at the lodge")]))
+    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    link = page.locator("#event-banner a.event-banner-link")
+    assert link.bounding_box()["height"] < 48
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+    assert link.locator(".event-banner-action").is_visible()   # the prompt is never squeezed out
+
+
+def test_banner_makes_one_bodyless_get_and_nothing_else(page, banner_page):
     calls = banner_page(_next([_banner_event()]))
     page.wait_for_selector("#event-banner:not(.u-hidden)")
-    text = page.locator("#event-banner").text_content()
-    assert "Tuesday practice" in text and "Tue Jun 18" in text and "5:30 PM" in text and "Main gym" in text
-
-    page.locator("#event-banner .event-banner-btn", has_text="Going").click()
-    page.wait_for_selector("text=You're going ✓")
-    assert calls["rsvp"] == [{"eventId": EVENT_ID, "response": "yes"}]
-
-
-def test_banner_request_is_a_bodyless_get_with_no_query_string(page, banner_page):
-    calls = banner_page(_next([_banner_event()]))
-    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    page.wait_for_load_state("networkidle")
     (req,) = calls["next"]
     assert req.method == "GET"
     assert req.post_data is None
     assert urlparse(req.url).query == ""
+    assert calls["other"] == []
 
 
-def test_banner_collapses_an_answered_event_and_lets_you_change_it(page, banner_page):
+def test_banner_shows_the_answer_instead_of_the_prompt_once_answered(page, banner_page):
     banner_page(_next([_banner_event(mine="maybe")]))
     page.wait_for_selector("text=You're a maybe")
-    assert page.locator("#event-banner .event-banner-btn", has_text="Change").count() == 1
-    assert page.locator("#event-banner .event-banner-btn", has_text="Going").count() == 0
-    page.locator("#event-banner .event-banner-btn", has_text="Change").click()
-    assert page.locator("#event-banner .event-banner-btn", has_text="Going").count() == 1
+    link = page.locator("#event-banner a.event-banner-link")
+    assert "Click to RSVP" not in link.text_content()
+    assert "is-answered" in link.get_attribute("class")
 
 
-def test_banner_asks_a_new_player_to_respond_on_the_events_page(page, banner_page):
+def test_banner_prompts_a_new_player_to_rsvp(page, banner_page):
     banner_page(_next([_banner_event()], has_name=False))
     page.wait_for_selector("#event-banner:not(.u-hidden)")
-    link = page.locator("#event-banner a", has_text="Respond")
-    assert link.get_attribute("href") == f"/events?e={EVENT_ID}"
+    assert "Click to RSVP" in page.locator("#event-banner").text_content()
+    assert page.locator("#event-banner a").get_attribute("href") == f"/events?e={EVENT_ID}"
 
 
-def test_banner_answers_for_a_parents_single_player(page, banner_page):
-    kid = {"memberId": KID_ID, "name": "Sam S.", "response": None}
-    calls = banner_page(_next([_banner_event(kid=kid)], has_name=False, kid_count=1))
+@pytest.mark.parametrize("response,expected", [(None, "Click to RSVP"), ("yes", "Sam S.: going ✓")])
+def test_banner_follows_a_parents_single_player(page, banner_page, response, expected):
+    kid = {"memberId": KID_ID, "name": "Sam S.", "response": response}
+    banner_page(_next([_banner_event(kid=kid)], has_name=False, kid_count=1))
     page.wait_for_selector("#event-banner:not(.u-hidden)")
-    page.locator("#event-banner .event-banner-btn", has_text="Going").click()
-    page.wait_for_selector("text=Sam S.: going ✓")
-    assert calls["rsvp"] == [{"eventId": EVENT_ID, "response": "yes", "memberId": KID_ID}]
+    assert expected in page.locator("#event-banner").text_content()
 
 
-def test_banner_marks_canceled_events_and_offers_no_buttons(page, banner_page):
+def test_banner_asks_a_parent_with_several_players_to_rsvp(page, banner_page):
+    banner_page(_next([_banner_event(mine="yes")], has_name=True, kid_count=2))
+    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    assert "Click to RSVP" in page.locator("#event-banner").text_content()
+
+
+def test_banner_marks_a_canceled_event(page, banner_page):
     banner_page(_next([_banner_event(canceled=True)]))
     page.wait_for_selector("#event-banner:not(.u-hidden)")
-    assert "Canceled" in page.locator("#event-banner").text_content()
-    assert page.locator("#event-banner .event-banner-btn").count() == 0
+    link = page.locator("#event-banner a.event-banner-link")
+    assert "Canceled" in link.text_content() and "Click to RSVP" not in link.text_content()
+    assert "is-canceled" in link.get_attribute("class")
+
+
+def test_banner_counts_the_other_upcoming_events(page, banner_page):
+    others = [_banner_event(id=f"{n}{n}{n}{n}{n}{n}{n}{n}-5555-4555-8555-555555555555", title=f"Extra {n}") for n in (6, 7)]
+    banner_page(_next([_banner_event(), *others]))
+    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    assert page.locator("#event-banner .event-banner-more").text_content() == "+2"
+    assert "Tuesday practice" in page.locator("#event-banner").text_content()   # soonest one is the one shown
 
 
 @pytest.mark.parametrize("status,payload", [(403, {"error": "events_unavailable"}), (401, {}), (200, _next([]))])
@@ -473,21 +502,126 @@ def test_banner_makes_no_request_off_a_team_host(page, http_server_base_url):
     assert requests == []
 
 
-def test_banner_shows_a_retry_message_when_saving_fails(page, http_server_base_url):
-    page.add_init_script("localStorage.setItem('disclaimerAgreed', '0.0.723'); localStorage.setItem('storagePreference', 'local');")
-    _serve_repo(page, TEAM_HOST, {
-        "/events/api/next": lambda r: r.fulfill(status=200, content_type="application/json", body=json.dumps(_next([_banner_event()]))),
-        "/events/api/rsvp": lambda r: r.fulfill(status=500, content_type="application/json", body='{"error":"x"}'),
-    })
-    page.goto(f"{TEAM_HOST}/app.html")
-    page.locator("#event-banner .event-banner-btn", has_text="Going").click()
-    page.wait_for_selector("text=Couldn't save")
-    assert page.locator("#event-banner .event-banner-btn", has_text="Going").is_enabled()
+# ─── Stale list (KV list() is eventually consistent) ──────────────────────────
+#
+# The mocked list endpoint keeps returning the OLD picture, like KV can for up
+# to a minute after a write. The page must show the coach's own change anyway.
+
+def _coach_creates_event(page):
+    page.locator("#btn-new-event").click()
+    page.wait_for_selector("#view-editor:not(.u-hidden)")
+    page.locator("#ev-type").select_option("practice")
+    page.locator("#ev-title").fill("Tuesday practice")
+    page.locator("#ev-date").fill("2030-07-02")
+    page.locator("#ev-time").fill("17:30")
+    page.locator("#btn-save-event").click()
 
 
-def test_banner_sends_a_parent_with_several_players_to_the_events_page(page, banner_page):
-    banner_page(_next([_banner_event()], has_name=False, kid_count=2))
-    page.wait_for_selector("#event-banner:not(.u-hidden)")
-    link = page.locator("#event-banner a", has_text="Respond for your players")
-    assert link.get_attribute("href") == f"/events?e={EVENT_ID}"
-    assert page.locator("#event-banner .event-banner-btn", has_text="Going").count() == 0
+def test_a_saved_event_shows_immediately_even_if_the_list_is_stale(page, open_events):
+    api = open_events(_list([], is_coach=True))
+    _coach_creates_event(page)
+    page.wait_for_selector(".ev-card")
+    assert "Tuesday practice" in page.locator(".ev-card").text_content()
+    assert page.locator("#ev-empty").is_hidden()
+    assert len(api.list_urls) == 1        # it didn't need to re-read the list to show it
+
+
+def test_background_recheck_hands_over_to_the_server_once_it_catches_up(page, open_events):
+    page.clock.install()
+    api = open_events(_list([], is_coach=True))
+    _coach_creates_event(page)
+    page.wait_for_selector(".ev-card")
+    api.listing = _list([_event(id=NEW_EVENT_ID, type="practice", title="Tuesday practice", date="2030-07-02",
+                                time="17:30", endTime="", location="", notes="", counts={"yes": 4, "maybe": 0, "no": 0})],
+                        is_coach=True)
+    page.clock.fast_forward(66_000)
+    page.wait_for_function("document.querySelector('.ev-going') && document.querySelector('.ev-going').textContent.startsWith('4 going')")
+    assert page.locator(".ev-card").count() == 1      # one card, not a local copy plus the server's
+    assert len(api.list_urls) == 2
+
+
+def test_a_still_stale_list_wins_only_after_the_change_expires(page, open_events):
+    page.clock.install()
+    api = open_events(_list([], is_coach=True))
+    _coach_creates_event(page)
+    page.wait_for_selector(".ev-card")
+    page.clock.fast_forward(66_000)               # re-check: server still hasn't got it
+    for _ in range(100):
+        if len(api.list_urls) >= 2:
+            break
+        page.wait_for_timeout(20)
+    assert page.locator(".ev-card").count() == 1  # our change is kept for now
+    page.clock.fast_forward(160_000)              # past the expiry
+    page.wait_for_selector(".ev-card", state="detached")
+    assert page.locator("#ev-empty").is_visible()
+
+
+def test_a_failed_background_recheck_leaves_the_page_alone(page, open_events):
+    page.clock.install()
+    api = open_events(_list([], is_coach=True))
+    _coach_creates_event(page)
+    page.wait_for_selector(".ev-card")
+    api.list_status = 500
+    page.clock.fast_forward(66_000)
+    for _ in range(100):
+        if len(api.list_urls) >= 2:
+            break
+        page.wait_for_timeout(20)
+    assert page.locator("#view-unavailable").is_hidden()
+    assert page.locator(".ev-card").count() == 1
+
+
+def test_a_canceled_event_shows_canceled_even_if_the_list_is_stale(page, open_events):
+    open_events(_list(is_coach=True))
+    page.once("dialog", lambda d: d.accept())
+    page.locator(".ev-link-btn", has_text="Cancel event").click()
+    page.wait_for_selector(".ev-badge-canceled")
+    assert page.locator(".ev-answer-btn").count() == 0
+
+
+def test_a_deleted_event_disappears_even_if_the_list_is_stale(page, open_events):
+    open_events(_list(is_coach=True))
+    page.once("dialog", lambda d: d.accept())
+    page.locator(".ev-link-btn", has_text="Delete").click()
+    page.wait_for_selector(".ev-card", state="detached")
+    assert page.locator("#ev-empty").is_visible()
+
+
+def test_an_answer_shows_immediately_and_moves_the_count(page, open_events):
+    open_events(_list([_event(counts={"yes": 3, "maybe": 1, "no": 0})]))
+    page.locator(".ev-answer-btn", has_text="Going").click()
+    page.wait_for_selector(".ev-answer-btn.ev-sel-yes")
+    assert "4 going" in page.locator(".ev-going").text_content()
+    page.locator(".ev-answer-btn", has_text="Maybe").click()     # changing it moves the count back
+    page.wait_for_selector(".ev-answer-btn.ev-sel-maybe")
+    assert "3 going" in page.locator(".ev-going").text_content() and "2 maybe" in page.locator(".ev-going").text_content()
+
+
+def test_a_coach_sees_their_own_answer_in_the_attendee_list_immediately(page, open_events):
+    open_events(_list(is_coach=True))
+    page.locator(".ev-answer-btn", has_text="Going").click()
+    page.wait_for_selector(".ev-answer-btn.ev-sel-yes")
+    page.locator(".ev-attendees summary").click()
+    assert "Pat P." in page.locator(".ev-attendees").text_content()
+
+
+def test_a_just_added_player_can_be_answered_for_right_away(page, open_events):
+    api = open_events(_list())
+    page.locator("#input-kid").fill("Jo J.")
+    page.locator("#form-kid button[type=submit]").click()
+    page.wait_for_selector("#ev-kids-list li")
+    assert "Jo J." in page.locator("#ev-kids-list").text_content()
+    page.locator(".ev-answer-row", has_text="Jo J.").locator(".ev-answer-btn", has_text="Going").click()
+    _wait_for_post(page, api, "rsvp")
+    assert api.posted("rsvp") == [{"eventId": EVENT_ID, "response": "yes", "memberId": KID_ID}]
+    page.wait_for_selector(".ev-answer-row:has-text('Jo J.') .ev-answer-btn.ev-sel-yes")
+
+
+def test_a_removed_player_disappears_even_if_the_list_is_stale(page, open_events):
+    kid = {"memberId": KID_ID, "name": "Sam S.", "linked": False}
+    kid_answers = [{"memberId": KID_ID, "name": "Sam S.", "response": None, "by": None}]
+    open_events(_list([_event(kidAnswers=kid_answers)], kids=[kid]))
+    page.once("dialog", lambda d: d.accept())
+    page.locator("#ev-kids-list .ev-link-btn", has_text="Remove").click()
+    page.wait_for_selector("#ev-kids-list li", state="detached")
+    assert page.locator(".ev-answer-row", has_text="Sam S.").count() == 0
