@@ -451,6 +451,19 @@ def test_banner_stays_one_line_on_a_phone_with_a_long_title(page, banner_page):
     assert page.locator("#event-banner a.event-banner-seemore").is_visible()  # nor the link to more events
 
 
+def test_banner_sits_in_the_content_column_on_a_wide_desktop(page, banner_page):
+    # #wrapper is a side-by-side row on desktop; a banner outside <main> became a third column.
+    page.set_viewport_size({"width": 1280, "height": 800})
+    banner_page(_next([_banner_event()]))
+    page.wait_for_selector("#event-banner:not(.u-hidden)")
+    box = page.locator("#event-banner").bounding_box()
+    main = page.locator("#main").bounding_box()
+    header = page.locator("#header").bounding_box()
+    assert box["x"] >= main["x"] and box["x"] + box["width"] <= main["x"] + main["width"]
+    assert box["x"] >= header["x"] + header["width"]              # right of the sidebar, not squeezed beside it
+    assert main["width"] > 0.6 * 1280                             # the content column keeps its width
+
+
 def test_banner_makes_one_bodyless_get_and_nothing_else(page, banner_page):
     calls = banner_page(_next([_banner_event()]))
     page.wait_for_selector("#event-banner:not(.u-hidden)")

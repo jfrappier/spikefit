@@ -85,8 +85,9 @@
    then a status circle for the person's answer, then "See more events". */
 
 .event-banner {
-    /* min-width: 0 + a bounded width stop the one-line text from stretching a flex parent past the screen. */
-    box-sizing: border-box; width: 100%; min-width: 0; max-width: 800px; margin: 0.5em auto 0; padding: 0 1em;
+    /* Sits inside <main>, in the content column (#wrapper is a side-by-side row on desktop).
+       min-width: 0 + a bounded width stop the one-line text from stretching a flex parent past the screen. */
+    box-sizing: border-box; width: 100%; min-width: 0; max-width: 800px; margin: 0 auto 1.25em;
 }
 /* The pill is .event-banner-strip; its two links (the event, and "See more
    events") sit side by side inside it, so there are no nested links. */
