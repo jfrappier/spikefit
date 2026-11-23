@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Family — SpikeFit</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="stylesheet" href="/fonts/fonts.css?v=0.0.715">
+  <link rel="stylesheet" href="css/base.css?v=0.0.715">
+  <script src="js/team.js?v=0.0.926"></script>
+  <link rel="stylesheet" href="css/layout.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/buttons.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/forms.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/cards.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/modals.css?v=0.0.811">
+  <link rel="stylesheet" href="css/components/events.css?v=0.0.1123">
+  <link rel="stylesheet" href="css/components/parent.css?v=0.0.1123a">
+  <script src="js/parent.js?v=0.0.1123a" defer></script>
+</head>
+<body class="auth-body ev-body">
+
+<div class="ev-container">
+
+  <!-- Loading -->
+  <div id="view-loading" class="card">
+    <img src="logo.png" alt="SpikeFit" class="logo">
+    <h1>Family</h1>
+    <p class="subtitle">Loading…</p>
+  </div>
+
+  <!-- Unavailable / error -->
+  <div id="view-unavailable" class="card u-hidden">
+    <img src="logo.png" alt="SpikeFit" class="logo">
+    <h1>Family</h1>
+    <p class="subtitle" id="unavailable-text">The parent view isn't available right now.</p>
+    <a class="btn btn-ghost" href="/app.html">Back to SpikeFit</a>
+  </div>
+
+  <!-- Main: me, my players, their events -->
+  <div id="view-main" class="u-hidden">
+    <div class="ev-header">
+      <a class="ev-back" href="/app.html" aria-label="Back to SpikeFit">←</a>
+      <h1 id="pa-title">Family</h1>
+    </div>
+
+    <p class="hint pa-intro">Answer for your players and see what they've said. Coaches see the name shown here, so a first name and last initial is plenty.</p>
+    <a class="pa-all-link" href="/events">All team events →</a>
+
+    <!-- Your own name (needed to answer for yourself) -->
+    <section id="pa-me-name" class="ev-section u-hidden">
+      <h2>Your name</h2>
+      <p class="hint">Optional — only needed if you want to answer for yourself too.</p>
+      <form id="form-name" class="ev-inline-form" autocomplete="off">
+        <label class="ev-sr" for="input-name">Your name</label>
+        <input type="text" id="input-name" maxlength="30" placeholder="e.g. Pat M." required>
+        <button class="btn" type="submit">Save</button>
+      </form>
+    </section>
+
+    <div id="pa-people"></div>
+
+    <p id="pa-no-players" class="hint pa-empty u-hidden">No players yet. A player with their own login shows up here after they open their team's Events page and save a name — or you can add them yourself below.</p>
+
+    <section class="ev-section">
+      <h2>Add a player</h2>
+      <p class="hint">For a player without their own login.</p>
+      <form id="form-kid" class="ev-inline-form" autocomplete="off">
+        <label class="ev-sr" for="input-kid">Player name</label>
+        <input type="text" id="input-kid" maxlength="30" placeholder="Player's name, e.g. Sam S." required>
+        <button class="btn btn-ghost ev-add-btn" type="submit">Add player</button>
+      </form>
+    </section>
+  </div>
+
+</div>
+
+<!-- Toast (mirrors events.html's markup) -->
+<div id="pa-toast" class="toast-container">
+  <span id="pa-toast-icon" class="toast-icon">🏐</span>
+  <div class="toast-content">
+    <div id="pa-toast-title" class="toast-title"></div>
+    <div id="pa-toast-text" class="toast-text"></div>
+  </div>
+  <button class="toast-close" id="pa-toast-close" type="button" aria-label="Close">&times;</button>
+</div>
+
+</body>
+</html>

@@ -176,7 +176,7 @@ const PARENT  = 'parent@example.com';
 const OUTSIDER = 'outsider@example.com';
 const EMAILS = [COACH, PLAYER, MINOR, PARENT, OUTSIDER];
 
-function makeEnv({ events = true } = {}) {
+function makeEnv({ events = true, parentLogin = false } = {}) {
   const sessions = {};
   EMAILS.forEach((e, i) => { sessions[`tok${i}`] = e; });
   return {
@@ -190,7 +190,7 @@ function makeEnv({ events = true } = {}) {
       [OUTSIDER]: JSON.stringify({ allowed: true, coach: { teams: ['tigers'] } })
     }),
     TEAMS: new FakeKV({
-      'team:millis': JSON.stringify({ name: 'Millis', timezone: 'America/New_York', features: { events } })
+      'team:millis': JSON.stringify({ name: 'Millis', timezone: 'America/New_York', features: { events, parentLogin } })
     }),
     EVENTS: new FakeKV(),
     RATELIMIT: new FakeKV(),
@@ -388,7 +388,7 @@ test('/next returns the next events with my answer, and the single kid for a par
   assert.equal(parent.events[0].kid.response, 'yes');
 });
 
-test('kids: cap, rename, remove (managed kid RSVPs go too), linked kids cannot be renamed', async () => {
+test('kids: cap, rename, remove (managed kid RSVPs go too)', async () => {
   const env = makeEnv();
   const id = await createEvent(env);
   const add = await call(env, PARENT, '/events/api/kids', { action: 'add', name: 'Sam S.' });
@@ -402,10 +402,6 @@ test('kids: cap, rename, remove (managed kid RSVPs go too), linked kids cannot b
 
   for (let i = 0; i < 8; i++) await call(env, PARENT, '/events/api/kids', { action: 'add', name: `Kid ${i}` });
   assert.equal((await call(env, PARENT, '/events/api/kids', { action: 'add', name: 'One too many' })).json.error, 'too_many_kids');
-
-  await call(env, MINOR, '/events/api/profile', { name: 'Alex M.' });
-  const linked = (await call(env, PARENT, '/events/api/list')).json.kids.find(k => k.linked);
-  assert.equal((await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: linked.memberId, name: 'Hax' })).json.error, 'linked_kid');
 });
 
 test('forget removes my name, my RSVPs, and my link under my guardian', async () => {
@@ -598,4 +594,224 @@ test('/list?past=1 includes ended events, marked ended', async () => {
   assert.equal((await call(env, PLAYER, '/events/api/list')).json.events.length, 0);
   const past = (await call(env, PLAYER, '/events/api/list?past=1')).json.events;
   assert.deepEqual(past.map(e => [e.title, e.ended]), [['Already over', true]]);
+});
+
+// ─── Parent view (ADR-016) ───────────────────────────────────────────────────
+
+async function linkedKid(env) {
+  await call(env, MINOR, '/events/api/profile', { name: 'Alex M.' });
+  return (await call(env, PARENT, '/events/api/list')).json.kids.find(k => k.linked);
+}
+
+test('a parent can choose the name for a linked player; the player keeps their own name underneath', async () => {
+  const env = makeEnv();
+  const id = await createEvent(env);
+  const kid = await linkedKid(env);
+  assert.equal(kid.parentNamed, false);
+  await call(env, MINOR, '/events/api/rsvp', { eventId: id, response: 'yes' });
+
+  const r = await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: kid.memberId, name: 'Lex M.' });
+  assert.deepEqual(r.json, { ok: true, name: 'Lex M.' });
+
+  const list = (await call(env, PARENT, '/events/api/list')).json;
+  assert.deepEqual({ name: list.kids[0].name, parentNamed: list.kids[0].parentNamed, linked: list.kids[0].linked },
+    { name: 'Lex M.', parentNamed: true, linked: true });
+  assert.equal(list.events[0].kidAnswers[0].name, 'Lex M.');
+  // The coach sees the new name on the answer that was already there.
+  assert.equal((await call(env, COACH, '/events/api/list')).json.events[0].attendees[0].name, 'Lex M.');
+  // The player's own profile is untouched.
+  assert.equal((await call(env, MINOR, '/events/api/list')).json.me.name, 'Alex M.');
+});
+
+test('a player renaming themselves or answering later never clears the parent-chosen name', async () => {
+  const env = makeEnv();
+  const id = await createEvent(env);
+  const kid = await linkedKid(env);
+  await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: kid.memberId, name: 'Lex M.' });
+
+  await call(env, MINOR, '/events/api/profile', { name: 'Alexander M.' });
+  await call(env, MINOR, '/events/api/rsvp', { eventId: id, response: 'maybe' });
+
+  const list = (await call(env, PARENT, '/events/api/list')).json;
+  assert.equal(list.kids[0].name, 'Lex M.');
+  // The player's own answer is stored under the parent's name, so the coach sees one name.
+  assert.equal((await call(env, COACH, '/events/api/list')).json.events[0].attendees[0].name, 'Lex M.');
+  // ...and a parent answering for the player does too.
+  await call(env, PARENT, '/events/api/rsvp', { eventId: id, response: 'no', memberId: kid.memberId });
+  assert.equal((await call(env, COACH, '/events/api/list')).json.events[0].attendees[0].name, 'Lex M.');
+  // The kid's own saved name did change underneath.
+  assert.equal((await call(env, MINOR, '/events/api/list')).json.me.name, 'Alexander M.');
+});
+
+test('reset_name drops the parent-chosen name; only linked players can be reset', async () => {
+  const env = makeEnv();
+  const id = await createEvent(env);
+  const kid = await linkedKid(env);
+  await call(env, MINOR, '/events/api/rsvp', { eventId: id, response: 'yes' });
+  await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: kid.memberId, name: 'Lex M.' });
+
+  const r = await call(env, PARENT, '/events/api/kids', { action: 'reset_name', memberId: kid.memberId });
+  assert.deepEqual(r.json, { ok: true, name: 'Alex M.' });
+  const list = (await call(env, PARENT, '/events/api/list')).json;
+  assert.deepEqual({ name: list.kids[0].name, parentNamed: list.kids[0].parentNamed }, { name: 'Alex M.', parentNamed: false });
+  assert.equal((await call(env, COACH, '/events/api/list')).json.events[0].attendees[0].name, 'Alex M.');
+
+  const managed = (await call(env, PARENT, '/events/api/kids', { action: 'add', name: 'Sam S.' })).json;
+  assert.equal((await call(env, PARENT, '/events/api/kids', { action: 'reset_name', memberId: managed.memberId })).json.error, 'bad_request');
+});
+
+test('a parent-chosen name is validated like any other and cannot be set on someone else\'s player', async () => {
+  const env = makeEnv();
+  const kid = await linkedKid(env);
+  assert.equal((await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: kid.memberId, name: 'lex@example.com' })).status, 400);
+  assert.equal((await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: kid.memberId, name: '   ' })).status, 400);
+  // A different adult has no such kid on their own list.
+  assert.equal((await call(env, PLAYER, '/events/api/kids', { action: 'rename', memberId: kid.memberId, name: 'Hax' })).status, 404);
+  assert.equal((await call(env, PARENT, '/events/api/list')).json.kids[0].name, 'Alex M.');
+});
+
+test('renaming a managed kid also re-labels the answers already given', async () => {
+  const env = makeEnv();
+  const id = await createEvent(env);
+  const add = (await call(env, PARENT, '/events/api/kids', { action: 'add', name: 'Sam S.' })).json;
+  await call(env, PARENT, '/events/api/rsvp', { eventId: id, response: 'yes', memberId: add.memberId });
+  await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: add.memberId, name: 'Samuel S.' });
+  assert.equal((await call(env, COACH, '/events/api/list')).json.events[0].attendees[0].name, 'Samuel S.');
+});
+
+test('relabelling keeps every answer\'s expiry (never makes one permanent)', async () => {
+  const env = makeEnv();
+  const id = await createEvent(env);
+  const kid = await linkedKid(env);
+  await call(env, MINOR, '/events/api/rsvp', { eventId: id, response: 'yes' });
+  const rsvpKey = [...env.EVENTS.store.keys()].find(k => k.startsWith('rsvp:'));
+  const before = env.EVENTS.store.get(rsvpKey).expiration;
+  await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: kid.memberId, name: 'Lex M.' });
+  assert.equal(env.EVENTS.store.get(rsvpKey).expiration, before);
+  assert.ok(before > 0);
+});
+
+// Consent -> parent login ----------------------------------------------------
+
+async function withStubbedFetch(fn) {
+  const real = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{}', { status: 200 });
+  try { return await fn(); } finally { globalThis.fetch = real; }
+}
+
+async function requestConsent(env, { host = HOST, guardian = 'newparent@example.com' } = {}) {
+  env.RESEND_API_KEY = 'test';
+  const r = await withStubbedFetch(() => call(env, PLAYER, '/consent/send', { guardianEmail: guardian, tosVersion: '1' }, { host }));
+  assert.equal(r.status, 200, JSON.stringify(r.json));
+  const keys = [...env.CONSENTS.store.keys()];
+  return { token: keys[keys.length - 1], guardian };
+}
+
+async function confirmConsent(env, token, host = HOST) {
+  const res = await worker.fetch(new Request(`${host}/consent/confirm?token=${token}`), env);
+  return res.text();
+}
+
+const readAllow = async (env, email) => JSON.parse(await env.ALLOWLIST.get(email));
+
+test('guardian confirming consent on a parentLogin team gets their own allow-list entry', async () => {
+  const env = makeEnv({ parentLogin: true });
+  const { token, guardian } = await requestConsent(env);
+  assert.equal(await env.ALLOWLIST.get(guardian), null);
+
+  const page = await confirmConsent(env, token);
+  assert.match(page, /sign in to SpikeFit/);
+  assert.deepEqual(await readAllow(env, guardian), { allowed: true, parent: { teams: ['millis'] } });
+  // The player's own record still carries the guardian link.
+  assert.equal((await readAllow(env, PLAYER)).guardianEmail, guardian);
+  // No kid email ends up on the parent's record.
+  assert.ok(!(await env.ALLOWLIST.get(guardian)).includes(PLAYER));
+});
+
+test('with parentLogin off, or off a team host, confirming consent creates no parent entry', async () => {
+  const off = makeEnv({ parentLogin: false });
+  const a = await requestConsent(off);
+  assert.doesNotMatch(await confirmConsent(off, a.token), /sign in/);
+  assert.equal(await off.ALLOWLIST.get(a.guardian), null);
+
+  const on = makeEnv({ parentLogin: true });
+  const b = await requestConsent(on, { host: 'https://spikefit.app' });
+  assert.doesNotMatch(await confirmConsent(on, b.token, 'https://spikefit.app'), /sign in/);
+  assert.equal(await on.ALLOWLIST.get(b.guardian), null);
+});
+
+test('provisioning merges into an existing entry and is idempotent', async () => {
+  const env = makeEnv({ parentLogin: true });
+  // The guardian is already a coach for another team.
+  await env.ALLOWLIST.put(OUTSIDER, JSON.stringify({ allowed: true, coach: { teams: ['tigers'] }, tosVersion: '9' }));
+  const first = await requestConsent(env, { guardian: OUTSIDER });
+  await confirmConsent(env, first.token);
+  assert.deepEqual(await readAllow(env, OUTSIDER),
+    { allowed: true, coach: { teams: ['tigers'] }, tosVersion: '9', parent: { teams: ['millis'] } });
+
+  // A second player naming the same guardian doesn't duplicate the team.
+  const second = await requestConsent(env, { guardian: OUTSIDER });
+  await confirmConsent(env, second.token);
+  assert.deepEqual((await readAllow(env, OUTSIDER)).parent, { teams: ['millis'] });
+  assert.deepEqual((await readAllow(env, OUTSIDER)).coach, { teams: ['tigers'] });
+});
+
+test('a legacy bare-string allow-list entry survives being given a parent marker', async () => {
+  const env = makeEnv({ parentLogin: true });
+  const { token } = await requestConsent(env, { guardian: PARENT }); // PARENT is the bare 'true' entry
+  await confirmConsent(env, token);
+  assert.deepEqual(await readAllow(env, PARENT), { allowed: true, parent: { teams: ['millis'] } });
+});
+
+test('an expired or unknown consent token provisions nothing', async () => {
+  const env = makeEnv({ parentLogin: true });
+  assert.match(await confirmConsent(env, 'nope'), /invalid or has expired/);
+  assert.equal(await env.ALLOWLIST.get('newparent@example.com'), null);
+});
+
+// /parent page ---------------------------------------------------------------
+
+test('/parent: unauthenticated request redirects to login and comes back to /parent', async () => {
+  const res = await worker.fetch(new Request(`${HOST}/parent`), makeEnv({ parentLogin: true }));
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('Location'), `${HOST}/auth.html?redirect=%2Fparent`);
+});
+
+test('/parent: needs BOTH events and parentLogin on for the team, and a team host', async () => {
+  const get = (env, host = HOST) => worker.fetch(new Request(`${host}/parent`, { headers: { Cookie: 'sf_session=tok3' } }), env);
+  assert.equal((await get(makeEnv({ events: true, parentLogin: false }))).status, 403);
+  assert.equal((await get(makeEnv({ events: false, parentLogin: true }))).status, 403);
+  assert.equal((await get(makeEnv({ parentLogin: true }), 'https://spikefit.app')).status, 403);
+});
+
+test('/parent: serves parent.html (with security headers) when the team has opted in', async () => {
+  const real = globalThis.fetch;
+  let asked = null;
+  globalThis.fetch = async req => { asked = String(req.url); return new Response('<html>parent</html>', { status: 200 }); };
+  try {
+    const res = await worker.fetch(new Request(`${HOST}/parent`, { headers: { Cookie: 'sf_session=tok3' } }), makeEnv({ parentLogin: true }));
+    assert.equal(res.status, 200);
+    assert.equal(asked, 'https://spikefit.app/parent.html');
+    assert.match(res.headers.get('Content-Security-Policy'), /script-src 'self'/);
+  } finally { globalThis.fetch = real; }
+});
+
+test('/parent/ redirects to /parent', async () => {
+  const res = await worker.fetch(new Request(`${HOST}/parent/?x=1`), makeEnv({ parentLogin: true }));
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('Location'), `${HOST}/parent?x=1`);
+});
+
+test('PRIVACY: neither the guardian provisioning nor a parent-chosen name puts an email in EVENTS or RATELIMIT', async () => {
+  const env = makeEnv({ parentLogin: true });
+  const id = await createEvent(env);
+  const kid = await linkedKid(env);
+  await call(env, MINOR, '/events/api/rsvp', { eventId: id, response: 'yes' });
+  await call(env, PARENT, '/events/api/kids', { action: 'rename', memberId: kid.memberId, name: 'Lex M.' });
+  const { token, guardian } = await requestConsent(env);
+  await confirmConsent(env, token);
+  for (const kv of [env.EVENTS, env.RATELIMIT]) {
+    const dump = kv.dump().toLowerCase();
+    for (const e of [...EMAILS, guardian]) assert.ok(!dump.includes(e.toLowerCase()), `${e} leaked`);
+  }
 });

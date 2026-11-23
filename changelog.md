@@ -1,5 +1,39 @@
 # SpikeFit Changelog
 
+## v0.0.1123a — Parent login and family view
+
+Guardians can now sign in with their own email and see — and answer for — their players on a new `/parent` page, and a parent can choose the name a coach sees for a player who has their own login. Opt-in per team with a new `parentLogin` flag; nothing changes for a team that doesn't turn it on.
+
+---
+
+## ✨ Features
+
+### Parent login (ADR-016)
+When a guardian confirms a player's consent link on a team with `features.parentLogin: true`, the guardian's own email is added to `ALLOWLIST` (`parent: { teams }`, merged into any existing entry such as a coach's) so they can sign in. It holds no player emails, does nothing on a non-team host or with the flag off, and never undoes the consent that was just recorded. The confirmation page links to `/parent`.
+
+### Parent / family view
+`/parent` shows the parent and each linked player with their upcoming events and a Going / Maybe / Can't go control for each, plus add/remove for a player without a login. It is a thin page over the existing `/events/api/*` routes — no new API — and is gated on the team having both `events` and `parentLogin`.
+
+### Parent-chosen player names
+A parent can set the display name shown for a linked player, and reset it to the player's own. It is stored beside (not over) the player's own name, is used on every answer, survives the player editing their profile, and re-labels the answers they have already given so coaches see it straight away. Renaming a player a parent added by hand now re-labels existing answers too.
+
+## 🔒 Security / Privacy
+
+No new key shapes and no new class of data: `kid:` metadata gains one display name of the kind ADR-015 already allows (same expiry), and the only new durable write is `parent: { teams }` on `ALLOWLIST`. Worker tests assert no email reaches `EVENTS` or `RATELIMIT`.
+
+## 📚 Docs
+
+ADR-016, the architecture "Parent / Family View" section, and a setup-and-test guide in `tools/coach/README.md` (section 8).
+
+## Files Changed
+
+- `cloudflare/worker.js` — consent provisioning, `/parent` route, parent-chosen names, relabelling
+- `parent.html`, `js/parent.js`, `css/components/parent.css` — new
+- `tests/worker/events.test.js`, `tests/e2e/test_parent.py` — new coverage
+- `docs/decisions.md`, `docs/architecture.md`, `CLAUDE.md`, `tools/coach/README.md`
+
+---
+
 ## v0.0.1123 — Compact event banner
 
 The upcoming-event banner on the Today page is now a single slim pill that lines up with the Start Workout button, and it no longer splits the desktop layout into two columns.

@@ -312,8 +312,8 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 | `SESSIONS` | `token → email` | 30 days |
 | `OTPS` | `email → { code, email }` | 10 minutes |
 | `RATELIMIT` | `send:<ip>`, `verify:<ip>:<email>`, and (ADR-014) `coachapi:<email>`, `evt:<eventId>`, `out:<team>:<date>:<kidId>`, `pending:<eventId>`, `gtoken`, and (ADR-015) `evapi:<hmac id>` (60 mutating requests/min per user; keyed by HMAC id, never an email) — see "Coach Module" below | 10 minutes (auth); coach-module keys vary, see below; `evapi:` 60 seconds |
-| `ALLOWLIST` | `email → { allowed, tosAcceptedAt?, tosVersion?, guardianEmail?, guardianAcceptedAt?, minor?, coach? }` (legacy admin-set entries may still be a bare non-JSON-object string like `'true'` or `'1'` — `readAllowlistRecord()` treats anything that doesn't parse to an object as `{ allowed: true }`). `coach: { teams: string[] }` (ADR-014) grants coach access — re-read on every `/coach/api/*` request, not just at session creation, so revoking it cuts access off immediately rather than waiting for the session to expire. | permanent |
-| `CONSENTS` | `token → { email, guardianEmail, tosVersion, requestedAt }` | 7 days |
+| `ALLOWLIST` | `email → { allowed, tosAcceptedAt?, tosVersion?, guardianEmail?, guardianAcceptedAt?, minor?, coach?, parent? }` (legacy admin-set entries may still be a bare non-JSON-object string like `'true'` or `'1'` — `readAllowlistRecord()` treats anything that doesn't parse to an object as `{ allowed: true }`). `coach: { teams: string[] }` (ADR-014) grants coach access — re-read on every `/coach/api/*` request, not just at session creation, so revoking it cuts access off immediately rather than waiting for the session to expire. | permanent |
+| `CONSENTS` | `token → { email, guardianEmail, tosVersion, team, requestedAt }` | 7 days |
 | `EVENTS` (ADR-015) | `ev:`, `rsvp:`, `me:`, `kid:` keys — see "Team Events Module" below. Holds display names (self-chosen) and answers, keyed by HMAC ids; **never an email, phone number, or roster data.** | event date + 30 days; profile keys 180 days idle |
 | `TEAMS` (ADR-014) | `team:<slug> → { name, timezone, sheetId, features, overrideReasons, adminEmails }` — coach module config, one entry per team. `sheetId` and `adminEmails` never reach the browser; `/coach/api/config` returns only `name`, `features`, `overrideReasons`, and a presence-only `configured` boolean (`isSheetConfigured()` — is `sheetId` a non-empty string, never the ID itself). A feature flag that's missing or not strictly boolean `true` counts as off. | permanent |
 
@@ -321,7 +321,7 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 
 - `POST /consent/accept` — called by `js/app.js`'s `acceptDisclaimer()` for adult (non-minor) acceptances. Requires an existing session; records `{ tosAcceptedAt, tosVersion }` into the caller's `ALLOWLIST` entry.
 - `POST /consent/send` — called by `js/app.js`'s `sendGuardianConsent()` when a self-declared minor submits a guardian email. Requires an existing session; stores a random token in `CONSENTS` and emails the guardian a confirmation link via Resend (see `sendConsentEmail()`).
-- `GET /consent/confirm?token=...` — the link the guardian clicks. No session required (the guardian isn't logged into SpikeFit). Looks up the token in `CONSENTS`, and on success records `{ guardianEmail, tosVersion, guardianAcceptedAt, minor: true }` into the athlete's `ALLOWLIST` entry, then deletes the token. Returns a small self-contained HTML confirmation page.
+- `GET /consent/confirm?token=...` — the link the guardian clicks. No session required (the guardian isn't logged into SpikeFit). Looks up the token in `CONSENTS`, and on success records `{ guardianEmail, tosVersion, guardianAcceptedAt, minor: true }` into the athlete's `ALLOWLIST` entry, then deletes the token. Returns a small self-contained HTML confirmation page. On a team whose `TEAMS` entry has `features.parentLogin: true` it also creates or merges `parent: { teams: [team] }` into the *guardian's* `ALLOWLIST` entry so they can sign in (ADR-016) and the page links to `/parent`.
 
 This mechanism only exists for the hosted instance. A locally-run fork has no server to email a guardian through, so `sendGuardianConsent()` falls back to a client-side-only attestation (the fetch fails, is caught, and the UI tells the user to review the terms with their guardian directly) — there is no verification in that path, same as the disclaimer modal itself.
 
@@ -445,7 +445,7 @@ Coaches publish events (practice, game, team dinner, fundraiser, …); players a
 | `GET /events/api/list[?past=1]` | any | Events not yet ended (or the last ≤60 incl. past), counts, my answer, my kids' answers. Coaches also get `attendees` (names). |
 | `GET /events/api/next` | any | Banner feed: next ≤3 events not yet ended within 14 days, plus my / my single kid's answer, and `more` — how many other upcoming (never past) events exist beyond those, so the banner can offer "See more events". |
 | `POST /events/api/profile` | any | Set own display name; links a minor with a confirmed `guardianEmail` into that guardian's kid list. |
-| `POST /events/api/kids` | any | Parent `add` / `rename` / `remove` a managed kid (cap 8). |
+| `POST /events/api/kids` | any | Parent `add` / `rename` / `remove` a managed kid (cap 8); `rename` / `reset_name` also set or clear the parent-chosen name for a linked kid (ADR-016). |
 | `POST /events/api/rsvp` | any | `{eventId, response, memberId?}` — self, or a kid on the caller's own list. Refused for canceled/ended events. |
 | `POST /events/api/event/save` | coach | Create/update (also used to cancel/restore). Rescheduling moves the key and re-stamps its RSVPs' expiry. |
 | `POST /events/api/event/delete` | coach | Deletes the event and its RSVPs. |
@@ -466,6 +466,24 @@ Coaches publish events (practice, game, team dinner, fundraiser, …); players a
 **Known issue (revisit later):** a *different* person opening an event within about a minute of the coach saving it can still see "That event is no longer available" (page) or get `event_not_found` (RSVP), because their `list()`-based lookup hasn't caught up and the page's local-change handling only helps the person who made the change. Accepted for now since few players answer immediately. If it matters, options are: send the event's `date`/`time` with the RSVP so the Worker can read the exact `ev:` key instead of listing, or have the deep-link page retry a few times before giving up.
 
 **Tests:** `tests/worker/events.test.js` (pure helpers + handler-level flows against an in-memory KV, including a scan asserting no email address appears anywhere in `EVENTS`/`RATELIMIT`); `tests/e2e/test_events.py` (page, coach controls, share, deep link, banner).
+
+## Parent / Family View (ADR-016)
+
+Lets a guardian sign in and see and answer for their players. Rationale and privacy limits: `docs/decisions.md` ADR-016.
+
+**Files:** `parent.html` + `js/parent.js` + `css/components/parent.css` (builds on `events.css`). `parent.html` is served by the `/parent` route and is deliberately *not* in `STATIC_FILES`; `/js/parent.js` and `/css/components/parent.css` are. Loads only `js/team.js` and `js/parent.js` — not `js/app.js`.
+
+**Gate (`handleParentPage`):** session (else `/auth.html?redirect=/parent`), a team resolved from the host, and `features.events` **and** `features.parentLogin` on that team's `TEAMS` entry; otherwise a 403 "not enabled" page. `/parent/` redirects to `/parent`. There is no `/parent/api/*`: the page uses `/events/api/list`, `rsvp`, `profile` and `kids` and so inherits their session, team, CSRF and rate-limit checks.
+
+**Login for a guardian:** see the `GET /consent/confirm` description above (`provisionParentAccess`). A guardian entry is `{ allowed: true, parent: { teams } }` — no player emails. Nothing reads the `parent` marker for access; `/parent` works for any signed-in user on an opted-in team, showing only that user's own players.
+
+**Parent-chosen player names:** `kid:` metadata is `{ n, l, d? }`. `POST /events/api/kids` accepts `rename` on a *linked* kid (stores `d`) and `reset_name` (drops it). `d` is shown everywhere in place of `n`, is written onto that player's RSVP rows (both when the parent answers and when the player answers — `resolveRsvpTarget`), and survives the player editing their own profile (`writeProfile` carries it over). Renaming re-labels the player's existing answers via `relabelRsvps` (same expiry kept).
+
+**Page behaviour:** one card per person (the parent if they've set a name, then each player), each listing upcoming events with Going / Maybe / Can't go. It updates from what it just did rather than re-fetching, because KV `list()` can lag. Empty state explains that a player appears after saving a name on Events, and offers "Add a player" for a player without a login.
+
+**Not built yet:** pickup status for teams that opt in (would depend on ADR-014's Sheet; see ADR-016(g)); backfilling parents of players who confirmed before the flag was on.
+
+**Tests:** `tests/worker/events.test.js` (provisioning merge/idempotence/flag-off/no-team-host, the page gate, parent-chosen names, a privacy scan); `tests/e2e/test_parent.py` (page, RSVP for self and player, rename/reset, XSS, empty state).
 
 ## Bring-Your-Own-Storage (BYOS) — Planned Feature
 
