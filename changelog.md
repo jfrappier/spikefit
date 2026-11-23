@@ -1,5 +1,33 @@
 # SpikeFit Changelog
 
+## v0.0.1123 — Compact event banner
+
+The upcoming-event banner on the Today page is now a single slim pill that lines up with the Start Workout button, and it no longer splits the desktop layout into two columns.
+
+---
+
+## ✨ Features
+
+### Slim event pill with status circles
+One line showing the next event, a green ✓ / `?` / red ✕ circle for your answer (one per person for a parent with a single player), and a "See more events" link when more than one upcoming event exists. Past events never count. The Worker's `/events/api/next` reply gains a `more` count for this.
+
+### Events page shows your own changes immediately
+Saving, canceling, deleting, answering, and adding or removing a player now appear on the coach's own page right away, instead of waiting for Cloudflare KV's list to catch up. A background re-check follows about a minute later.
+
+## 🐛 Fixes
+
+### Banner layout
+The banner now sits inside the page's main column, so on desktop it no longer becomes a separate column beside the content. It has the same width as, and a gap above, the Start Workout button on phones.
+
+### Known issue
+Another user opening an event within about a minute of the coach saving it can briefly see "event no longer available" (KV list lag). Recorded in `docs/architecture.md`.
+
+## Files Changed
+- `app.html`, `events.html` (`?v=0.0.1123` on `events.css`, `events.js`, `events-banner.js`)
+- `css/components/events.css`, `js/events-banner.js`, `js/events.js`, `cloudflare/worker.js`
+- `tests/e2e/test_events.py`, `tests/worker/events.test.js`, `docs/architecture.md`, `changelog.md`
+
+---
 ## v0.0.1122 — Codacy follow-ups for Team Events
 
 Addresses the Codacy findings on the team events pull request: smaller Worker functions, a safer log call, and documented suppressions for two browser-side false positives.
