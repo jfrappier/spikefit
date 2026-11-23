@@ -117,3 +117,27 @@ Lay the resulting PNGs out in whatever document/label tool you like for printing
 The card is not identity verification — it just proves the bearer has a card that maps to a roster row. **The coach still has to recognize the adult** before treating a green result as a real match; the app can't do that part.
 
 If a card is lost or given away, set that row's `Active` to `FALSE` in the Sheet immediately and issue a new ID (`generate-ids.py`) for a replacement card. The old ID stops working the next time the roster cache refreshes (up to 60 seconds).
+
+## 7. Optional: team events (no Sheet needed)
+
+Separate from pickup. Lets coaches publish events (practice, game, team dinner, fundraiser, …) and lets players — and parents answering for their kid — say whether they're going. See `docs/decisions.md` ADR-015 for exactly what is stored (self-chosen display names + answers, HMAC ids, auto-expiring; never emails/phones/roster). **No Google Sheet and no service account** — just three dashboard steps, all in the Cloudflare dashboard (no `wrangler`):
+
+1. **Create the namespace:** **Workers & Pages → KV → Create a namespace**, name it `EVENTS`.
+2. **Bind it and add the secret:** open the Worker → **Settings → Bindings → Add → KV namespace**, variable name `EVENTS`, pick the namespace. Then **Settings → Variables and Secrets → Add**, type **Secret**, name `EVENTS_HMAC_KEY`, value a long random string (32+ characters; generate one with a password manager). Keep it — rotating it orphans existing answers (they auto-expire anyway).
+3. **Turn it on per team:** **KV → `TEAMS` →** edit the `team:<slug>` entry and add `"events": true` inside `features` (create the entry first if the team has none — it only needs `name` and `timezone` for events):
+
+```json
+{
+  "name": "Millis",
+  "timezone": "America/New_York",
+  "features": { "events": true }
+}
+```
+
+Optional: `"eventTypes": [{"id": "tournament", "label": "Tournament"}, {"id": "other", "label": "Other"}]` replaces the default types (practice, game, team dinner, fundraiser, other). `id` is lowercase letters/digits/underscore; new types need no code change.
+
+Then paste the updated `cloudflare/worker.js` into the Worker's Quick Edit and Deploy. Publish the static files to GitHub Pages **first**, so `events.html` exists when the Worker fetches it.
+
+Coaches (anyone with `coach.teams` containing the team — step 4 above) get an **Events** tile in the coach hub and Edit/Share/Cancel/Delete controls on `https://<team>.spikefit.app/events`. Everyone else on the team subdomain sees the events, the banner at the top of the app, and their own answer. Share an event with **Share** on its card — it sends a link like `https://<team>.spikefit.app/events?e=<id>` to your group chat; people who aren't signed in are taken through login and land on that event.
+
+Limits worth knowing: coaches see who answered but not who *hasn't* (there is no roster); players are linked to a parent only after the player's guardian confirms consent by email (the existing consent flow) — otherwise parents add their player by name on the Events page.

@@ -19,11 +19,13 @@
   <link rel="stylesheet" href="css/components/splash.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/combine.css?v=0.0.715">
   <link rel="stylesheet" href="css/components/storage.css?v=0.0.715">
+  <link rel="stylesheet" href="css/components/events.css?v=0.0.1123">
 
   <script src="js/workouts.js?v=0.0.931" defer></script>
   <script src="js/app.js?v=0.0.932" defer></script>
   <script src="js/combine.js?v=0.0.715" defer></script>
   <script src="js/storage.js?v=0.0.715" defer></script>
+  <script src="js/events-banner.js?v=0.0.1123" defer></script>
 </head>
 <body>
 
@@ -69,6 +71,8 @@
         </header>
 
         <main id="main">
+            <!-- Upcoming team event (js/events-banner.js, ADR-015). Stays hidden unless a team subdomain has events enabled. -->
+            <div id="event-banner" class="event-banner u-hidden" role="region" aria-label="Upcoming team events"></div>
             <div id="daily" class="container active">
                 <div id="workout-controls">
                     <button id="btn-start-workout" class="btn-reset btn-start">Start Workout</button>
@@ -266,6 +270,7 @@
             <p><strong>2. Third-Party Hosting:</strong> This application is hosted via GitHub Pages and Cloudflare. While the application itself does not track you, GitHub and Cloudflare may collect standard web server logs (including IP addresses, browser types, and referring pages) as part of their standard hosting infrastructure. Please review <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">GitHub's</a> and <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare's</a> privacy policy for more details.</p>
             <p><strong>3. GDPR, CCPA, &amp; Compliance:</strong> Because we do not collect, process, sell, or control your personal data or Personally Identifiable Information (PII), we inherently align with data minimization principles. You retain 100% control over your data. To permanently delete all your data, simply clear your browser's local storage or cache.</p>
             <p><strong>4. Coach Module (Optional, Invite-Only):</strong> Everything above describes your own workout data, which never leaves your device. Separately, SpikeFit offers an optional pickup sign-out tool for coaches at practice, available only to accounts specifically granted coach access for a team. If you use it, a scanned card ID is checked against that team's roster (names, authorized pickup adults, and contact info), which is kept in a Google Sheet owned and controlled by the team, not by SpikeFit. A confirmed pickup or a coach override is logged to that Sheet, and a notification email may be sent to the child's listed adults. None of your personal workout data above is ever part of this feature, and it never activates unless your account has been granted coach access.</p>
+            <p><strong>5. Team Events (Optional):</strong> If your team's coach turns on team events, SpikeFit can show you upcoming events (practices, games, dinners) at the top of the app and let you — or a parent answering for you — say whether you're going. On a team page, the app makes one request to SpikeFit's server to fetch those events; it sends only your sign-in cookie, never any of your workout data. If you answer, the server stores the name you chose to show your coach (first name and last initial is plenty), your answer, and an irreversible scrambled ID derived from your sign-in email — never the email itself, a phone number, or any workout data. A parent you've linked to can see their player's answers, and only a coach of your team can see names. Events and answers are deleted automatically 30 days after the event; the name you chose is kept for up to 180 days after you last use team events. You can remove all of it any time from the Team Events page.</p>
             <button id="btn-close-privacy" class="btn-reset btn-close-modal">Close Privacy Policy</button>
         </div>
     </div>

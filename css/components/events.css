@@ -1,0 +1,161 @@
+/* css/components/events.css - Team events & RSVP (ADR-015): events page + app.html banner */
+
+/* ───────── Events page ───────── */
+
+.ev-body { align-items: flex-start; }
+.ev-container { width: 100%; max-width: 560px; margin: 0 auto; padding: 1.5em 1.25em 3em; }
+
+.ev-header { display: flex; align-items: center; gap: 0.75em; margin-bottom: 1em; }
+.ev-header h1 { flex: 1; margin: 0; font-size: 1.5em; }
+.ev-back { color: var(--accent); font-size: 1.5em; text-decoration: none; line-height: 1; padding: 0.25em 0.4em; }
+
+.ev-notice { background: var(--accent-light); border-radius: var(--radius-sm); padding: 0.75em 1em; color: var(--text-main); font-weight: 600; }
+.ev-coach-bar { margin-bottom: 1em; }
+.ev-coach-bar .btn { width: 100%; margin-top: 0; }
+
+.ev-events { display: flex; flex-direction: column; gap: 1em; margin-bottom: 1em; }
+.ev-empty { text-align: center; padding: 1em 0; }
+
+.ev-card {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md);
+    padding: 1.1em 1.25em; box-shadow: var(--shadow-sm);
+}
+.ev-card.ev-highlight { border-color: var(--accent); box-shadow: var(--shadow-hover); }
+.ev-card.ev-ended { opacity: 0.65; }
+.ev-card.ev-canceled .ev-title { text-decoration: line-through; }
+
+.ev-card-top { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5em; margin-bottom: 0.35em; }
+.ev-badge {
+    display: inline-block; padding: 0.15em 0.65em; border-radius: 999px; background: var(--accent-light);
+    color: var(--accent); font-size: 0.72em; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.ev-badge-canceled { background: #fed7d7; color: #9b2c2c; }
+.ev-badge-ended { background: var(--border); color: var(--text-muted); }
+.ev-title { margin: 0; font-size: 1.15em; font-weight: 700; color: var(--text-main); text-transform: none; letter-spacing: normal; }
+.ev-when { margin: 0.15em 0; color: var(--text-main); font-weight: 600; }
+.ev-where, .ev-notes { margin: 0.15em 0; color: var(--text-muted); white-space: pre-line; }
+.ev-going { margin: 0.5em 0 0; color: var(--text-muted); font-size: 0.9em; }
+
+.ev-answer-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5em; margin-top: 0.75em; }
+.ev-answer-who { flex: 1 1 100%; font-weight: 700; color: var(--text-main); font-size: 0.9em; }
+.ev-answer-btn {
+    flex: 1; min-width: 5em; padding: 0.6em 0.5em; border-radius: var(--radius-sm); border: 1px solid var(--border);
+    background: var(--bg-panel); color: var(--text-main); font-family: inherit; font-weight: 700; cursor: pointer;
+}
+.ev-answer-btn:hover:not(:disabled) { border-color: var(--accent); }
+.ev-answer-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ev-answer-btn.ev-sel-yes   { background: #2f855a; border-color: #2f855a; color: #fff; }
+.ev-answer-btn.ev-sel-maybe { background: #b7791f; border-color: #b7791f; color: #fff; }
+.ev-answer-btn.ev-sel-no    { background: #c53030; border-color: #c53030; color: #fff; }
+.ev-answer-hint { flex: 1 1 100%; margin: 0; color: var(--text-muted); font-size: 0.85em; }
+
+.ev-attendees { margin-top: 0.75em; }
+.ev-attendees summary { cursor: pointer; font-weight: 700; color: var(--text-main); }
+.ev-attendee-group { margin: 0.5em 0 0; font-size: 0.9em; color: var(--text-main); }
+.ev-attendee-group strong { display: block; }
+.ev-attendee-group span { color: var(--text-muted); }
+
+.ev-coach-actions { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.85em; padding-top: 0.75em; border-top: 1px solid var(--border); }
+.ev-link-btn {
+    background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.45em 0.85em;
+    color: var(--text-main); font-family: inherit; font-size: 0.85em; font-weight: 600; cursor: pointer;
+}
+.ev-link-btn:hover { border-color: var(--accent); color: var(--accent); }
+.ev-link-btn.ev-danger:hover { border-color: #c53030; color: #c53030; }
+
+.ev-section { margin-top: 1.75em; }
+.ev-section h2 { font-size: 1.1em; margin: 0 0 0.25em; }
+.ev-inline-form { display: flex; gap: 0.5em; align-items: stretch; margin-top: 0.5em; }
+.ev-inline-form input { flex: 1; min-width: 0; margin: 0; }
+.ev-inline-form .btn { width: auto; margin-top: 0; padding-left: 1.25em; padding-right: 1.25em; }
+.ev-kids-list { list-style: none; padding: 0; margin: 0.5em 0; }
+.ev-kids-list li { display: flex; align-items: center; justify-content: space-between; gap: 0.5em; padding: 0.5em 0; border-bottom: 1px solid var(--border); }
+.ev-kid-tag { color: var(--text-muted); font-size: 0.8em; }
+.ev-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.ev-editor { max-width: 480px; margin: 0 auto; text-align: left; }
+.ev-editor label { display: block; margin-top: 0.9em; font-weight: 700; font-size: 0.9em; }
+.ev-editor input, .ev-editor select, .ev-editor textarea { width: 100%; box-sizing: border-box; margin-top: 0.25em; font-family: inherit; font-size: 1em; }
+.ev-time-row { display: flex; gap: 0.75em; }
+.ev-time-row > div { flex: 1; min-width: 0; }
+.ev-error { color: #9b2c2c; font-weight: 600; margin: 0.75em 0 0; }
+
+/* ───────── app.html banner (js/events-banner.js) ───────── */
+/* One slim line, like the landing page's ticker: the next event on the left,
+   then a status circle for the person's answer, then "See more events". */
+
+.event-banner {
+    /* Sits inside <main>, in the content column (#wrapper is a side-by-side row on desktop).
+       min-width: 0 + a bounded width stop the one-line text from stretching a flex parent past the screen. */
+    box-sizing: border-box; width: 100%; min-width: 0; max-width: 800px; margin: 0 auto 1.25em;
+}
+/* The pill is .event-banner-strip; its two links (the event, and "See more
+   events") sit side by side inside it, so there are no nested links. */
+.event-banner-strip {
+    display: flex; align-items: center; gap: 0.6em;
+    padding: 0.4em 0.85em; border-radius: var(--radius-md);
+    background: var(--accent); color: #ffffff;
+    font-size: 0.85rem; line-height: 1.3;
+}
+.event-banner-strip.is-answered {
+    background: var(--bg-panel); color: var(--text-main); border: 1px solid var(--border);
+}
+.event-banner-strip.is-canceled { background: #9b2c2c; }
+.event-banner-link {
+    display: flex; flex: 1; min-width: 0; align-items: center; gap: 0.5em;
+    color: inherit; text-decoration: none;
+}
+.event-banner-link:hover, .event-banner-seemore:hover { filter: brightness(1.12); }
+.event-banner-link:focus-visible, .event-banner-seemore:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.event-banner-icon { flex: none; }
+.event-banner-text {
+    display: flex; flex: 1; min-width: 0; gap: 0.35em; white-space: nowrap;
+    text-transform: none; letter-spacing: normal;
+}
+/* The title gives way first, so the day and time are always readable. */
+.event-banner-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.event-banner-when { flex: none; }
+.event-banner-action { flex: none; white-space: nowrap; font-weight: 800; }
+
+/* Status circle: ✓ going · ~ maybe · ✕ can't go · ? not answered yet. */
+.event-banner-badge {
+    flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 1.5em; height: 1.5em; border-radius: 50%; box-sizing: border-box;
+    font-size: 0.85rem; font-weight: 800; line-height: 1; color: #ffffff; border: 2px solid #ffffff;
+}
+.event-banner-badge.is-yes   { background: #2f855a; }
+.event-banner-badge.is-maybe { background: #b7791f; }
+.event-banner-badge.is-no    { background: #c53030; }
+.event-banner-badge.is-none  { background: transparent; }
+.is-answered .event-banner-badge { border-color: transparent; }
+.is-answered .event-banner-badge.is-none { border-color: var(--border); color: var(--text-muted); }
+
+.event-banner-seemore {
+    flex: none; white-space: nowrap; padding-left: 0.6em; border-left: 1px solid currentColor;
+    font-size: 0.75rem; font-weight: 700; color: inherit; text-decoration: none;
+}
+.event-banner-seemore-short { display: none; }
+
+@media (max-width: 400px) {
+    /* "See more events" shortens to "More" on phones so the event title keeps its room. */
+    .event-banner-seemore-long { display: none; }
+    .event-banner-seemore-short { display: inline; }
+}
+
+@media (max-width: 420px) {
+    .ev-container { padding: 1em 0.85em 2.5em; }
+    .ev-inline-form { flex-direction: column; }
+    .ev-inline-form .btn { width: 100%; }
+}
+
+/* base.css's `.u-hidden { display: none; }` loads first, so any class below
+   that sets its own `display` and can co-occur with `.u-hidden` needs an
+   explicit two-class override so hidden always wins (same pattern as coach.css). */
+.u-hidden.ev-coach-bar,
+.u-hidden.ev-section,
+.u-hidden.ev-notice,
+.u-hidden.event-banner,
+.u-hidden.ev-error,
+.u-hidden.btn {
+    display: none;
+}

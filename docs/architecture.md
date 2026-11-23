@@ -300,9 +300,10 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 1. `/auth/send`, `/auth/verify`, `/auth/logout` — always pass through (no session check)
 2. `/consent/accept`, `/consent/send`, `/consent/confirm` — always pass through (no session check on `/consent/confirm`, since the guardian clicking the emailed link has no SpikeFit session of their own)
 3. `/coach`, `/coach/api/config`, `/coach/api/pickup/scan`, `/coach/api/pickup/confirm`, `/coach/api/pickup/sync` — the coach module (ADR-014), routed above the static/catch-all gate since the API routes need their own auth+CSRF handling. See "Coach Module" below.
-4. Assets in `STATIC_FILES` set — pass through with security headers
-5. `/`, `/index.html`, `/auth.html` — serve the page, but redirect authenticated users to `/app.html`
-6. Everything else — requires a valid `sf_session` cookie; redirects to `/auth.html?redirect=<path>` if absent
+4. `/events`, `/events/api/list`, `/events/api/next`, `/events/api/profile`, `/events/api/kids`, `/events/api/rsvp`, `/events/api/event/save`, `/events/api/event/delete`, `/events/api/forget` — the team events module (ADR-015), routed above the static/catch-all gate for the same reason as the coach routes. An unknown `/events/api/*` path returns a JSON 404 rather than falling through to the catch-all. See "Team Events Module" below.
+5. Assets in `STATIC_FILES` set — pass through with security headers
+6. `/`, `/index.html`, `/auth.html` — serve the page, but redirect authenticated users to `/app.html`
+7. Everything else — requires a valid `sf_session` cookie; redirects to `/auth.html?redirect=<path>` if absent
 
 **KV namespaces:**
 
@@ -310,9 +311,10 @@ Pre-v0.0.625 `completedDates` entries lack a `level` field and do not count towa
 |---|---|---|
 | `SESSIONS` | `token → email` | 30 days |
 | `OTPS` | `email → { code, email }` | 10 minutes |
-| `RATELIMIT` | `send:<ip>`, `verify:<ip>:<email>`, and (ADR-014) `coachapi:<email>`, `evt:<eventId>`, `out:<team>:<date>:<kidId>`, `pending:<eventId>`, `gtoken` — see "Coach Module" below | 10 minutes (auth); coach-module keys vary, see below |
+| `RATELIMIT` | `send:<ip>`, `verify:<ip>:<email>`, and (ADR-014) `coachapi:<email>`, `evt:<eventId>`, `out:<team>:<date>:<kidId>`, `pending:<eventId>`, `gtoken`, and (ADR-015) `evapi:<hmac id>` (60 mutating requests/min per user; keyed by HMAC id, never an email) — see "Coach Module" below | 10 minutes (auth); coach-module keys vary, see below; `evapi:` 60 seconds |
 | `ALLOWLIST` | `email → { allowed, tosAcceptedAt?, tosVersion?, guardianEmail?, guardianAcceptedAt?, minor?, coach? }` (legacy admin-set entries may still be a bare non-JSON-object string like `'true'` or `'1'` — `readAllowlistRecord()` treats anything that doesn't parse to an object as `{ allowed: true }`). `coach: { teams: string[] }` (ADR-014) grants coach access — re-read on every `/coach/api/*` request, not just at session creation, so revoking it cuts access off immediately rather than waiting for the session to expire. | permanent |
 | `CONSENTS` | `token → { email, guardianEmail, tosVersion, requestedAt }` | 7 days |
+| `EVENTS` (ADR-015) | `ev:`, `rsvp:`, `me:`, `kid:` keys — see "Team Events Module" below. Holds display names (self-chosen) and answers, keyed by HMAC ids; **never an email, phone number, or roster data.** | event date + 30 days; profile keys 180 days idle |
 | `TEAMS` (ADR-014) | `team:<slug> → { name, timezone, sheetId, features, overrideReasons, adminEmails }` — coach module config, one entry per team. `sheetId` and `adminEmails` never reach the browser; `/coach/api/config` returns only `name`, `features`, `overrideReasons`, and a presence-only `configured` boolean (`isSheetConfigured()` — is `sheetId` a non-empty string, never the ID itself). A feature flag that's missing or not strictly boolean `true` counts as off. | permanent |
 
 **ToS/consent tracking (`cloudflare/worker.js`, "ToS/consent tracking" section):** `ALLOWLIST` already gates hosted access by email, so its value was extended from a bare `'true'` to a JSON record to keep a durable, server-side log of ToS acceptance — separate from the client-side `disclaimerAgreed` localStorage flag, which a user can clear at will.
@@ -426,6 +428,44 @@ Any name shown in a response (the adult's name in the pickup header, the `alread
 The client removes only the events the server actually confirmed (matched by `eventId` and `team`); anything the server didn't return (or returned as `status: 'error'`) stays queued for the next retry. Retries fire on the `online` event, on `visibilitychange` to visible, and every 30 seconds while the queue isn't empty.
 
 ---
+
+## Team Events Module (ADR-015)
+
+Coaches publish events (practice, game, team dinner, fundraiser, …); players and parents RSVP. Lives in the same Worker file as the coach module but shares none of its Google Sheets plumbing. Privacy model and rationale: `docs/decisions.md` ADR-015.
+
+**Files:** `events.html` + `js/events.js` + `css/components/events.css` (the page, served by the `/events` route behind a session check — `events.html` is deliberately *not* in `STATIC_FILES`, same pattern as `coach.html`); `js/events-banner.js` (the banner on `app.html`; separate from `js/app.js` so its single network call is isolated). `/js/events.js`, `/js/events-banner.js` and `/css/components/events.css` **are** in `STATIC_FILES`.
+
+**Gate (`requireEventsContext`):** every `/events/api/*` route requires a session, a team resolved from the request hostname (`resolveCoachHostTeam` — membership *is* the subdomain), a `TEAMS` entry with `features.events === true`, and the `EVENTS` binding + `EVENTS_HMAC_KEY` secret. Mutating routes are POST-only, `application/json`, same-`Origin` (CSRF), and rate limited (`evapi:<hmac id>`, 60/min; reads are not rate limited, to spare KV writes). Coach-only routes additionally require the host team in the caller's `ALLOWLIST` `coach.teams` (re-read every request).
+
+**Routes**
+
+| Route | Who | Purpose |
+|---|---|---|
+| `GET /events` | signed in | Serves `events.html`. Unauthenticated → `/auth.html?redirect=<path+query>` so a `?e=<eventId>` deep link survives login. |
+| `GET /events/api/list[?past=1]` | any | Events not yet ended (or the last ≤60 incl. past), counts, my answer, my kids' answers. Coaches also get `attendees` (names). |
+| `GET /events/api/next` | any | Banner feed: next ≤3 events not yet ended within 14 days, plus my / my single kid's answer, and `more` — how many other upcoming (never past) events exist beyond those, so the banner can offer "See more events". |
+| `POST /events/api/profile` | any | Set own display name; links a minor with a confirmed `guardianEmail` into that guardian's kid list. |
+| `POST /events/api/kids` | any | Parent `add` / `rename` / `remove` a managed kid (cap 8). |
+| `POST /events/api/rsvp` | any | `{eventId, response, memberId?}` — self, or a kid on the caller's own list. Refused for canceled/ended events. |
+| `POST /events/api/event/save` | coach | Create/update (also used to cancel/restore). Rescheduling moves the key and re-stamps its RSVPs' expiry. |
+| `POST /events/api/event/delete` | coach | Deletes the event and its RSVPs. |
+| `POST /events/api/forget` | any | Removes the caller's name, kids, managed kids' answers, and own answers on this team. |
+
+**Data model** (`EVENTS` KV; full table in ADR-015(b)). RSVP data rides in KV *key metadata*, so one `list({prefix:'rsvp:<team>:'})` returns every answer with no per-key `get`. One key per person per event means no read-modify-write races; counts are computed from the list. Events are stored as wall-clock `date` + `time` in the team's `timezone` (from `TEAMS`), so "ended?" is a plain string compare on `YYYY-MM-DD HH:MM` — no timezone conversion. Default event length for "ended?" when no end time is set: 2 hours. Event types come from optional `eventTypes: [{id,label}]` in the `TEAMS` entry, defaulting to practice / game / team dinner / fundraiser / other.
+
+**Free text:** display names reject anything containing an `@` or a run of 7+ digits (`normalizeDisplayName`), and the editor tells coaches not to put contact details in notes — event notes are visible to the whole team. **Deletes page to completion** (`DELETE_LIST_PAGES`) so `forget` / removing a managed kid can't miss rows past the 5,000-key read cap.
+
+**Limits:** ≤50 upcoming events per team, ≤500 answers per event, ≤8 managed kids per parent, ≤60 events loaded per request (KV operations per Worker invocation are capped — verify the current limit in Cloudflare's KV docs if raising these). Free-plan KV allows 1,000 writes/day; writes here are answers, events and profile refreshes only.
+
+**Deep link / share:** the coach's Share button (client-only, no network) builds a message with `https://<team>.spikefit.app/events?e=<eventId>` and uses `navigator.share`, falling back to the clipboard. Opening it highlights the event; an unknown/expired id shows "That event is no longer available".
+
+**Banner (`js/events-banner.js`):** runs only over http(s) on a `*.spikefit.app` host. One bodyless `GET /events/api/next` (cookie only, no query string) and no other request; stays hidden on any non-200 or empty feed. It renders a single slim pill, left to right: the soonest event's title and day/time (a weekday within the coming week, otherwise e.g. "Jun 24"), a status circle for the person's answer — ✓ green going, ~ amber maybe, ✕ red can't go, `?` not answered yet (one circle each for the player and their one kid; a single `?` with no name yet or several players) — and, when more than one upcoming event exists, "See more events ›" to `/events` (shortened to "More ›" at ≤400px). The event part links to `/events?e=<id>`, where the answer buttons live. The feed's `more` field counts upcoming events it left out; past events never count. The pill is neutral once everything is answered and bold otherwise; a canceled event shows "Canceled" (red, no circle). No localStorage, no new keys.
+
+**Eventual consistency on the page (`js/events.js`):** KV `list()` can lag a minute behind a write, so the page keeps the last server snapshot plus a short list of its own recent changes (event save/cancel/delete, answers, adding/removing a player) and renders the snapshot with those re-applied. Each change is dropped as soon as the server agrees, or after 150 s; a quiet background re-check runs 65 s after a change (never while the editor is open, and a failure leaves the page as is). The Worker's managed-kid RSVP check reads that one `kid:` key directly rather than via `list()`, so a just-added player can be answered for immediately.
+
+**Known issue (revisit later):** a *different* person opening an event within about a minute of the coach saving it can still see "That event is no longer available" (page) or get `event_not_found` (RSVP), because their `list()`-based lookup hasn't caught up and the page's local-change handling only helps the person who made the change. Accepted for now since few players answer immediately. If it matters, options are: send the event's `date`/`time` with the RSVP so the Worker can read the exact `ev:` key instead of listing, or have the deep-link page retry a few times before giving up.
+
+**Tests:** `tests/worker/events.test.js` (pure helpers + handler-level flows against an in-memory KV, including a scan asserting no email address appears anywhere in `EVENTS`/`RATELIMIT`); `tests/e2e/test_events.py` (page, coach controls, share, deep link, banner).
 
 ## Bring-Your-Own-Storage (BYOS) — Planned Feature
 
