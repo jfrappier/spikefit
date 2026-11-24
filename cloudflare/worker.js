@@ -50,10 +50,12 @@ const STATIC_FILES = new Set([
   '/css/components/coach.css',
   '/js/events.js',
   '/js/events-banner.js',
-  '/css/components/events.css'
-  // coach.html and events.html are intentionally NOT listed here — the
-  // /coach and /events routes below serve them behind their own session
-  // gates (see ADR-014, ADR-015).
+  '/css/components/events.css',
+  '/js/parent.js',
+  '/css/components/parent.css'
+  // coach.html, events.html and parent.html are intentionally NOT listed
+  // here — the /coach, /events and /parent routes below serve them behind
+  // their own session gates (see ADR-014, ADR-015, ADR-016).
 ]);
 
 export default {
@@ -87,6 +89,10 @@ export default {
     if (url.pathname === '/events/') return Response.redirect(`${url.origin}/events${url.search}`, 302);
     if (url.pathname === '/events') return handleEventsPage(req, env, url);
     if (url.pathname.startsWith('/events/api/')) return handleEventsApi(req, env, url);
+
+    // Parent view (ADR-016) — a thin page over /events/api/*; no API of its own.
+    if (url.pathname === '/parent/') return Response.redirect(`${url.origin}/parent${url.search}`, 302);
+    if (url.pathname === '/parent') return handleParentPage(req, env, url);
 
     // Static assets — always pass through (logo, favicon, fonts, etc.)
     if (STATIC_FILES.has(url.pathname)) {
@@ -274,8 +280,11 @@ async function handleConsentSend(req, env) {
   guardianEmail = (guardianEmail || '').trim().toLowerCase();
   if (!guardianEmail || !tosVersion) return respond({ error: 'bad_request' }, 400);
 
+  // The team the player is on (null on a non-team host). Used at confirm time
+  // to decide whether the guardian gets their own login (ADR-016).
+  const team = resolveCoachHostTeam(new URL(req.url).hostname);
   const token = crypto.randomUUID();
-  await env.CONSENTS.put(token, JSON.stringify({ email, guardianEmail, tosVersion, requestedAt: new Date().toISOString() }), { expirationTtl: CONSENT_TTL });
+  await env.CONSENTS.put(token, JSON.stringify({ email, guardianEmail, tosVersion, team, requestedAt: new Date().toISOString() }), { expirationTtl: CONSENT_TTL });
 
   const sent = await sendConsentEmail(env.RESEND_API_KEY, guardianEmail, token);
   if (!sent) return respond({ error: 'email_failed' }, 500);
@@ -290,7 +299,7 @@ async function handleConsentConfirm(req, env) {
 
   if (!stored) return htmlResponse('This confirmation link is invalid or has expired.');
 
-  const { email, guardianEmail, tosVersion } = JSON.parse(stored);
+  const { email, guardianEmail, tosVersion, team } = JSON.parse(stored);
   await env.CONSENTS.delete(token);
 
   const record = await readAllowlistRecord(env, email);
@@ -300,7 +309,35 @@ async function handleConsentConfirm(req, env) {
   record.minor               = true;
   await env.ALLOWLIST.put(email, JSON.stringify(record));
 
+  if (await provisionParentAccess(env, guardianEmail, team)) {
+    // team is a DNS label taken from our own hostname parse; escaped anyway.
+    const link = `https://${escapeHtml(team)}.spikefit.app/parent`;
+    return htmlResponse(`Thank you — your consent has been recorded. You can now sign in to SpikeFit with this email address to see your player: <a href="${link}">open the parent page</a>.`);
+  }
   return htmlResponse('Thank you — your consent has been recorded.');
+}
+
+// ADR-016: a guardian who confirms consent on a team with `features.parentLogin`
+// gets their own ALLOWLIST entry so they can sign in. Merges into any existing
+// entry (a parent who is also a coach keeps `coach`); never creates anything on a
+// non-team host or when the flag is off. Returns true when the guardian can now
+// sign in. Failure here must not undo the consent that was just recorded.
+async function provisionParentAccess(env, guardianEmail, team) {
+  if (!team || !guardianEmail) return false;
+  try {
+    const teamConfig = env.TEAMS ? await getTeamConfig(env, team) : null;
+    if (!isFeatureOn(teamConfig, 'parentLogin')) return false;
+    const record = await readAllowlistRecord(env, guardianEmail);
+    const teams = (record.parent && Array.isArray(record.parent.teams)) ? record.parent.teams : [];
+    if (!teams.includes(team)) {
+      record.parent = { teams: [...teams, team] };
+      await env.ALLOWLIST.put(guardianEmail, JSON.stringify(record));
+    }
+    return true;
+  } catch (err) {
+    console.error('Parent login provisioning failed.', err);
+    return false;
+  }
 }
 
 async function readAllowlistRecord(env, email) {
@@ -1547,13 +1584,46 @@ async function loadEvent(env, info) {
   }
 }
 
+// kid: entry metadata is {n, l, d?}: n = the name the kid/parent typed when the
+// entry was made (for a linked kid, their own name, refreshed whenever they save
+// their profile); l = 1 when linked through a confirmed guardian; d = a name the
+// parent chose for a LINKED kid (ADR-016). d outranks n everywhere a name is
+// shown or stored on an RSVP, and a kid saving their own profile never clears it.
+function kidDisplayName(md) {
+  if (!md) return '';
+  if (typeof md.d === 'string' && md.d) return md.d;
+  return typeof md.n === 'string' ? md.n : '';
+}
+
+function kidMetadata(n, linked, d) {
+  const md = { n, l: linked ? 1 : 0 };
+  if (linked && typeof d === 'string' && d) md.d = d;
+  return md;
+}
+
+// Re-labels an existing player's answers so a coach sees the new name straight
+// away rather than after the next answer. Keeps each row's own expiry; a row
+// without one, or about to expire, is left alone (KV refuses a PUT <60s out).
+async function relabelRsvps(env, team, memberId, name) {
+  const keys = await kvListAll(env.EVENTS, `rsvp:${team}:`, DELETE_LIST_PAGES);
+  const soonest = Math.floor(Date.now() / 1000) + 120;
+  await Promise.all(keys
+    .filter(k => { const p = parseRsvpKey(k.name); return p && p.memberId === memberId; })
+    .filter(k => typeof k.expiration === 'number' && k.expiration > soonest)
+    .map(k => env.EVENTS.put(k.name, '1', {
+      metadata: { ...(k.metadata || {}), n: name }, expiration: k.expiration
+    }).catch(err => console.error('RSVP relabel failed.', err))));
+}
+
 async function listKids(env, team, guardianId) {
   const keys = await kvListAll(env.EVENTS, `kid:${team}:${guardianId}:`);
   return keys
     .map(k => ({
       memberId: k.name.split(':')[3],
-      name: (k.metadata && typeof k.metadata.n === 'string') ? k.metadata.n : '',
-      linked: !!(k.metadata && k.metadata.l === 1)
+      name: kidDisplayName(k.metadata),
+      linked: !!(k.metadata && k.metadata.l === 1),
+      // A linked player's name was chosen by their parent, not by the player.
+      parentNamed: !!(k.metadata && k.metadata.l === 1 && typeof k.metadata.d === 'string' && k.metadata.d)
     }))
     .filter(k => isValidMemberId(k.memberId));
 }
@@ -1572,15 +1642,29 @@ async function readOwnName(env, team, selfId) {
 // Writes/refreshes the caller's display name and, for a minor whose guardian
 // has confirmed consent (ALLOWLIST guardianEmail — set only by the emailed
 // confirmation link), links them into that guardian's kid list.
-async function writeProfile(env, ctx, name) {
+// `name` is always the caller's OWN name; a parent-chosen name (d) on the kid
+// entry is carried over untouched. Pass `link` (from readGuardianLink) when the
+// caller already has it, to save a read.
+async function writeProfile(env, ctx, name, link) {
   await env.EVENTS.put(`me:${ctx.team}:${ctx.selfId}`, JSON.stringify({ n: name }), { expirationTtl: PROFILE_TTL });
-  const record = await readAllowlistRecord(env, ctx.email);
-  if (typeof record.guardianEmail === 'string' && record.guardianEmail && record.guardianAcceptedAt) {
-    const guardianId = await hmacId(env.EVENTS_HMAC_KEY, 'g', ctx.team, record.guardianEmail);
-    await env.EVENTS.put(`kid:${ctx.team}:${guardianId}:${ctx.selfId}`, '1', {
-      metadata: { n: name, l: 1 }, expirationTtl: PROFILE_TTL
+  const lk = link === undefined ? await readGuardianLink(env, ctx) : link;
+  if (lk) {
+    await env.EVENTS.put(lk.kidKey, '1', {
+      metadata: kidMetadata(name, true, lk.meta && lk.meta.d), expirationTtl: PROFILE_TTL
     });
   }
+}
+
+// For a minor whose guardian has CONFIRMED consent: the kid: key they live
+// under in that guardian's list and its current metadata (null if not there
+// yet). Null for everyone else. A direct get, not list(), which can lag.
+async function readGuardianLink(env, ctx) {
+  const record = await readAllowlistRecord(env, ctx.email);
+  if (!(typeof record.guardianEmail === 'string' && record.guardianEmail && record.guardianAcceptedAt)) return null;
+  const guardianId = await hmacId(env.EVENTS_HMAC_KEY, 'g', ctx.team, record.guardianEmail);
+  const kidKey = `kid:${ctx.team}:${guardianId}:${ctx.selfId}`;
+  const found = await env.EVENTS.getWithMetadata(kidKey);
+  return { kidKey, meta: (found.value !== null && found.metadata) ? found.metadata : null };
 }
 
 // ─── Context / auth ──────────────────────────────────────────────────────────
@@ -1670,6 +1754,35 @@ async function handleEventsPage(req, env, url) {
 
   const safeReq = new Request(new URL('/events.html', ORIGIN), req);
   return addSecurityHeaders(await fetch(safeReq));
+}
+
+// ─── /parent (page, ADR-016) ─────────────────────────────────────────────────
+
+// Same gate as /events, plus the team's parentLogin flag. The page itself only
+// ever calls /events/api/*, so this route is what keeps it off teams that
+// haven't opted in. Nothing here is gated on `parent` in ALLOWLIST: the page
+// shows the caller's own players, so an admin-added parent works the same.
+async function handleParentPage(req, env, url) {
+  const email = await getSession(req, env);
+  if (!email) {
+    return Response.redirect(`${url.origin}/auth.html?redirect=${encodeURIComponent(url.pathname + url.search)}`, 302);
+  }
+  const team = resolveCoachHostTeam(url.hostname);
+  const teamConfig = team && env.TEAMS ? await getTeamConfig(env, team) : null;
+  if (!isFeatureOn(teamConfig, 'events') || !isFeatureOn(teamConfig, 'parentLogin')) return parentUnavailablePage();
+
+  const safeReq = new Request(new URL('/parent.html', ORIGIN), req);
+  return addSecurityHeaders(await fetch(safeReq));
+}
+
+function parentUnavailablePage() {
+  return new Response(
+    `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SpikeFit Parent View</title></head>` +
+    `<body style="font-family:sans-serif;max-width:400px;margin:80px auto;text-align:center;color:#2d3748;">` +
+    `<p>The parent view isn't enabled here. Open your team's SpikeFit page to see events.</p>` +
+    `<p><a href="/app.html">Back to SpikeFit</a></p></body></html>`,
+    { status: 403, headers: { 'Content-Type': 'text/html; charset=UTF-8' } }
+  );
 }
 
 function eventsUnavailablePage() {
@@ -1821,7 +1934,8 @@ async function handleEventsProfile(req, env, url) {
 
 // Parent-managed kids (kids without their own login). A kid who has a login
 // is linked automatically through writeProfile(); those entries can be
-// unlinked here but not renamed (the name is the kid's own).
+// unlinked here, and the parent may choose the name shown for them (stored as
+// `d`, the kid's own name stays in `n` — ADR-016).
 async function handleEventsKids(req, env, url) {
   const ctx = await requireEventsContext(req, env, url, { mutating: true });
   if (ctx instanceof Response) return ctx;
@@ -1836,7 +1950,7 @@ async function handleEventsKids(req, env, url) {
     if (kids.length >= MAX_KIDS_PER_GUARDIAN) return eventsRespond({ error: 'too_many_kids' }, 409);
     const memberId = crypto.randomUUID();
     await env.EVENTS.put(`kid:${ctx.team}:${guardianId}:${memberId}`, '1', {
-      metadata: { n: name, l: 0 }, expirationTtl: PROFILE_TTL
+      metadata: kidMetadata(name, false), expirationTtl: PROFILE_TTL
     });
     return eventsRespond({ ok: true, memberId, name });
   }
@@ -1848,11 +1962,24 @@ async function handleEventsKids(req, env, url) {
   if (!existing || existing.value === null || !existing.metadata) return eventsRespond({ error: 'not_found' }, 404);
 
   if (action === 'rename') {
-    if (existing.metadata.l === 1) return eventsRespond({ error: 'linked_kid' }, 400);
     const name = normalizeDisplayName(ctx.body.name);
     if (!name) return eventsRespond({ error: nameError(ctx.body.name) }, 400);
-    await env.EVENTS.put(key, '1', { metadata: { n: name, l: 0 }, expirationTtl: PROFILE_TTL });
+    // A linked kid keeps their own name (n); the parent's choice is stored as d
+    // and wins wherever a name is shown (ADR-016).
+    const linked = existing.metadata.l === 1;
+    const md = linked ? kidMetadata(existing.metadata.n, true, name) : kidMetadata(name, false);
+    await env.EVENTS.put(key, '1', { metadata: md, expirationTtl: PROFILE_TTL });
+    await relabelRsvps(env, ctx.team, memberId, name);
     return eventsRespond({ ok: true, name });
+  }
+
+  // Drop the parent-chosen name and fall back to the player's own.
+  if (action === 'reset_name') {
+    if (existing.metadata.l !== 1) return eventsRespond({ error: 'bad_request' }, 400);
+    const ownName = typeof existing.metadata.n === 'string' ? existing.metadata.n : '';
+    await env.EVENTS.put(key, '1', { metadata: kidMetadata(ownName, true), expirationTtl: PROFILE_TTL });
+    if (ownName) await relabelRsvps(env, ctx.team, memberId, ownName);
+    return eventsRespond({ ok: true, name: ownName });
   }
 
   if (action === 'remove') {
@@ -1891,8 +2018,13 @@ async function loadOpenEvent(env, ctx, eventId) {
 // refreshed here (rolling idle TTL) while it's in use.
 async function resolveRsvpTarget(env, ctx, memberId) {
   if (memberId === ctx.selfId) {
-    const displayName = await readOwnName(env, ctx.team, ctx.selfId);
-    return displayName ? { isSelf: true, displayName } : eventsRespond({ error: 'name_required' }, 400);
+    const ownName = await readOwnName(env, ctx.team, ctx.selfId);
+    if (!ownName) return eventsRespond({ error: 'name_required' }, 400);
+    // A linked minor's answer carries the name their parent chose, if any, so a
+    // coach sees one consistent name whoever answered last.
+    const link = await readGuardianLink(env, ctx);
+    const parentName = link && link.meta && typeof link.meta.d === 'string' ? link.meta.d : '';
+    return { isSelf: true, displayName: parentName || ownName, ownName, link };
   }
   const guardianId = await hmacId(env.EVENTS_HMAC_KEY, 'g', ctx.team, ctx.email);
   // A direct read of this one key (not list(), which can lag a minute behind
@@ -1901,11 +2033,12 @@ async function resolveRsvpTarget(env, ctx, memberId) {
   const found = await env.EVENTS.getWithMetadata(kidKey);
   const kidIds = found.value !== null && found.metadata ? [memberId] : [];
   if (!canRsvpFor(memberId, ctx.selfId, kidIds)) return eventsRespond({ error: 'not_your_player' }, 403);
-  const kidName = typeof found.metadata.n === 'string' ? found.metadata.n : '';
+  const linked = found.metadata.l === 1;
   await env.EVENTS.put(kidKey, '1', {
-    metadata: { n: kidName, l: found.metadata.l === 1 ? 1 : 0 }, expirationTtl: PROFILE_TTL
+    metadata: kidMetadata(typeof found.metadata.n === 'string' ? found.metadata.n : '', linked, found.metadata.d),
+    expirationTtl: PROFILE_TTL
   });
-  return { isSelf: false, displayName: kidName };
+  return { isSelf: false, displayName: kidDisplayName(found.metadata) };
 }
 
 async function handleEventsRsvp(req, env, url) {
@@ -1933,7 +2066,7 @@ async function handleEventsRsvp(req, env, url) {
     expiration: eventExpiry(ev.date)
   });
   // Refreshes the rolling profile TTL and (re)links a minor to their guardian.
-  if (target.isSelf) await writeProfile(env, ctx, target.displayName);
+  if (target.isSelf) await writeProfile(env, ctx, target.ownName, target.link);
 
   return eventsRespond({ ok: true, memberId, response });
 }
@@ -2050,7 +2183,7 @@ export {
   cleanText, normalizeDisplayName, nameError, isValidDate, isValidTime, shiftDate, isValidMemberId,
   eventTypesFor, validateEventInput, eventEndStamp, hasEnded, eventExpiry, hmacId,
   eventKey, parseEventKey, rsvpKey, parseRsvpKey, summarizeRsvps, canRsvpFor,
-  DEFAULT_EVENT_TYPES,
+  DEFAULT_EVENT_TYPES, kidDisplayName, kidMetadata,
   decidePickup, parseRoster, parseKidsSheet, parseParentsSheet,
   isValidId, isValidEventId, normalizeId,
   resolveCoachHostTeam, resolveCoachTeam, isFeatureOn, isSheetConfigured,

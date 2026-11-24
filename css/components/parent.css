@@ -1,0 +1,23 @@
+/* css/components/parent.css - Parent / family view (ADR-016). Builds on events.css (cards, answer buttons, forms). */
+
+.pa-intro { margin: 0 0 0.35em; }
+.pa-all-link { display: inline-block; margin-bottom: 0.5em; color: var(--accent); font-weight: 700; text-decoration: none; }
+.pa-empty { text-align: center; padding: 1em 0; }
+
+.pa-person {
+    background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-md);
+    padding: 1.1em 1.25em; box-shadow: var(--shadow-sm); margin-top: 1em;
+}
+.pa-person-head { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5em; }
+.pa-person-name { flex: 1 1 auto; margin: 0; font-size: 1.15em; font-weight: 700; color: var(--text-main); text-transform: none; letter-spacing: normal; }
+.pa-person-tag { color: var(--text-muted); font-size: 0.8em; }
+.pa-person-actions { display: flex; flex-wrap: wrap; gap: 0.5em; margin-top: 0.5em; }
+.pa-rename-form { margin: 0.5em 0 0; }
+
+.pa-event { margin-top: 0.85em; padding-top: 0.75em; border-top: 1px solid var(--border); }
+.pa-event.pa-canceled .pa-event-title { text-decoration: line-through; }
+.pa-event-title { margin: 0; font-weight: 700; color: var(--text-main); }
+.pa-event-when { margin: 0.1em 0 0; color: var(--text-muted); font-size: 0.9em; }
+.pa-event .ev-answer-row { margin-top: 0.5em; }
+.pa-status { display: inline-block; margin-top: 0.35em; font-size: 0.85em; font-weight: 700; color: var(--text-muted); }
+.pa-none { margin: 0.75em 0 0; color: var(--text-muted); }

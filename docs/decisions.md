@@ -273,7 +273,7 @@ The full Google Drive OAuth path was evaluated. It requires: a `client_secret` s
 | `ev:<team>:<date>T<HHMM>:<eventId>` | event type, title, time, location, notes, canceled flag — coach-written event details; the editor tells coaches not to include contact info (no personal data is collected by design) | event date + 30 days |
 | `rsvp:<team>:<eventId>:<memberId>` | value `1`; metadata `{n: display name, r: yes/maybe/no, b: self/guardian, at}` | event date + 30 days |
 | `me:<team>:<selfId>` | `{n: display name}` | rolling 180 days idle |
-| `kid:<team>:<guardianId>:<memberId>` | value `1`; metadata `{n: display name, l: linked?}` | rolling 180 days idle (refreshed when the guardian answers for that kid, or the kid saves/answers) |
+| `kid:<team>:<guardianId>:<memberId>` | value `1`; metadata `{n: display name, l: linked?, d?: parent-chosen display name for a linked kid}` (`d` added by ADR-016) | rolling 180 days idle (refreshed when the guardian answers for that kid, or the kid saves/answers) |
 
 **Never stored in any Cloudflare-owned store for this feature: an email address, a phone number, roster data, or any workout key.** A person's identity is `HMAC-SHA256(EVENTS_HMAC_KEY, "<scope>:<team>:<email>")`, truncated to 32 hex chars, computed per request; the team is mixed in so the same person isn't linkable across teams. The rate-limit counter for these routes is keyed by that same HMAC, not the email.
 
@@ -300,3 +300,30 @@ The full Google Drive OAuth path was evaluated. It requires: a `client_secret` s
   - The maintainer of the Worker deployment is the data controller for display names for up to 30 days after an event (and up to 180 days of idle profile keys). That is the deliberate cost of this decision.
 
 **Consequences:** Deploying events for a team needs a new `EVENTS` KV binding, an `EVENTS_HMAC_KEY` secret, and `"events": true` in the team's `TEAMS` entry — no Google setup. The Worker gains `/events` and `/events/api/*` (see `docs/architecture.md`). ADR-014(b) still governs the coach/pickup module unchanged; this ADR carves out only the keys listed in (b). Any future feature that persists personal data in Cloudflare must either fit within (b)'s list or add its own ADR.
+
+---
+
+## ADR-016: Parent Login & Parent View
+
+**Status:** Accepted. Builds on ADR-012 (guardian consent), ADR-014/015 (team features). Narrows ADR-006's "no self-registration" for one case.
+
+**Context:** A minor's first login asks them to enter a parent/guardian email; the guardian confirms through an emailed link (ADR-012), and the player's `ALLOWLIST` record gets `guardianEmail`. That link only points one way. `ALLOWLIST` is keyed by login email and login requires an existing entry (`handleSend`), so the guardian could not sign in unless an admin added them by hand — and even then there was nowhere to see their players except the generic events page. Parents also need to answer for themselves, and want to control the name a coach sees for their child.
+
+**Decision:**
+
+(a) **The guardian needs their own `ALLOWLIST` entry; it can't live on the player's.** The record is single-valued and keyed by the email that logs in. When the guardian confirms the consent link on a team whose `TEAMS` entry has `features.parentLogin: true`, `handleConsentConfirm` creates or *merges* `parent: { teams: [<team>] }` into the guardian's entry (`provisionParentAccess`). It never overwrites existing fields (a guardian who is also a coach keeps `coach`), is idempotent, and does nothing on a non-team host or when the flag is off — those guardians still need an admin to add them. Provisioning failure never undoes the consent just recorded. The team comes from the host the player's `/consent/send` arrived on and travels in the `CONSENTS` token.
+
+(b) **The parent marker holds no player data.** The record is `{ allowed: true, parent: { teams } }` — deliberately no list of the guardian's players' emails. The parent view finds players through the existing `kid:<team>:<guardianId>:*` keys (ADR-015), so nothing new links two emails together and no child email is copied onto a second record. Nothing is gated on the marker: an admin-added parent works the same way. It is an audit trail of auto-provisioning and a hook for later features.
+
+(c) **Why auto-provisioning is acceptable, and its limit.** The bar is the same one ADR-012(d) already set: someone with access to that inbox clicked a link emailed to it. It means a player can get an arbitrary email allowlisted without admin review, once that inbox's owner clicks. That is why it is opt-in per team (`parentLogin`) rather than default-on. It grants access to the same app every allowlisted user gets (workout data is local to each device) and to `/events` and `/parent` for that one team.
+
+(d) **`/parent` is a thin page over `/events/api/*`.** `parent.html` + `js/parent.js` + `css/components/parent.css`, served by the `/parent` route behind a session and `features.events` + `features.parentLogin` on the host's team (not in `STATIC_FILES`, like `coach.html`/`events.html`; the JS and CSS are). It adds **no API**: list, rsvp, profile and kids are the existing events routes with their existing checks, so a parent can answer for themselves and for each linked player and nothing in `/parent` can reach anything `/events` can't. It shows no names beyond the caller's own and their own players'. It uses no localStorage and makes no request other than `/events/api/*`.
+
+(e) **The parent chooses the name shown for a linked player.** This reverses ADR-015(e)'s "linked entries can be unlinked but not renamed". The kid entry's metadata keeps the player's own name in `n` and gains `d`, the parent-chosen name (new `rename` on a linked kid; `reset_name` drops it). `d` outranks `n` wherever a name is shown *or stored on an RSVP*, and a player saving their own profile never clears it. The player's own `me:` name is untouched. When a parent renames, the player's existing answers are re-labelled in place (`relabelRsvps`, keeping each answer's own expiry) so coaches don't see a stale name until the next answer; the same re-label now also runs for a managed kid's rename. `d` passes the same validation as every display name (`normalizeDisplayName`: no `@`, no 7+ digit run). Rationale: a guardian, not a minor, is the one accountable for what a child's identity looks like to a team. Accepted consequence: a player and their coach may see different names for the same child until the player is told; the player's own page still shows what they typed.
+
+(f) **Privacy:** no new keys, no new class of data. `kid:` metadata gains one display-name field of the kind ADR-015(c) already permits, with the same expiry. No email, phone, roster value or workout key is added to `EVENTS` or `RATELIMIT`; a worker test scans both after provisioning and a rename. The one new durable write is `parent: { teams }` on `ALLOWLIST`, which already holds emails permanently (ADR-012).
+
+(g) **Not in this ADR:** pickup status for a parent. It needs the coach module's Sheet (ADR-014), where adults are keyed by roster ID and an optional email, not by login. Linking the two is its own design and its own flag; `parent.js` leaves room for a section but ships none.
+
+**Consequences:** Enabling it for a team means adding `"parentLogin": true` (with `"events": true`) to that team's `TEAMS` entry — no new binding or secret. The consent confirmation page, shown to the guardian, now links to `https://<team>.spikefit.app/parent` when it provisioned a login. Parents of players who confirmed *before* the flag was on are not backfilled; an admin adds them by hand (or the player re-sends consent). A player appears in the parent view only after they've saved a name on the team's Events page (that is what writes the `kid:` link) — the empty state says so.
+
